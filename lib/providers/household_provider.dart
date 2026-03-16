@@ -1,0 +1,54 @@
+import 'package:flutter/material.dart';
+import '../database/database_helper.dart';
+import '../models/household.dart';
+import '../models/member.dart';
+
+class HouseholdProvider extends ChangeNotifier {
+  final _db = DatabaseHelper.instance;
+
+  List<Household> _households = [];
+  Household? _currentHousehold;
+  Member? _currentMember;
+  List<Member> _members = [];
+
+  List<Household> get households => _households;
+  Household? get currentHousehold => _currentHousehold;
+  Member? get currentMember => _currentMember;
+  List<Member> get members => _members;
+
+  Future<void> loadHouseholds() async {
+    _households = await _db.getHouseholds();
+    notifyListeners();
+  }
+
+  Future<Household> createHousehold(String name, List<String> memberNames) async {
+    final id = await _db.insertHousehold(Household(name: name));
+    for (final memberName in memberNames) {
+      await _db.insertMember(Member(householdId: id, name: memberName));
+    }
+    await loadHouseholds();
+    return _households.firstWhere((h) => h.id == id);
+  }
+
+  Future<void> setCurrentHousehold(Household household) async {
+    _currentHousehold = household;
+    _members = await _db.getMembersByHousehold(household.id!);
+    _currentMember = null;
+    notifyListeners();
+  }
+
+  void setCurrentMember(Member member) {
+    _currentMember = member;
+    notifyListeners();
+  }
+
+  Future<void> deleteHousehold(int id) async {
+    await _db.deleteHousehold(id);
+    if (_currentHousehold?.id == id) {
+      _currentHousehold = null;
+      _currentMember = null;
+      _members = [];
+    }
+    await loadHouseholds();
+  }
+}
