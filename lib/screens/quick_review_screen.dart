@@ -95,6 +95,7 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
     final otherMembers =
         members.where((m) => m.id != _paidByMemberId).toList();
     final perMemberShare = members.isNotEmpty ? _total / members.length : 0.0;
+    final currencySymbol = AppCurrency.getByCode(householdProvider.currency).symbol;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Quick Bill'),
@@ -317,9 +318,9 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
                           border: Border.all(
                               color: AppColors.primary.withAlpha(40)),
                         ),
-                        child: const Text(
-                          'TL',
-                          style: TextStyle(
+                        child: Text(
+                          currencySymbol,
+                          style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w700,
                             color: AppColors.primary,
@@ -457,7 +458,7 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
                           ),
                         ),
                         Text(
-                          '${perMemberShare.toStringAsFixed(2)} TL',
+                          '${perMemberShare.toStringAsFixed(2)} $currencySymbol',
                           style: const TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 15,
@@ -487,7 +488,7 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
                       .map((m) => Padding(
                             padding: const EdgeInsets.symmetric(vertical: 2),
                             child: Text(
-                              '${m.name} owes ${perMemberShare.toStringAsFixed(2)} TL',
+                              '${m.name} owes ${perMemberShare.toStringAsFixed(2)} $currencySymbol',
                               style: const TextStyle(
                                 color: AppColors.primary,
                                 fontWeight: FontWeight.w600,

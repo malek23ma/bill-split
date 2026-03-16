@@ -140,8 +140,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
-          // Appearance section
-          const _SectionHeader('Appearance'),
+          // General section
+          const _SectionHeader('General'),
           const SizedBox(height: 8),
           Container(
             decoration: BoxDecoration(
@@ -153,10 +153,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+              child: Builder(
+                builder: (context) {
+                  final household = context.watch<HouseholdProvider>();
+                  final currentCurrency = AppCurrency.getByCode(household.currency);
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Currency selector
+                      Row(
+                        children: [
+                          Icon(Icons.language_rounded,
+                              size: 20, color: colorScheme.primary),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Currency',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.onSurface,
+                              ),
+                            ),
+                          ),
+                          DropdownButton<String>(
+                            value: currentCurrency.code,
+                            underline: const SizedBox.shrink(),
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            items: AppCurrency.list.map((c) {
+                              return DropdownMenuItem<String>(
+                                value: c.code,
+                                child: Text(
+                                  '${c.symbol}  ${c.name} (${c.code})',
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (code) {
+                              if (code != null) {
+                                context.read<HouseholdProvider>().updateCurrency(code);
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                      Divider(
+                        color: isDark ? AppColors.darkBorder : AppColors.border,
+                        height: 24,
+                      ),
+                      // Dark mode toggle
+                      Row(
                     children: [
                       Icon(Icons.palette_outlined,
                           size: 20, color: colorScheme.primary),
@@ -217,14 +263,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ),
-                ],
+                  ],
+                  );
+                },
               ),
             ),
           ),
           const SizedBox(height: 20),
 
-          // AI Scanning section
-          const _SectionHeader('AI Scanning'),
+          // Receipt Scanning section
+          const _SectionHeader('Receipt Scanning'),
           const SizedBox(height: 8),
           Container(
             decoration: BoxDecoration(

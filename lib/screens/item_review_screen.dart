@@ -117,6 +117,7 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
     final householdProvider = context.watch<HouseholdProvider>();
     final members = householdProvider.members;
     final memberOwes = _memberOwes;
+    final currencySymbol = AppCurrency.getByCode(householdProvider.currency).symbol;
 
     return Scaffold(
       appBar: AppBar(
@@ -348,6 +349,7 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                           isIncluded: item.isIncluded,
                           allMembers: members,
                           selectedMemberIds: item.sharedByMemberIds,
+                          currencySymbol: currencySymbol,
                           onMembersChanged: (ids) {
                             setState(() => item.sharedByMemberIds = ids);
                           },
@@ -378,7 +380,7 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                             fontSize: 14,
                             color: AppColors.textSecondary,
                           )),
-                      Text('${_totalAmount.toStringAsFixed(2)} TL',
+                      Text('${_totalAmount.toStringAsFixed(2)} $currencySymbol',
                           style: const TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 15,
@@ -403,7 +405,7 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                               color: AppColors.textSecondary,
                             ),
                           ),
-                          Text('${entry.value.toStringAsFixed(2)} TL',
+                          Text('${entry.value.toStringAsFixed(2)} $currencySymbol',
                               style: const TextStyle(
                                 color: AppColors.primary,
                                 fontWeight: FontWeight.w700,
@@ -443,6 +445,9 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
   void _addManualItem() {
     final nameController = TextEditingController();
     final priceController = TextEditingController();
+    final currencySymbol = AppCurrency.getByCode(
+      context.read<HouseholdProvider>().currency,
+    ).symbol;
 
     showDialog(
       context: context,
@@ -473,7 +478,7 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
             TextField(
               controller: priceController,
               decoration: InputDecoration(
-                labelText: 'Price (TL)',
+                labelText: 'Price ($currencySymbol)',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),

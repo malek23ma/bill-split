@@ -5,6 +5,7 @@ import 'constants.dart';
 import 'providers/household_provider.dart';
 import 'providers/bill_provider.dart';
 import 'providers/settings_provider.dart';
+import 'providers/recurring_bill_provider.dart';
 import 'screens/household_screen.dart';
 import 'screens/member_select_screen.dart';
 import 'screens/home_screen.dart';
@@ -26,6 +27,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => HouseholdProvider()),
         ChangeNotifierProvider(create: (_) => BillProvider()),
         ChangeNotifierProvider.value(value: settingsProvider),
+        ChangeNotifierProvider(create: (_) => RecurringBillProvider()),
       ],
       child: const BillSplitApp(),
     ),

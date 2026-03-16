@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
+import '../constants.dart';
 import '../models/household.dart';
 import '../models/member.dart';
 
@@ -43,6 +44,11 @@ class HouseholdProvider extends ChangeNotifier {
   }
 
   String get currency => _currentHousehold?.currency ?? 'TRY';
+
+  String formatAmount(double amount) {
+    final curr = AppCurrency.getByCode(currency);
+    return '${amount.toStringAsFixed(2)} ${curr.symbol}';
+  }
 
   Future<void> addMember(String name) async {
     if (_currentHousehold == null) return;

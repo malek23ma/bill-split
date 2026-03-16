@@ -52,6 +52,27 @@ class SplitPresets {
   }
 }
 
+class AppCurrency {
+  final String code;
+  final String symbol;
+  final String name;
+  const AppCurrency(this.code, this.symbol, this.name);
+
+  static const list = [
+    AppCurrency('TRY', '₺', 'Turkish Lira'),
+    AppCurrency('USD', '\$', 'US Dollar'),
+    AppCurrency('EUR', '€', 'Euro'),
+    AppCurrency('GBP', '£', 'British Pound'),
+    AppCurrency('SAR', '﷼', 'Saudi Riyal'),
+    AppCurrency('AED', 'د.إ', 'UAE Dirham'),
+    AppCurrency('JPY', '¥', 'Japanese Yen'),
+    AppCurrency('KRW', '₩', 'South Korean Won'),
+  ];
+
+  static AppCurrency getByCode(String code) =>
+      list.firstWhere((c) => c.code == code, orElse: () => list.first);
+}
+
 class BillCategory {
   final String id;
   final String label;

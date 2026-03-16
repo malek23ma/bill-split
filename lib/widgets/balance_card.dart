@@ -6,6 +6,7 @@ class BalanceCard extends StatelessWidget {
   final Map<int, double> memberBalances; // memberId -> balance (positive = owed to them)
   final Map<int, String> memberNames; // memberId -> name
   final void Function(int memberId, double amount)? onSettleUp;
+  final String currencySymbol;
 
   const BalanceCard({
     super.key,
@@ -13,6 +14,7 @@ class BalanceCard extends StatelessWidget {
     required this.memberBalances,
     required this.memberNames,
     this.onSettleUp,
+    this.currencySymbol = '₺',
   });
 
   @override
@@ -125,6 +127,7 @@ class BalanceCard extends StatelessWidget {
                       _BalanceRow(
                         memberName: memberNames[entry.key] ?? 'Unknown',
                         amount: entry.value,
+                        currencySymbol: currencySymbol,
                         onSettleUp: onSettleUp != null
                             ? () => onSettleUp!(entry.key, entry.value.abs())
                             : null,
@@ -140,11 +143,13 @@ class BalanceCard extends StatelessWidget {
 class _BalanceRow extends StatelessWidget {
   final String memberName;
   final double amount; // positive = they owe you, negative = you owe them
+  final String currencySymbol;
   final VoidCallback? onSettleUp;
 
   const _BalanceRow({
     required this.memberName,
     required this.amount,
+    required this.currencySymbol,
     this.onSettleUp,
   });
 
@@ -181,7 +186,7 @@ class _BalanceRow extends StatelessWidget {
             curve: Curves.easeOut,
             builder: (context, value, child) {
               return Text(
-                '${value.toStringAsFixed(2)} TL',
+                '${value.toStringAsFixed(2)} $currencySymbol',
                 style: const TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w700,

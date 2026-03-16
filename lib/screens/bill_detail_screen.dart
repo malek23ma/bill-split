@@ -6,6 +6,7 @@ import '../models/bill.dart';
 import '../models/bill_item.dart';
 import '../providers/household_provider.dart';
 import '../providers/bill_provider.dart';
+import '../providers/recurring_bill_provider.dart';
 import '../database/database_helper.dart';
 import '../constants.dart';
 
@@ -64,7 +65,9 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
     }
 
     final bill = _bill!;
-    final members = context.watch<HouseholdProvider>().members;
+    final householdProvider = context.watch<HouseholdProvider>();
+    final members = householdProvider.members;
+    final currencySymbol = AppCurrency.getByCode(householdProvider.currency).symbol;
     final paidBy =
         members.where((m) => m.id == bill.paidByMemberId).firstOrNull;
     final enteredBy =
@@ -77,6 +80,15 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
       appBar: AppBar(
         title: const Text('Bill Details'),
         actions: [
+          if (!isSettlement)
+            TextButton.icon(
+              onPressed: () => _showMakeRecurringSheet(context, bill),
+              icon: const Icon(Icons.repeat_rounded, size: 18),
+              label: const Text('Recurring'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.secondary,
+              ),
+            ),
           TextButton(
             onPressed: () => _confirmDelete(context, bill),
             child: Text(
@@ -195,7 +207,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
 
                       // Amount display
                       Text(
-                        '${bill.totalAmount.toStringAsFixed(2)} TL',
+                        '${bill.totalAmount.toStringAsFixed(2)} $currencySymbol',
                         style: TextStyle(
                           fontSize: 32,
                           fontWeight: FontWeight.w700,
@@ -365,7 +377,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                             ),
                           ),
                           Text(
-                            '${item.price.toStringAsFixed(2)} TL',
+                            '${item.price.toStringAsFixed(2)} $currencySymbol',
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 14,
@@ -476,6 +488,208 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
       }
     }
     return '?';
+  }
+
+  void _showMakeRecurringSheet(BuildContext context, Bill bill) {
+    final category = BillCategories.getById(bill.category);
+    final titleController = TextEditingController(text: category.label);
+    String selectedFrequency = 'monthly';
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+                24, 8, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Drag handle
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                // Title
+                const Text(
+                  'Make Recurring',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'This bill will repeat automatically',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Title field
+                TextField(
+                  controller: titleController,
+                  decoration: InputDecoration(
+                    labelText: 'Title',
+                    labelStyle:
+                        const TextStyle(color: AppColors.textTertiary),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Amount (read-only display)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Amount',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      Text(
+                        bill.totalAmount.toStringAsFixed(2),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Frequency picker
+                const Text(
+                  'Frequency',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: ['weekly', 'monthly', 'yearly'].map((freq) {
+                    final isSelected = selectedFrequency == freq;
+                    final label = freq[0].toUpperCase() + freq.substring(1);
+                    return Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                            right: freq != 'yearly' ? 8 : 0),
+                        child: ChoiceChip(
+                          label: SizedBox(
+                            width: double.infinity,
+                            child: Text(label, textAlign: TextAlign.center),
+                          ),
+                          selected: isSelected,
+                          onSelected: (_) {
+                            setSheetState(
+                                () => selectedFrequency = freq);
+                          },
+                          selectedColor:
+                              AppColors.primary.withValues(alpha: 0.15),
+                          labelStyle: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: isSelected
+                                ? AppColors.primary
+                                : AppColors.textSecondary,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(AppRadius.sm),
+                            side: BorderSide(
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : AppColors.border,
+                            ),
+                          ),
+                          showCheckmark: false,
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 24),
+                // Create button
+                FilledButton(
+                  onPressed: () async {
+                    final title = titleController.text.trim();
+                    if (title.isEmpty) return;
+                    final householdProvider =
+                        context.read<HouseholdProvider>();
+                    final householdId =
+                        householdProvider.currentHousehold?.id;
+                    if (householdId == null) return;
+
+                    await context
+                        .read<RecurringBillProvider>()
+                        .createRecurring(
+                          householdId: householdId,
+                          paidByMemberId: bill.paidByMemberId,
+                          category: bill.category,
+                          amount: bill.totalAmount,
+                          title: title,
+                          frequency: selectedFrequency,
+                        );
+
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Recurring bill created'),
+                        ),
+                      );
+                    }
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                  ),
+                  child: const Text(
+                    'Create Recurring Bill',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   void _confirmDelete(BuildContext context, Bill bill) {

@@ -7,12 +7,14 @@ class BillListTile extends StatelessWidget {
   final Bill bill;
   final String paidByName;
   final VoidCallback onTap;
+  final String currencySymbol;
 
   const BillListTile({
     super.key,
     required this.bill,
     required this.paidByName,
     required this.onTap,
+    this.currencySymbol = '₺',
   });
 
   @override
@@ -87,7 +89,7 @@ class BillListTile extends StatelessWidget {
                           )
                         else
                           Text(
-                            '${bill.totalAmount.toStringAsFixed(2)} TL',
+                            '${bill.totalAmount.toStringAsFixed(2)} $currencySymbol',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
@@ -97,7 +99,7 @@ class BillListTile extends StatelessWidget {
                         const SizedBox(height: 3),
                         Text(
                           isSettlement
-                              ? '$dateStr  ·  ${bill.totalAmount.toStringAsFixed(2)} TL'
+                              ? '$dateStr  ·  ${bill.totalAmount.toStringAsFixed(2)} $currencySymbol'
                               : '$dateStr  ·  Paid by $paidByName',
                           style: TextStyle(
                             fontSize: 12,

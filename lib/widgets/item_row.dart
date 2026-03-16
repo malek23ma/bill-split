@@ -9,6 +9,7 @@ class ItemRow extends StatelessWidget {
   final List<Member> allMembers;
   final List<int> selectedMemberIds;
   final ValueChanged<List<int>> onMembersChanged;
+  final String currencySymbol;
 
   const ItemRow({
     super.key,
@@ -18,6 +19,7 @@ class ItemRow extends StatelessWidget {
     required this.allMembers,
     required this.selectedMemberIds,
     required this.onMembersChanged,
+    this.currencySymbol = '₺',
   });
 
   static const _chipColors = [
@@ -78,7 +80,7 @@ class ItemRow extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    '${price.toStringAsFixed(2)} TL',
+                    '${price.toStringAsFixed(2)} $currencySymbol',
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 16,

@@ -18,6 +18,26 @@ class MonthlySummary {
   });
 }
 
+class MonthlyInsights {
+  final String monthLabel;
+  final int year;
+  final int month;
+  final int billCount;
+  final double totalSpent;
+  final Map<String, double> categorySpend;
+  final Map<int, double> memberSpend;
+
+  MonthlyInsights({
+    required this.monthLabel,
+    required this.year,
+    required this.month,
+    required this.billCount,
+    required this.totalSpent,
+    required this.categorySpend,
+    required this.memberSpend,
+  });
+}
+
 class BillProvider extends ChangeNotifier {
   final _db = DatabaseHelper.instance;
 
@@ -221,5 +241,47 @@ class BillProvider extends ChangeNotifier {
       await _db.insertBillItems(itemsWithBillId);
     }
     await loadBills(bill.householdId);
+  }
+
+  MonthlyInsights getInsightsForMonth(int year, int month) {
+    final monthBills = _bills.where((b) =>
+        b.billDate.year == year &&
+        b.billDate.month == month &&
+        b.billType != 'settlement').toList();
+
+    final categorySpend = <String, double>{};
+    final memberSpend = <int, double>{};
+    double totalSpent = 0;
+
+    for (final bill in monthBills) {
+      totalSpent += bill.totalAmount;
+      categorySpend[bill.category] =
+          (categorySpend[bill.category] ?? 0) + bill.totalAmount;
+      memberSpend[bill.paidByMemberId] =
+          (memberSpend[bill.paidByMemberId] ?? 0) + bill.totalAmount;
+    }
+
+    final months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
+
+    return MonthlyInsights(
+      monthLabel: '${months[month - 1]} $year',
+      year: year,
+      month: month,
+      billCount: monthBills.length,
+      totalSpent: totalSpent,
+      categorySpend: categorySpend,
+      memberSpend: memberSpend,
+    );
+  }
+
+  /// Returns the date of the oldest bill, or null if no bills exist.
+  DateTime? get oldestBillDate {
+    if (_bills.isEmpty) return null;
+    return _bills
+        .map((b) => b.billDate)
+        .reduce((a, b) => a.isBefore(b) ? a : b);
   }
 }
