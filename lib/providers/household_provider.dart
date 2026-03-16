@@ -42,6 +42,29 @@ class HouseholdProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  String get currency => _currentHousehold?.currency ?? 'TRY';
+
+  Future<void> addMember(String name) async {
+    if (_currentHousehold == null) return;
+    await _db.insertMember(
+      Member(householdId: _currentHousehold!.id!, name: name),
+    );
+    _members = await _db.getMembersByHousehold(_currentHousehold!.id!);
+    notifyListeners();
+  }
+
+  Future<void> updateCurrency(String currency) async {
+    if (_currentHousehold == null) return;
+    await _db.updateHouseholdCurrency(_currentHousehold!.id!, currency);
+    _currentHousehold = Household(
+      id: _currentHousehold!.id,
+      name: _currentHousehold!.name,
+      currency: currency,
+      createdAt: _currentHousehold!.createdAt,
+    );
+    notifyListeners();
+  }
+
   Future<void> deleteHousehold(int id) async {
     await _db.deleteHousehold(id);
     if (_currentHousehold?.id == id) {

@@ -33,12 +33,18 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
       final parsed = args['parsed'] as ParsedReceipt;
       _photoPath = args['photoPath'] as String;
 
+      final allMemberIds = context
+          .read<HouseholdProvider>()
+          .members
+          .map((m) => m.id!)
+          .toList();
+
       _items = parsed.items
           .map((item) => _EditableItem(
                 name: item.name,
                 price: item.price,
                 isIncluded: true,
-                splitPercent: 50,
+                sharedByMemberIds: List<int>.from(allMemberIds),
               ))
           .toList();
 
@@ -55,14 +61,20 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
     return _items.fold(0.0, (sum, item) => sum + item.price);
   }
 
-  double get _splitAmount {
-    double amount = 0;
+  /// Calculates how much each member owes (excluding payer's own share).
+  Map<int, double> get _memberOwes {
+    final owes = <int, double>{};
     for (final item in _items) {
-      if (item.isIncluded) {
-        amount += item.price * (100 - item.splitPercent) / 100;
+      if (item.isIncluded && item.sharedByMemberIds.isNotEmpty) {
+        final perMember = item.price / item.sharedByMemberIds.length;
+        for (final memberId in item.sharedByMemberIds) {
+          if (memberId != _paidByMemberId) {
+            owes[memberId] = (owes[memberId] ?? 0) + perMember;
+          }
+        }
       }
     }
-    return amount;
+    return owes;
   }
 
   Future<void> _saveBill() async {
@@ -85,7 +97,7 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
               name: item.name,
               price: item.price,
               isIncluded: item.isIncluded,
-              splitPercent: item.splitPercent,
+              sharedByMemberIds: item.sharedByMemberIds,
             ))
         .toList();
 
@@ -104,8 +116,7 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
   Widget build(BuildContext context) {
     final householdProvider = context.watch<HouseholdProvider>();
     final members = householdProvider.members;
-    final otherMember =
-        members.where((m) => m.id != _paidByMemberId).firstOrNull;
+    final memberOwes = _memberOwes;
 
     return Scaffold(
       appBar: AppBar(
@@ -132,25 +143,52 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                         setState(() => _billDate = picked);
                       }
                     },
-                    icon: const Icon(Icons.calendar_today, size: 18),
-                    label: Text(DateFormat('dd/MM/yyyy').format(_billDate)),
+                    icon: Icon(Icons.calendar_today_rounded,
+                        size: 18, color: AppColors.primary),
+                    label: Text(
+                      DateFormat('dd/MM/yyyy').format(_billDate),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.border),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: DropdownButtonFormField<int>(
                     initialValue: _paidByMemberId,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Paid by',
-                      border: OutlineInputBorder(),
+                      labelStyle: const TextStyle(
+                        color: AppColors.textTertiary,
+                        fontSize: 13,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
                       isDense: true,
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
                     ),
                     items: members
                         .map((m) => DropdownMenuItem(
                               value: m.id,
-                              child: Text(m.name),
+                              child: Text(m.name,
+                                  style: const TextStyle(fontSize: 14)),
                             ))
                         .toList(),
                     onChanged: (value) {
@@ -176,9 +214,24 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                 final cat = BillCategories.list[index];
                 final isSelected = _category == cat.id;
                 return FilterChip(
-                  label: Text(cat.label, style: const TextStyle(fontSize: 12)),
-                  avatar: Icon(cat.icon, size: 16, color: isSelected ? null : cat.color),
+                  label: Text(
+                    cat.label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                      color: isSelected ? cat.color : AppColors.textSecondary,
+                    ),
+                  ),
+                  avatar: Icon(cat.icon, size: 16, color: cat.color),
                   selected: isSelected,
+                  selectedColor: cat.color.withAlpha(30),
+                  backgroundColor: AppColors.surface,
+                  side: BorderSide(
+                    color: isSelected ? cat.color.withAlpha(100) : AppColors.border,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.xl),
+                  ),
                   onSelected: (_) => setState(() => _category = cat.id),
                   showCheckmark: false,
                   visualDensity: VisualDensity.compact,
@@ -195,15 +248,35 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.warning_amber,
-                            size: 48, color: Colors.orange.shade400),
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            color: AppColors.accent.withAlpha(20),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.warning_amber_rounded,
+                              size: 32, color: AppColors.accent),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'No items detected from the receipt',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 15,
+                          ),
+                        ),
                         const SizedBox(height: 12),
-                        const Text('No items detected from the receipt'),
-                        const SizedBox(height: 8),
                         FilledButton.icon(
                           onPressed: _addManualItem,
-                          icon: const Icon(Icons.add),
+                          icon: const Icon(Icons.add_rounded),
                           label: const Text('Add Item Manually'),
+                          style: FilledButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.md),
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -212,12 +285,40 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                     itemCount: _items.length + 1,
                     itemBuilder: (context, index) {
                       if (index == _items.length) {
+                        // Add item button with dashed outline style
                         return Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: OutlinedButton.icon(
-                            onPressed: _addManualItem,
-                            icon: const Icon(Icons.add),
-                            label: const Text('Add Item'),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                          child: InkWell(
+                            onTap: _addManualItem,
+                            borderRadius:
+                                BorderRadius.circular(AppRadius.md),
+                            child: CustomPaint(
+                              painter: _DashedRectPainter(
+                                color: AppColors.primary.withAlpha(100),
+                                radius: AppRadius.md,
+                              ),
+                              child: Container(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.add_rounded,
+                                        size: 20, color: AppColors.primary),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Add Item',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ),
                         );
                       }
@@ -226,11 +327,17 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                         key: ValueKey(index),
                         direction: DismissDirection.endToStart,
                         background: Container(
-                          color: Colors.red,
+                          margin: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.negative,
+                            borderRadius:
+                                BorderRadius.circular(AppRadius.md),
+                          ),
                           alignment: Alignment.centerRight,
-                          padding: const EdgeInsets.only(right: 16),
-                          child:
-                              const Icon(Icons.delete, color: Colors.white),
+                          padding: const EdgeInsets.only(right: 20),
+                          child: const Icon(Icons.delete_outline_rounded,
+                              color: Colors.white, size: 22),
                         ),
                         onDismissed: (_) {
                           setState(() => _items.removeAt(index));
@@ -239,13 +346,10 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                           name: item.name,
                           price: item.price,
                           isIncluded: item.isIncluded,
-                          splitPercent: item.splitPercent,
-                          onIncludedChanged: (value) {
-                            setState(
-                                () => item.isIncluded = value ?? true);
-                          },
-                          onSplitChanged: (value) {
-                            setState(() => item.splitPercent = value);
+                          allMembers: members,
+                          selectedMemberIds: item.sharedByMemberIds,
+                          onMembersChanged: (ids) {
+                            setState(() => item.sharedByMemberIds = ids);
                           },
                         ),
                       );
@@ -253,18 +357,14 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                   ),
           ),
 
-          // Bottom summary
+          // Bottom summary bar
           Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withAlpha(20),
-                  blurRadius: 8,
-                  offset: const Offset(0, -2),
-                ),
-              ],
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+            decoration: const BoxDecoration(
+              color: AppColors.surface,
+              border: Border(
+                top: BorderSide(color: AppColors.border, width: 1),
+              ),
             ),
             child: SafeArea(
               child: Column(
@@ -273,32 +373,62 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('Total',
-                          style: TextStyle(fontWeight: FontWeight.w600)),
-                      Text('${_totalAmount.toStringAsFixed(2)} TL',
-                          style:
-                              const TextStyle(fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('${otherMember?.name ?? "Other"} owes'),
-                      Text('${_splitAmount.toStringAsFixed(2)} TL',
                           style: TextStyle(
-                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                            color: AppColors.textSecondary,
+                          )),
+                      Text('${_totalAmount.toStringAsFixed(2)} TL',
+                          style: const TextStyle(
                             fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            color: AppColors.textPrimary,
                           )),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  // Per-member owes
+                  ...memberOwes.entries.map((entry) {
+                    final member = members
+                        .where((m) => m.id == entry.key)
+                        .firstOrNull;
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${member?.name ?? "Member"} owes',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          Text('${entry.value.toStringAsFixed(2)} TL',
+                              style: const TextStyle(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                              )),
+                        ],
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 14),
                   SizedBox(
                     width: double.infinity,
-                    height: 48,
+                    height: 50,
                     child: FilledButton(
                       onPressed: _saveBill,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                        ),
+                      ),
                       child: const Text('Save Bill',
-                          style: TextStyle(fontSize: 16)),
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ],
@@ -317,24 +447,40 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Add Item'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+        ),
+        title: const Text('Add Item',
+            style: TextStyle(fontWeight: FontWeight.w600)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Item Name',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
               ),
               autofocus: true,
             ),
             const SizedBox(height: 12),
             TextField(
               controller: priceController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Price (TL)',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
               ),
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
@@ -344,7 +490,8 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+            child: Text('Cancel',
+                style: TextStyle(color: AppColors.textTertiary)),
           ),
           FilledButton(
             onPressed: () {
@@ -352,17 +499,27 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
               final price = double.tryParse(
                   priceController.text.trim().replaceAll(',', '.'));
               if (name.isNotEmpty && price != null && price > 0) {
+                final allMemberIds = context
+                    .read<HouseholdProvider>()
+                    .members
+                    .map((m) => m.id!)
+                    .toList();
                 setState(() {
                   _items.add(_EditableItem(
                     name: name,
                     price: price,
                     isIncluded: true,
-                    splitPercent: 50,
+                    sharedByMemberIds: allMemberIds,
                   ));
                 });
                 Navigator.pop(dialogContext);
               }
             },
+            style: FilledButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+            ),
             child: const Text('Add'),
           ),
         ],
@@ -375,12 +532,49 @@ class _EditableItem {
   String name;
   double price;
   bool isIncluded;
-  int splitPercent;
+  List<int> sharedByMemberIds;
 
   _EditableItem({
     required this.name,
     required this.price,
     required this.isIncluded,
-    required this.splitPercent,
+    required this.sharedByMemberIds,
   });
+}
+
+class _DashedRectPainter extends CustomPainter {
+  final Color color;
+  final double radius;
+
+  _DashedRectPainter({required this.color, required this.radius});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+
+    final path = Path()
+      ..addRRect(RRect.fromRectAndRadius(
+        Rect.fromLTWH(0, 0, size.width, size.height),
+        Radius.circular(radius),
+      ));
+
+    const dashWidth = 6.0;
+    const dashSpace = 4.0;
+
+    for (final metric in path.computeMetrics()) {
+      double distance = 0;
+      while (distance < metric.length) {
+        final end = (distance + dashWidth).clamp(0, metric.length).toDouble();
+        canvas.drawPath(metric.extractPath(distance, end), paint);
+        distance += dashWidth + dashSpace;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedRectPainter oldDelegate) =>
+      color != oldDelegate.color;
 }

@@ -4,6 +4,7 @@ import '../providers/household_provider.dart';
 import '../providers/bill_provider.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/bill_list_tile.dart';
+import '../constants.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -15,111 +16,234 @@ class HomeScreen extends StatelessWidget {
 
     final currentMember = householdProvider.currentMember;
     final members = householdProvider.members;
-    final otherMember = members
-        .where((m) => m.id != currentMember?.id)
-        .firstOrNull;
 
-    final currentBalance =
-        billProvider.memberBalances[currentMember?.id] ?? 0.0;
+    final memberNames = {
+      for (final m in members) m.id!: m.name,
+    };
 
     final summary = billProvider.monthlySummary;
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(householdProvider.currentHousehold?.name ?? 'Home'),
+        backgroundColor: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          householdProvider.currentHousehold?.name ?? 'Home',
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w700,
+            fontSize: 20,
+          ),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: const Icon(Icons.settings_outlined, color: AppColors.textSecondary),
             onPressed: () => Navigator.pushNamed(context, '/settings'),
+            tooltip: 'Settings',
           ),
-          TextButton(
+          IconButton(
+            icon: const Icon(Icons.person_outline_rounded, color: AppColors.textSecondary),
             onPressed: () {
               Navigator.pushNamedAndRemoveUntil(
                   context, '/', (route) => false);
             },
-            child: Text(
-              currentMember?.name ?? '',
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
+            tooltip: currentMember?.name ?? 'Logout',
           ),
+          const SizedBox(width: 4),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(
+            color: AppColors.border,
+            height: 1,
+          ),
+        ),
       ),
       body: Column(
         children: [
           // Balance card with settle up
           BalanceCard(
-            currentMemberName: currentMember?.name ?? '',
-            otherMemberName: otherMember?.name ?? '',
-            balanceAmount: currentBalance,
-            onSettleUp: currentBalance.abs() > 0.01
-                ? () => _confirmSettleUp(
-                      context,
-                      householdProvider,
-                      billProvider,
-                      currentBalance,
-                      currentMember?.id,
-                      otherMember?.id,
-                      otherMember?.name ?? '',
-                    )
-                : null,
+            currentMemberId: currentMember?.id ?? 0,
+            memberBalances: billProvider.memberBalances,
+            memberNames: memberNames,
+            onSettleUp: (otherMemberId, amount) => _confirmSettleUp(
+              context,
+              householdProvider,
+              billProvider,
+              otherMemberId,
+              amount,
+              memberNames[otherMemberId] ?? 'Unknown',
+            ),
           ),
 
           // Monthly summary
           if (summary != null)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Card(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(color: AppColors.border),
+                ),
                 child: summary.billCount > 0
-                    ? ExpansionTile(
-                        leading: const Icon(Icons.calendar_month, size: 20),
-                        title: Text(
-                          summary.monthLabel,
-                          style: const TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.w600),
+                    ? Theme(
+                        data: Theme.of(context).copyWith(
+                          dividerColor: Colors.transparent,
                         ),
-                        subtitle: Text(
-                          '${summary.billCount} bills — ${summary.memberSpend.values.fold(0.0, (a, b) => a + b).toStringAsFixed(2)} TL total',
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                        initiallyExpanded: true,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                            child: Column(
-                              children: members.map((m) {
-                                final spent =
-                                    summary.memberSpend[m.id] ?? 0.0;
-                                return Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 2),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(m.name),
-                                      Text(
-                                        '${spent.toStringAsFixed(2)} TL',
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.w600),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
+                        child: ExpansionTile(
+                          tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+                          childrenPadding: EdgeInsets.zero,
+                          shape: const Border(),
+                          collapsedShape: const Border(),
+                          leading: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(AppRadius.sm),
+                            ),
+                            child: const Icon(
+                              Icons.calendar_month_rounded,
+                              size: 18,
+                              color: AppColors.primary,
                             ),
                           ),
-                        ],
-                      )
-                    : ListTile(
-                        leading: const Icon(Icons.calendar_month, size: 20),
-                        title: Text(
-                          summary.monthLabel,
-                          style: const TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.w600),
+                          title: Text(
+                            summary.monthLabel,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          subtitle: Text(
+                            '${summary.billCount} bills \u2022 ${summary.memberSpend.values.fold(0.0, (a, b) => a + b).toStringAsFixed(2)} TL total',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textTertiary,
+                            ),
+                          ),
+                          initiallyExpanded: true,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                              child: Column(
+                                children: [
+                                  const Divider(color: AppColors.border, height: 1),
+                                  const SizedBox(height: 12),
+                                  ...members.map((m) {
+                                    final spent =
+                                        summary.memberSpend[m.id] ?? 0.0;
+                                    final totalSpend = summary.memberSpend.values
+                                        .fold(0.0, (a, b) => a + b);
+                                    final proportion = totalSpend > 0
+                                        ? (spent / totalSpend)
+                                        : 0.0;
+                                    final memberColors = [
+                                      AppColors.primary,
+                                      AppColors.secondary,
+                                      AppColors.accent,
+                                    ];
+                                    final colorIndex =
+                                        members.toList().indexOf(m) %
+                                            memberColors.length;
+                                    final barColor =
+                                        memberColors[colorIndex];
+
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 10),
+                                      child: Column(
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                m.name,
+                                                style: const TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: AppColors.textSecondary,
+                                                ),
+                                              ),
+                                              Text(
+                                                '${spent.toStringAsFixed(2)} TL',
+                                                style: const TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: AppColors.textPrimary,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 6),
+                                          ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(AppRadius.xs),
+                                            child: LinearProgressIndicator(
+                                              value: proportion,
+                                              minHeight: 6,
+                                              backgroundColor:
+                                                  AppColors.surfaceVariant,
+                                              valueColor:
+                                                  AlwaysStoppedAnimation<Color>(
+                                                      barColor),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                        subtitle: const Text(
-                          'No bills this month yet',
-                          style: TextStyle(fontSize: 12),
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.1),
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.sm),
+                              ),
+                              child: const Icon(
+                                Icons.calendar_month_rounded,
+                                size: 18,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  summary.monthLabel,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                const Text(
+                                  'No bills this month yet',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textTertiary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
               ),
@@ -127,20 +251,34 @@ class HomeScreen extends StatelessWidget {
 
           // Bills header
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Row(
               children: [
                 Text(
-                  'Bills',
+                  'Recent Bills',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
                       ),
                 ),
-                const Spacer(),
-                Text(
-                  '${billProvider.bills.length} total',
-                  style: TextStyle(color: Colors.grey.shade600),
-                ),
+                const SizedBox(width: 8),
+                if (billProvider.bills.isNotEmpty)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(AppRadius.xl),
+                    ),
+                    child: Text(
+                      '${billProvider.bills.length}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -150,28 +288,49 @@ class HomeScreen extends StatelessWidget {
           Expanded(
             child: billProvider.bills.isEmpty
                 ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.receipt_long,
-                            size: 64, color: Colors.grey.shade400),
-                        const SizedBox(height: 12),
-                        Text(
-                          'No bills yet',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey.shade600,
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceVariant,
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.xl),
+                            ),
+                            child: const Icon(
+                              Icons.receipt_long_rounded,
+                              size: 40,
+                              color: AppColors.textTertiary,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Tap + to add your first bill',
-                          style: TextStyle(color: Colors.grey.shade500),
-                        ),
-                      ],
+                          const SizedBox(height: 16),
+                          const Text(
+                            'No bills yet',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Tap the button below to add your first bill',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppColors.textTertiary,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
                     ),
                   )
                 : ListView.builder(
+                    padding: const EdgeInsets.only(bottom: 80),
                     itemCount: billProvider.bills.length,
                     itemBuilder: (context, index) {
                       final bill = billProvider.bills[index];
@@ -185,8 +344,14 @@ class HomeScreen extends StatelessWidget {
                         background: Container(
                           alignment: Alignment.centerRight,
                           padding: const EdgeInsets.only(right: 24),
-                          color: Colors.red,
-                          child: const Icon(Icons.delete,
+                          margin: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.negative,
+                            borderRadius:
+                                BorderRadius.circular(AppRadius.lg),
+                          ),
+                          child: const Icon(Icons.delete_outline_rounded,
                               color: Colors.white),
                         ),
                         confirmDismiss: (_) async => true,
@@ -240,8 +405,19 @@ class HomeScreen extends StatelessWidget {
         onPressed: () {
           Navigator.pushNamed(context, '/bill-type');
         },
-        icon: const Icon(Icons.add),
-        label: const Text('Add Bill'),
+        icon: const Icon(Icons.add_rounded, color: Colors.white),
+        label: const Text(
+          'Add Bill',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: AppColors.primary,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
       ),
     );
   }
@@ -250,53 +426,147 @@ class HomeScreen extends StatelessWidget {
     BuildContext context,
     HouseholdProvider householdProvider,
     BillProvider billProvider,
-    double currentBalance,
-    int? currentMemberId,
-    int? otherMemberId,
+    int otherMemberId,
+    double amount,
     String otherName,
   ) {
-    final amount = currentBalance.abs();
-    final whoOwes = currentBalance < 0 ? 'You' : otherName;
-    final payerId = currentBalance < 0 ? currentMemberId! : otherMemberId!;
+    final currentMemberId = householdProvider.currentMember!.id!;
+    // Other member's balance negated tells us who owes whom.
+    // Positive amount from BalanceCard means other owes current member.
+    final otherBalance = billProvider.memberBalances[otherMemberId] ?? 0.0;
+    final otherOwes = otherBalance < -0.01; // other has negative balance = they owe
+    final whoOwes = otherOwes ? otherName : 'You';
+    final payerId = otherOwes ? otherMemberId : currentMemberId;
+    final receiverId = otherOwes ? currentMemberId : otherMemberId;
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        icon: const Icon(Icons.handshake, size: 32),
-        title: const Text('Settle Up?'),
-        content: Text(
-          '$whoOwes owes ${amount.toStringAsFixed(2)} TL',
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Drag handle
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // Icon
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+                child: const Icon(
+                  Icons.handshake_outlined,
+                  size: 28,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Settle Up?',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '$whoOwes owes ${amount.toStringAsFixed(2)} TL',
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Actions
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _showPartialSettleDialog(
+                          context,
+                          householdProvider,
+                          billProvider,
+                          amount,
+                          payerId,
+                          receiverId,
+                        );
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: const BorderSide(color: AppColors.border),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(AppRadius.md),
+                        ),
+                      ),
+                      child: const Text(
+                        'Partial Amount',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () async {
+                        Navigator.pop(ctx);
+                        await billProvider.settleUp(
+                          householdId:
+                              householdProvider.currentHousehold!.id!,
+                          payerMemberId: payerId,
+                          receiverMemberId: receiverId,
+                          amount: amount,
+                        );
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(AppRadius.md),
+                        ),
+                      ),
+                      child: const Text(
+                        'Settle All',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.textTertiary,
+                  ),
+                  child: const Text('Cancel'),
+                ),
+              ),
+            ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          OutlinedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _showPartialSettleDialog(
-                context,
-                householdProvider,
-                billProvider,
-                amount,
-                payerId,
-              );
-            },
-            child: const Text('Partial Amount'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await billProvider.settleUp(
-                householdId: householdProvider.currentHousehold!.id!,
-                payerMemberId: payerId,
-                amount: amount,
-              );
-            },
-            child: const Text('Settle All'),
-          ),
-        ],
       ),
     );
   }
@@ -307,20 +577,34 @@ class HomeScreen extends StatelessWidget {
     BillProvider billProvider,
     double totalOwed,
     int payerId,
+    int receiverId,
   ) {
     final controller = TextEditingController();
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Partial Settlement'),
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
+        title: const Text(
+          'Partial Settlement',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Total owed: ${totalOwed.toStringAsFixed(2)} TL',
-              style: const TextStyle(fontSize: 13, color: Colors.grey),
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textTertiary,
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -328,9 +612,22 @@ class HomeScreen extends StatelessWidget {
               autofocus: true,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Amount paid',
-                border: OutlineInputBorder(),
+                labelStyle: const TextStyle(color: AppColors.textTertiary),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  borderSide: const BorderSide(
+                      color: AppColors.primary, width: 1.5),
+                ),
                 suffixText: 'TL',
               ),
               style: const TextStyle(
@@ -341,6 +638,9 @@ class HomeScreen extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.textTertiary,
+            ),
             child: const Text('Cancel'),
           ),
           FilledButton(
@@ -354,9 +654,16 @@ class HomeScreen extends StatelessWidget {
               await billProvider.settleUp(
                 householdId: householdProvider.currentHousehold!.id!,
                 payerMemberId: payerId,
+                receiverMemberId: receiverId,
                 amount: partial,
               );
             },
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+            ),
             child: const Text('Settle'),
           ),
         ],

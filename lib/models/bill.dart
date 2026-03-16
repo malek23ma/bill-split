@@ -9,6 +9,7 @@ class Bill {
   final DateTime billDate;
   final DateTime createdAt;
   final String category;
+  final int? recurringBillId;
 
   Bill({
     this.id,
@@ -21,6 +22,7 @@ class Bill {
     required this.billDate,
     DateTime? createdAt,
     this.category = 'other',
+    this.recurringBillId,
   }) : createdAt = createdAt ?? DateTime.now();
 
   Map<String, dynamic> toMap() {
@@ -35,6 +37,7 @@ class Bill {
       'bill_date': billDate.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
       'category': category,
+      'recurring_bill_id': recurringBillId,
     };
   }
 
@@ -50,6 +53,7 @@ class Bill {
       billDate: DateTime.parse(map['bill_date'] as String),
       createdAt: DateTime.parse(map['created_at'] as String),
       category: map['category'] as String? ?? 'other',
+      recurringBillId: map['recurring_bill_id'] as int?,
     );
   }
 }

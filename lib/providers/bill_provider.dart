@@ -44,44 +44,48 @@ class BillProvider extends ChangeNotifier {
       final payerId = bill.paidByMemberId;
 
       if (bill.billType == 'settlement') {
-        // Settlement: payer paid their debt, so they get credit
-        for (final member in members) {
-          if (member.id != payerId) {
-            _memberBalances[payerId] =
-                (_memberBalances[payerId] ?? 0) + bill.totalAmount;
-            _memberBalances[member.id!] =
-                (_memberBalances[member.id!] ?? 0) - bill.totalAmount;
+        // Settlement: payer gets credit, each other member is debited equally.
+        // For 2-member households this is the full amount to one other person.
+        // Will be refined to per-pair settlements in Task 13.
+        final otherMembers = members.where((m) => m.id != payerId).toList();
+        if (otherMembers.isNotEmpty) {
+          final perPerson = bill.totalAmount / otherMembers.length;
+          _memberBalances[payerId] =
+              (_memberBalances[payerId] ?? 0) + bill.totalAmount;
+          for (final other in otherMembers) {
+            _memberBalances[other.id!] =
+                (_memberBalances[other.id!] ?? 0) - perPerson;
           }
         }
       } else if (bill.billType == 'quick') {
-        final otherShare = bill.totalAmount / 2;
-        for (final member in members) {
-          if (member.id != payerId) {
+        // Quick bill: split equally among ALL members.
+        // Payer gets credit for what others owe; each other member is debited their share.
+        final totalMembers = members.length;
+        if (totalMembers > 1) {
+          final perPersonShare = bill.totalAmount / totalMembers;
+          final otherMembers = members.where((m) => m.id != payerId).toList();
+          for (final other in otherMembers) {
             _memberBalances[payerId] =
-                (_memberBalances[payerId] ?? 0) + otherShare;
-            _memberBalances[member.id!] =
-                (_memberBalances[member.id!] ?? 0) - otherShare;
+                (_memberBalances[payerId] ?? 0) + perPersonShare;
+            _memberBalances[other.id!] =
+                (_memberBalances[other.id!] ?? 0) - perPersonShare;
           }
         }
       } else {
+        // Full bill: iterate items, use sharedByMemberIds for per-item splitting.
         final items = await _db.getBillItems(bill.id!);
-        double totalOwedToPayerByOthers = 0;
 
         for (final item in items) {
-          if (item.isIncluded) {
-            final othersShare = item.price * (100 - item.splitPercent) / 100;
-            totalOwedToPayerByOthers += othersShare;
-          }
-        }
-
-        final otherMembers = members.where((m) => m.id != payerId).toList();
-        if (otherMembers.isNotEmpty) {
-          final perPerson = totalOwedToPayerByOthers / otherMembers.length;
-          for (final other in otherMembers) {
-            _memberBalances[payerId] =
-                (_memberBalances[payerId] ?? 0) + perPerson;
-            _memberBalances[other.id!] =
-                (_memberBalances[other.id!] ?? 0) - perPerson;
+          if (item.isIncluded && item.sharedByMemberIds.isNotEmpty) {
+            final perMemberShare = item.price / item.sharedByMemberIds.length;
+            for (final memberId in item.sharedByMemberIds) {
+              if (memberId != payerId) {
+                _memberBalances[payerId] =
+                    (_memberBalances[payerId] ?? 0) + perMemberShare;
+                _memberBalances[memberId] =
+                    (_memberBalances[memberId] ?? 0) - perMemberShare;
+              }
+            }
           }
         }
       }
@@ -132,6 +136,7 @@ class BillProvider extends ChangeNotifier {
       photoPath: permanentPhotoPath,
       billDate: bill.billDate,
       category: bill.category,
+      recurringBillId: bill.recurringBillId,
     );
 
     final billId = await _db.insertBill(billToSave);
@@ -143,7 +148,7 @@ class BillProvider extends ChangeNotifier {
                 name: item.name,
                 price: item.price,
                 isIncluded: item.isIncluded,
-                splitPercent: item.splitPercent,
+                sharedByMemberIds: item.sharedByMemberIds,
               ))
           .toList();
       await _db.insertBillItems(itemsWithBillId);
@@ -155,6 +160,7 @@ class BillProvider extends ChangeNotifier {
   Future<void> settleUp({
     required int householdId,
     required int payerMemberId,
+    required int receiverMemberId,
     required double amount,
   }) async {
     final bill = Bill(
@@ -209,7 +215,7 @@ class BillProvider extends ChangeNotifier {
                 name: item.name,
                 price: item.price,
                 isIncluded: item.isIncluded,
-                splitPercent: item.splitPercent,
+                sharedByMemberIds: item.sharedByMemberIds,
               ))
           .toList();
       await _db.insertBillItems(itemsWithBillId);
