@@ -12,6 +12,7 @@ class FilteredResultsSheet extends StatelessWidget {
   final String currencySymbol;
   final ValueChanged<Bill> onBillTap;
   final VoidCallback onClearFilters;
+  final ScrollController? scrollController;
 
   const FilteredResultsSheet({
     super.key,
@@ -21,6 +22,7 @@ class FilteredResultsSheet extends StatelessWidget {
     required this.currencySymbol,
     required this.onBillTap,
     required this.onClearFilters,
+    this.scrollController,
   });
 
   String _buildFilterSummary() {
@@ -172,6 +174,7 @@ class FilteredResultsSheet extends StatelessWidget {
                     ),
                   )
                 : ListView.builder(
+                    controller: scrollController,
                     padding: const EdgeInsets.symmetric(
                         horizontal: AppSpacing.lg, vertical: AppSpacing.md),
                     itemCount: filteredBills.length,

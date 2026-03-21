@@ -728,7 +728,8 @@ class _HomeScreenState extends State<HomeScreen> {
         initialChildSize: 0.7,
         minChildSize: 0.4,
         maxChildSize: 0.9,
-        builder: (_, scrollController) => FilteredResultsSheet(
+        builder: (_, scrollCtrl) => FilteredResultsSheet(
+          scrollController: scrollCtrl,
           filteredBills: billProvider.filteredBills,
           filter: billProvider.activeFilter!,
           members: members,
