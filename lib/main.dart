@@ -16,6 +16,7 @@ import 'screens/item_review_screen.dart';
 import 'screens/quick_review_screen.dart';
 import 'screens/bill_detail_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/recurring_bills_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -377,6 +378,7 @@ class BillSplitApp extends StatelessWidget {
         '/quick-review': (context) => const QuickReviewScreen(),
         '/bill-detail': (context) => const BillDetailScreen(),
         '/settings': (context) => const SettingsScreen(),
+        '/recurring-bills': (context) => const RecurringBillsScreen(),
       },
     );
   }

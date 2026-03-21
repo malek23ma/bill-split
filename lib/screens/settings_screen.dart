@@ -529,6 +529,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 12),
+            Container(
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkSurface : AppColors.surface,
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+              ),
+              child: ListTile(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+                leading: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.accent.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  ),
+                  child: const Icon(Icons.repeat_rounded,
+                      size: 18, color: AppColors.accent),
+                ),
+                title: Text(
+                  'Manage Recurring Bills',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                  ),
+                ),
+                trailing: Icon(Icons.chevron_right_rounded,
+                    color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary),
+                onTap: () => Navigator.pushNamed(context, '/recurring-bills'),
+              ),
+            ),
             const SizedBox(height: 24),
 
             // Receipt Scanning section
