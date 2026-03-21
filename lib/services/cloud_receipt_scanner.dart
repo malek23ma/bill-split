@@ -4,9 +4,18 @@ import 'package:http/http.dart' as http;
 import 'receipt_parser.dart';
 
 class CloudReceiptScanner {
-  final String apiKey;
+  static const defaultApiUrl = 'https://api.groq.com/openai/v1/chat/completions';
+  static const defaultModel = 'meta-llama/llama-4-scout-17b-16e-instruct';
 
-  CloudReceiptScanner({required this.apiKey});
+  final String apiKey;
+  final String apiUrl;
+  final String model;
+
+  CloudReceiptScanner({
+    required this.apiKey,
+    this.apiUrl = defaultApiUrl,
+    this.model = defaultModel,
+  });
 
   Future<ParsedReceipt> scanAndParse(String imagePath) async {
     final imageBytes = await File(imagePath).readAsBytes();
@@ -16,13 +25,13 @@ class CloudReceiptScanner {
     final mediaType = ext == 'png' ? 'image/png' : 'image/jpeg';
 
     final response = await http.post(
-      Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
+      Uri.parse(apiUrl),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $apiKey',
       },
       body: jsonEncode({
-        'model': 'meta-llama/llama-4-scout-17b-16e-instruct',
+        'model': model,
         'max_tokens': 2048,
         'messages': [
           {
@@ -67,17 +76,33 @@ class CloudReceiptScanner {
     }
 
     final data = jsonDecode(response.body);
-    final text = data['choices'][0]['message']['content'] as String;
+    final choices = data['choices'];
+    if (choices == null || choices is! List || choices.isEmpty) {
+      throw Exception('Invalid API response: no choices returned');
+    }
+    final text = choices[0]['message']?['content'] as String? ?? '';
+    if (text.isEmpty) {
+      throw Exception('API returned empty content');
+    }
 
     final jsonStr = _extractJson(text);
     final parsed = jsonDecode(jsonStr) as Map<String, dynamic>;
 
-    final items = (parsed['items'] as List).map((item) {
-      return ParsedItem(
-        name: item['name'] as String,
-        price: (item['price'] as num).toDouble(),
-      );
-    }).toList();
+    final rawItems = parsed['items'];
+    if (rawItems == null || rawItems is! List) {
+      throw Exception('No items found in receipt');
+    }
+
+    final items = <ParsedItem>[];
+    for (final item in rawItems) {
+      if (item is Map<String, dynamic>) {
+        final name = item['name'];
+        final price = item['price'];
+        if (name is String && name.isNotEmpty && price is num) {
+          items.add(ParsedItem(name: name, price: price.toDouble()));
+        }
+      }
+    }
 
     DateTime? date;
     if (parsed['date'] != null && parsed['date'] is String) {

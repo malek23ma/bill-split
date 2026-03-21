@@ -102,17 +102,30 @@ class _CameraScreenState extends State<CameraScreen>
   @override
   Widget build(BuildContext context) {
     final hasApiKey = context.watch<SettingsProvider>().apiKey.isNotEmpty;
-    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Scan Receipt'),
+        backgroundColor: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        title: const Text(
+          'Scan Receipt',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w700,
+            fontSize: 20,
+          ),
+        ),
+        iconTheme: const IconThemeData(color: AppColors.textSecondary),
       ),
-      body: _isProcessing ? _buildProcessingState(hasApiKey, colorScheme) : _buildIdleState(hasApiKey, colorScheme),
+      body: _isProcessing
+          ? _buildProcessingState(hasApiKey)
+          : _buildIdleState(hasApiKey),
     );
   }
 
-  Widget _buildProcessingState(bool hasApiKey, ColorScheme colorScheme) {
+  Widget _buildProcessingState(bool hasApiKey) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -127,16 +140,16 @@ class _CameraScreenState extends State<CameraScreen>
                 child: Opacity(
                   opacity: opacity,
                   child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: colorScheme.primary.withAlpha(20),
+                    width: 88,
+                    height: 88,
+                    decoration: const BoxDecoration(
+                      color: AppColors.primarySurface,
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.document_scanner_rounded,
                       size: 40,
-                      color: colorScheme.primary,
+                      color: AppColors.primary,
                     ),
                   ),
                 ),
@@ -149,16 +162,24 @@ class _CameraScreenState extends State<CameraScreen>
             height: 28,
             child: CircularProgressIndicator(
               strokeWidth: 3,
-              color: colorScheme.primary,
+              color: AppColors.primary,
             ),
           ),
           const SizedBox(height: 20),
           Text(
             hasApiKey ? 'Reading receipt with AI...' : 'Reading receipt...',
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'This may take a moment',
             style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textSecondary,
+              fontSize: 14,
+              color: AppColors.textTertiary,
             ),
           ),
         ],
@@ -166,7 +187,7 @@ class _CameraScreenState extends State<CameraScreen>
     );
   }
 
-  Widget _buildIdleState(bool hasApiKey, ColorScheme colorScheme) {
+  Widget _buildIdleState(bool hasApiKey) {
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -174,38 +195,37 @@ class _CameraScreenState extends State<CameraScreen>
           const Spacer(flex: 2),
 
           // Dashed border scan area
-          Container(
+          SizedBox(
             width: 200,
             height: 200,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppRadius.xl),
-              border: Border.all(
-                color: AppColors.border,
-                width: 2,
-                strokeAlign: BorderSide.strokeAlignInside,
-              ),
-              color: AppColors.surfaceVariant.withAlpha(120),
-            ),
             child: CustomPaint(
               painter: _DashedBorderPainter(
-                color: colorScheme.primary.withAlpha(80),
+                color: AppColors.primaryLight,
                 radius: AppRadius.xl,
               ),
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.document_scanner_rounded,
-                      size: 64,
-                      color: colorScheme.primary.withAlpha(180),
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: AppColors.primarySurface,
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                      ),
+                      child: const Icon(
+                        Icons.document_scanner_rounded,
+                        size: 32,
+                        color: AppColors.primary,
+                      ),
                     ),
                     const SizedBox(height: 12),
-                    Text(
+                    const Text(
                       'Scan Receipt',
                       style: TextStyle(
                         fontSize: 14,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
                         color: AppColors.textTertiary,
                       ),
                     ),
@@ -217,17 +237,18 @@ class _CameraScreenState extends State<CameraScreen>
 
           const SizedBox(height: 28),
 
-          Text(
+          const Text(
             'Take a photo of your receipt',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
             textAlign: TextAlign.center,
           ),
 
           const SizedBox(height: 8),
-          Text(
+          const Text(
             'Position the receipt clearly in the frame',
             style: TextStyle(
               fontSize: 14,
@@ -238,38 +259,44 @@ class _CameraScreenState extends State<CameraScreen>
 
           const Spacer(flex: 2),
 
-          // Camera button (filled, primary)
+          // Camera button — filled, full width, primary
           SizedBox(
             width: double.infinity,
             height: 56,
             child: FilledButton.icon(
               onPressed: () => _captureAndProcess(ImageSource.camera),
               icon: const Icon(Icons.camera_alt_rounded),
-              label: const Text('Take Photo', style: TextStyle(fontSize: 16)),
+              label: const Text(
+                'Take Photo',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
               style: FilledButton.styleFrom(
-                backgroundColor: colorScheme.primary,
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppRadius.lg),
                 ),
+                elevation: 0,
               ),
             ),
           ),
 
           const SizedBox(height: 12),
 
-          // Gallery button (outlined)
+          // Gallery button — outlined, full width, divider border
           SizedBox(
             width: double.infinity,
             height: 56,
             child: OutlinedButton.icon(
               onPressed: () => _captureAndProcess(ImageSource.gallery),
               icon: const Icon(Icons.photo_library_rounded),
-              label: const Text('Pick from Gallery',
-                  style: TextStyle(fontSize: 16)),
+              label: const Text(
+                'Pick from Gallery',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
               style: OutlinedButton.styleFrom(
-                foregroundColor: colorScheme.primary,
-                side: BorderSide(color: AppColors.border, width: 1.5),
+                foregroundColor: AppColors.textPrimary,
+                side: const BorderSide(color: AppColors.divider, width: 1.5),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppRadius.lg),
                 ),
@@ -279,26 +306,23 @@ class _CameraScreenState extends State<CameraScreen>
 
           const SizedBox(height: 16),
 
-          // AI scanning hint card
+          // AI hint card — accentSurface background, no border
           if (!hasApiKey)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppColors.accent.withAlpha(15),
+                color: AppColors.accentSurface,
                 borderRadius: BorderRadius.circular(AppRadius.md),
-                border: Border.all(
-                  color: AppColors.accent.withAlpha(40),
-                ),
               ),
               child: Row(
-                children: [
+                children: const [
                   Icon(
                     Icons.auto_awesome_rounded,
                     size: 20,
                     color: AppColors.accent,
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Set up AI scanning in Settings for better results',
