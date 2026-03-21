@@ -861,7 +861,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           InkWell(
                             borderRadius: BorderRadius.circular(AppRadius.md),
-                            onLongPress: () => _showMemberOptions(context, members[i], household),
+                            onLongPress: (household.currentMember?.isAdmin ?? false)
+                                ? () => _showMemberOptions(context, members[i], household)
+                                : null,
                             child: Padding(
                               padding: const EdgeInsets.symmetric(vertical: 10),
                               child: Row(
