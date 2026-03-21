@@ -14,41 +14,17 @@ class BalanceCard extends StatelessWidget {
     required this.memberBalances,
     required this.memberNames,
     this.onSettleUp,
-    this.currencySymbol = '₺',
+    this.currencySymbol = '\u20BA',
   });
 
   @override
   Widget build(BuildContext context) {
-    // Compute per-other-member balances relative to the current member.
-    // currentMember's balance is memberBalances[currentMemberId].
-    // If current member has positive balance, others owe them.
-    // We show relative amounts per pair:
-    //   For each other member: relative = -(otherBalance) normalized to the pair.
-    //   Actually, we use the simple approach: current member's total balance
-    //   spread proportionally, OR just show per-member how much they owe.
-    //
-    // The memberBalances map has absolute balances per member. Positive = they
-    // are owed money, negative = they owe money. For a current member with
-    // positive balance, the other members with negative balances owe them.
-    //
-    // Per-pair relative balance from current's perspective:
-    //   otherOwesMe = -(memberBalances[otherId])  ... but only relevant if signs differ.
-    //
-    // Simpler: current member's balance tells how much total they are owed (or owe).
-    // Each other member's negative balance represents what they owe the pool.
-    // We attribute that to pairs: "otherOwesMe" = -(memberBalances[otherId]) when negative.
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final otherEntries = <int, double>{};
     for (final entry in memberBalances.entries) {
       if (entry.key != currentMemberId) {
-        // Other member's balance: negative means they owe the group.
-        // From current member's perspective, that's how much they owe current member.
-        // But this is a simplification — in reality the debts are pairwise.
-        // Using the absolute balance directly: if other has -X, they owe X total.
-        // Current member is owed their share proportionally.
-        // For simplicity, show: other's balance negated = what they owe current member.
         final otherBalance = entry.value;
-        // Skip near-zero balances
         if (otherBalance.abs() > 0.01) {
           otherEntries[entry.key] = -otherBalance;
         }
@@ -57,70 +33,48 @@ class BalanceCard extends StatelessWidget {
 
     final allSettled = otherEntries.isEmpty;
 
-    // Determine net position for gradient
     final currentBalance = memberBalances[currentMemberId] ?? 0.0;
     final isNetPositive = currentBalance > 0.01;
-    final isNetNegative = currentBalance < -0.01;
+    // Flat color-blocked backgrounds based on net position
+    final Color containerColor;
+    final Color iconColor;
+    final Color statusTextColor;
+    final Color amountColor;
 
-    final gradient = isNetPositive
-        ? const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF10B981), Color(0xFF059669)],
-          )
-        : isNetNegative
-            ? const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
-              )
-            : const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF9CA3AF), Color(0xFF6B7280)],
-              );
-
-    final shadowColor = isNetPositive
-        ? AppColors.positive
-        : isNetNegative
-            ? AppColors.negative
-            : AppColors.neutral;
+    if (allSettled) {
+      containerColor =
+          isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceVariant;
+      iconColor = isDark ? AppColors.darkTextSecondary : AppColors.textTertiary;
+      statusTextColor =
+          isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
+      amountColor =
+          isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+    } else if (isNetPositive) {
+      containerColor =
+          isDark ? AppColors.positive.withAlpha(20) : AppColors.positiveSurface;
+      iconColor = AppColors.positive;
+      statusTextColor = AppColors.positive;
+      amountColor = AppColors.positive;
+    } else {
+      containerColor =
+          isDark ? AppColors.negative.withAlpha(20) : AppColors.negativeSurface;
+      iconColor = AppColors.negative;
+      statusTextColor = AppColors.negative;
+      amountColor = AppColors.negative;
+    }
 
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Container(
+        width: double.infinity,
         decoration: BoxDecoration(
-          gradient: gradient,
+          color: containerColor,
           borderRadius: BorderRadius.circular(AppRadius.xl),
-          boxShadow: [
-            BoxShadow(
-              color: shadowColor.withAlpha(40),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           child: allSettled
-              ? Column(
-                  children: [
-                    Icon(
-                      Icons.handshake,
-                      color: Colors.white.withAlpha(200),
-                      size: 28,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'All settled up!',
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: Colors.white.withAlpha(220),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                )
+              ? _buildSettledState(iconColor, statusTextColor)
               : Column(
                   children: [
                     for (final entry in otherEntries.entries)
@@ -128,6 +82,13 @@ class BalanceCard extends StatelessWidget {
                         memberName: memberNames[entry.key] ?? 'Unknown',
                         amount: entry.value,
                         currencySymbol: currencySymbol,
+                        iconColor: iconColor,
+                        statusTextColor: statusTextColor,
+                        amountColor: amountColor,
+                        statusIcon: entry.value > 0
+                            ? Icons.arrow_downward_rounded
+                            : Icons.arrow_upward_rounded,
+                        isDark: isDark,
                         onSettleUp: onSettleUp != null
                             ? () => onSettleUp!(entry.key, entry.value.abs())
                             : null,
@@ -138,44 +99,90 @@ class BalanceCard extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildSettledState(Color iconColor, Color textColor) {
+    return Column(
+      children: [
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: iconColor.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          child: Icon(
+            Icons.handshake_rounded,
+            color: iconColor,
+            size: 24,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'All settled up!',
+          style: TextStyle(
+            fontSize: 16,
+            color: textColor,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _BalanceRow extends StatelessWidget {
   final String memberName;
   final double amount; // positive = they owe you, negative = you owe them
   final String currencySymbol;
+  final Color iconColor;
+  final Color statusTextColor;
+  final Color amountColor;
+  final IconData statusIcon;
+  final bool isDark;
   final VoidCallback? onSettleUp;
 
   const _BalanceRow({
     required this.memberName,
     required this.amount,
     required this.currencySymbol,
+    required this.iconColor,
+    required this.statusTextColor,
+    required this.amountColor,
+    required this.statusIcon,
+    required this.isDark,
     this.onSettleUp,
   });
 
   @override
   Widget build(BuildContext context) {
     final theyOweYou = amount > 0;
-    final message = theyOweYou
-        ? '$memberName owes you'
-        : 'You owe $memberName';
+    final message =
+        theyOweYou ? '$memberName owes you' : 'You owe $memberName';
     final absAmount = amount.abs();
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Column(
         children: [
-          Icon(
-            theyOweYou ? Icons.arrow_downward : Icons.arrow_upward,
-            color: Colors.white.withAlpha(200),
-            size: 22,
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Icon(
+              statusIcon,
+              color: iconColor,
+              size: 20,
+            ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           Text(
             message,
             style: TextStyle(
               fontSize: 14,
-              color: Colors.white.withAlpha(220),
+              color: statusTextColor,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -187,28 +194,41 @@ class _BalanceRow extends StatelessWidget {
             builder: (context, value, child) {
               return Text(
                 '${value.toStringAsFixed(2)} $currencySymbol',
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w800,
+                  color: amountColor,
                   letterSpacing: -0.5,
                 ),
               );
             },
           ),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
+          const SizedBox(height: 12),
+          FilledButton.tonal(
             onPressed: onSettleUp,
-            icon: const Icon(Icons.handshake, size: 16),
-            label: const Text('Settle Up'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.white,
-              side: const BorderSide(color: Colors.white54, width: 1.5),
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 8),
+            style: FilledButton.styleFrom(
+              backgroundColor: iconColor.withValues(alpha: 0.12),
+              foregroundColor: iconColor,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.xxl),
+                borderRadius: BorderRadius.circular(AppRadius.full),
               ),
+              elevation: 0,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.handshake_rounded, size: 16, color: iconColor),
+                const SizedBox(width: 6),
+                Text(
+                  'Settle Up',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: iconColor,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

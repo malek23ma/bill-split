@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'constants.dart';
@@ -45,21 +46,23 @@ class BillSplitApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeMode = context.watch<SettingsProvider>().themeMode;
 
+    // ── Light Color Scheme ──
     final lightColorScheme = ColorScheme.fromSeed(
       seedColor: AppColors.primary,
       brightness: Brightness.light,
       primary: AppColors.primary,
-      secondary: AppColors.secondary,
+      secondary: AppColors.primaryLight,
       tertiary: AppColors.accent,
       error: AppColors.negative,
       surface: AppColors.surface,
     );
 
+    // ── Dark Color Scheme ──
     final darkColorScheme = ColorScheme.fromSeed(
       seedColor: AppColors.primary,
       brightness: Brightness.dark,
       primary: AppColors.primaryLight,
-      secondary: AppColors.secondaryLight,
+      secondary: AppColors.primaryLight,
       tertiary: AppColors.accent,
       error: AppColors.negative,
       surface: AppColors.darkSurface,
@@ -69,112 +72,158 @@ class BillSplitApp extends StatelessWidget {
       title: 'Bill Split',
       debugShowCheckedModeBanner: false,
       themeMode: themeMode,
+
+      // ════════════════════════════════════════════════════════
+      //  LIGHT THEME — Flat Design Mobile (Touch-First)
+      // ════════════════════════════════════════════════════════
       theme: ThemeData(
         colorScheme: lightColorScheme,
         useMaterial3: true,
         brightness: Brightness.light,
         textTheme: _buildTextTheme(ThemeData.light().textTheme),
         scaffoldBackgroundColor: AppColors.background,
+
+        // AppBar — clean, flat
         appBarTheme: AppBarTheme(
-          backgroundColor: AppColors.background,
+          backgroundColor: AppColors.surface,
           surfaceTintColor: Colors.transparent,
           elevation: 0,
+          scrolledUnderElevation: 0,
           centerTitle: false,
+          systemOverlayStyle: SystemUiOverlayStyle.dark,
           titleTextStyle: GoogleFonts.lexend(
             fontSize: 20,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
           ),
           iconTheme: const IconThemeData(color: AppColors.textPrimary),
         ),
+
+        // Cards — flat, no border, no shadow
         cardTheme: CardThemeData(
           elevation: 0,
           color: AppColors.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.lg),
-            side: const BorderSide(color: AppColors.border, width: 1),
           ),
           margin: EdgeInsets.zero,
         ),
+
+        // Filled Buttons — bold, flat
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
-            minimumSize: const Size(0, 48),
+            minimumSize: const Size(0, 52),
+            elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             textStyle: GoogleFonts.lexend(
               fontSize: 15,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
+
+        // Outlined Buttons — clean border
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
-            minimumSize: const Size(0, 48),
+            minimumSize: const Size(0, 52),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-            side: const BorderSide(color: AppColors.border),
+            side: const BorderSide(color: AppColors.divider, width: 1.5),
             textStyle: GoogleFonts.lexend(
               fontSize: 15,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
+
+        // Text Buttons
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
             textStyle: GoogleFonts.lexend(
               fontSize: 14,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
+
+        // Input fields — subtle, clean
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: AppColors.surfaceVariant,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
-            borderSide: const BorderSide(color: AppColors.border),
+            borderSide: BorderSide.none,
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
-            borderSide: const BorderSide(color: AppColors.border),
+            borderSide: BorderSide.none,
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
             borderSide: const BorderSide(color: AppColors.primary, width: 2),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            borderSide: const BorderSide(color: AppColors.negative, width: 1.5),
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
+
+        // Chips
         chipTheme: ChipThemeData(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.sm),
+            borderRadius: BorderRadius.circular(AppRadius.full),
           ),
+          side: BorderSide.none,
         ),
+
+        // Dividers
         dividerTheme: const DividerThemeData(
-          color: AppColors.border,
+          color: AppColors.divider,
           thickness: 1,
           space: 1,
         ),
+
+        // Snackbar
         snackBarTheme: SnackBarThemeData(
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
         ),
+
+        // FAB — flat, bold
         floatingActionButtonTheme: FloatingActionButtonThemeData(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
-          elevation: 2,
+          elevation: 0,
+          hoverElevation: 0,
+          focusElevation: 0,
+          highlightElevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.lg),
           ),
         ),
+
+        // Dialog
         dialogTheme: DialogThemeData(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.xl),
           ),
+          elevation: 0,
         ),
+
+        // Bottom Sheet
+        bottomSheetTheme: const BottomSheetThemeData(
+          elevation: 0,
+          showDragHandle: false,
+        ),
+
+        // Page transitions
         pageTransitionsTheme: const PageTransitionsTheme(
           builders: {
             TargetPlatform.android: CupertinoPageTransitionsBuilder(),
@@ -182,105 +231,133 @@ class BillSplitApp extends StatelessWidget {
           },
         ),
       ),
+
+      // ════════════════════════════════════════════════════════
+      //  DARK THEME
+      // ════════════════════════════════════════════════════════
       darkTheme: ThemeData(
         colorScheme: darkColorScheme,
         useMaterial3: true,
         brightness: Brightness.dark,
         textTheme: _buildTextTheme(ThemeData.dark().textTheme),
         scaffoldBackgroundColor: AppColors.darkBackground,
+
         appBarTheme: AppBarTheme(
-          backgroundColor: AppColors.darkBackground,
+          backgroundColor: AppColors.darkSurface,
           surfaceTintColor: Colors.transparent,
           elevation: 0,
+          scrolledUnderElevation: 0,
           centerTitle: false,
+          systemOverlayStyle: SystemUiOverlayStyle.light,
           titleTextStyle: GoogleFonts.lexend(
             fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            color: AppColors.darkTextPrimary,
           ),
         ),
+
         cardTheme: CardThemeData(
           elevation: 0,
           color: AppColors.darkSurface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.lg),
-            side: const BorderSide(color: AppColors.darkBorder, width: 1),
           ),
           margin: EdgeInsets.zero,
         ),
+
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
-            minimumSize: const Size(0, 48),
+            minimumSize: const Size(0, 52),
+            elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             textStyle: GoogleFonts.lexend(
               fontSize: 15,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
+
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
-            minimumSize: const Size(0, 48),
+            minimumSize: const Size(0, 52),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             textStyle: GoogleFonts.lexend(
               fontSize: 15,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
+
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
             textStyle: GoogleFonts.lexend(
               fontSize: 14,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
+
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: AppColors.darkSurfaceVariant,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
-            borderSide: const BorderSide(color: AppColors.darkBorder),
+            borderSide: BorderSide.none,
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
-            borderSide: const BorderSide(color: AppColors.darkBorder),
+            borderSide: BorderSide.none,
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
-            borderSide: const BorderSide(color: AppColors.primaryLight, width: 2),
+            borderSide:
+                const BorderSide(color: AppColors.primaryLight, width: 2),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
+
         dividerTheme: const DividerThemeData(
-          color: AppColors.darkBorder,
+          color: AppColors.darkDivider,
           thickness: 1,
           space: 1,
         ),
+
         snackBarTheme: SnackBarThemeData(
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
         ),
+
         floatingActionButtonTheme: FloatingActionButtonThemeData(
           backgroundColor: AppColors.primaryLight,
           foregroundColor: AppColors.darkBackground,
-          elevation: 2,
+          elevation: 0,
+          hoverElevation: 0,
+          focusElevation: 0,
+          highlightElevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.lg),
           ),
         ),
+
         dialogTheme: DialogThemeData(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.xl),
           ),
+          elevation: 0,
         ),
+
+        bottomSheetTheme: const BottomSheetThemeData(
+          elevation: 0,
+          showDragHandle: false,
+        ),
+
         pageTransitionsTheme: const PageTransitionsTheme(
           builders: {
             TargetPlatform.android: CupertinoPageTransitionsBuilder(),
@@ -288,6 +365,7 @@ class BillSplitApp extends StatelessWidget {
           },
         ),
       ),
+
       initialRoute: '/',
       routes: {
         '/': (context) => const HouseholdScreen(),

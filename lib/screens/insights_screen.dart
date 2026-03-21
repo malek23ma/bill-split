@@ -69,25 +69,26 @@ class _InsightsScreenState extends State<InsightsScreen> {
     final memberNames = {for (final m in members) m.id!: m.name};
     final insights = billProvider.getInsightsForMonth(_year, _month);
     final oldestDate = billProvider.oldestBillDate;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        title: const Text(
+        title: Text(
           'Insights',
           style: TextStyle(
-            color: AppColors.textPrimary,
+            color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
             fontWeight: FontWeight.w700,
             fontSize: 20,
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.file_download_outlined,
-                color: AppColors.textSecondary),
+            icon: Icon(Icons.file_download_outlined,
+                color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Export coming soon')),
@@ -97,10 +98,6 @@ class _InsightsScreenState extends State<InsightsScreen> {
           ),
           const SizedBox(width: 4),
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(color: AppColors.border, height: 1),
-        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -108,26 +105,26 @@ class _InsightsScreenState extends State<InsightsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Month selector
-            _buildMonthSelector(oldestDate),
-            const SizedBox(height: 16),
+            _buildMonthSelector(oldestDate, isDark),
+            const SizedBox(height: 20),
 
             // Total spent card
-            _buildTotalSpentCard(insights, householdProvider),
+            _buildTotalSpentCard(insights, householdProvider, isDark),
             const SizedBox(height: 24),
 
             // By Category section
             if (insights.categorySpend.isNotEmpty) ...[
-              _buildSectionTitle('By Category'),
+              _buildSectionTitle('By Category', isDark),
               const SizedBox(height: 12),
-              _buildCategoryBreakdown(insights, householdProvider),
+              _buildCategoryBreakdown(insights, householdProvider, isDark),
               const SizedBox(height: 24),
             ],
 
             // By Member section
             if (insights.memberSpend.isNotEmpty) ...[
-              _buildSectionTitle('By Member'),
+              _buildSectionTitle('By Member', isDark),
               const SizedBox(height: 12),
-              _buildMemberBreakdown(insights, memberNames, householdProvider),
+              _buildMemberBreakdown(insights, memberNames, householdProvider, isDark),
             ],
 
             const SizedBox(height: 32),
@@ -137,7 +134,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
     );
   }
 
-  Widget _buildMonthSelector(DateTime? oldestDate) {
+  Widget _buildMonthSelector(DateTime? oldestDate, bool isDark) {
     final canBack = _canGoBack(oldestDate);
     final canForward = _canGoForward();
     final months = [
@@ -148,34 +145,53 @@ class _InsightsScreenState extends State<InsightsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceVariant,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(
-            icon: Icon(
-              Icons.chevron_left_rounded,
-              color: canBack ? AppColors.textPrimary : AppColors.border,
+          Container(
+            decoration: BoxDecoration(
+              color: canBack
+                  ? (isDark ? AppColors.darkSurface : AppColors.primarySurface)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-            onPressed: canBack ? _goToPreviousMonth : null,
+            child: IconButton(
+              icon: Icon(
+                Icons.chevron_left_rounded,
+                color: canBack
+                    ? (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary)
+                    : (isDark ? AppColors.darkDivider : AppColors.divider),
+              ),
+              onPressed: canBack ? _goToPreviousMonth : null,
+            ),
           ),
           Text(
             '${months[_month - 1]} $_year',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+              color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
             ),
           ),
-          IconButton(
-            icon: Icon(
-              Icons.chevron_right_rounded,
-              color: canForward ? AppColors.textPrimary : AppColors.border,
+          Container(
+            decoration: BoxDecoration(
+              color: canForward
+                  ? (isDark ? AppColors.darkSurface : AppColors.primarySurface)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-            onPressed: canForward ? _goToNextMonth : null,
+            child: IconButton(
+              icon: Icon(
+                Icons.chevron_right_rounded,
+                color: canForward
+                    ? (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary)
+                    : (isDark ? AppColors.darkDivider : AppColors.divider),
+              ),
+              onPressed: canForward ? _goToNextMonth : null,
+            ),
           ),
         ],
       ),
@@ -183,40 +199,53 @@ class _InsightsScreenState extends State<InsightsScreen> {
   }
 
   Widget _buildTotalSpentCard(
-      MonthlyInsights insights, HouseholdProvider householdProvider) {
+      MonthlyInsights insights, HouseholdProvider householdProvider, bool isDark) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: [
-          const Text(
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: const Icon(
+              Icons.receipt_long_rounded,
+              size: 20,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
             'Total Spent',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w500,
-              color: AppColors.textTertiary,
+              color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             householdProvider.formatAmount(insights.totalSpent),
-            style: const TextStyle(
-              fontSize: 28,
+            style: TextStyle(
+              fontSize: 32,
               fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+              color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             '${insights.billCount} bill${insights.billCount == 1 ? '' : 's'}',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
-              color: AppColors.textTertiary,
+              color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
             ),
           ),
         ],
@@ -224,19 +253,19 @@ class _InsightsScreenState extends State<InsightsScreen> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildSectionTitle(String title, bool isDark) {
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w700,
-        color: AppColors.textPrimary,
+        color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
       ),
     );
   }
 
   Widget _buildCategoryBreakdown(
-      MonthlyInsights insights, HouseholdProvider householdProvider) {
+      MonthlyInsights insights, HouseholdProvider householdProvider, bool isDark) {
     final sorted = insights.categorySpend.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
@@ -245,16 +274,20 @@ class _InsightsScreenState extends State<InsightsScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: [
           for (int i = 0; i < sorted.length; i++) ...[
             if (i > 0)
-              const Divider(color: AppColors.border, height: 1, indent: 16, endIndent: 16),
-            _buildCategoryRow(sorted[i], maxAmount, insights.totalSpent, householdProvider),
+              Divider(
+                color: isDark ? AppColors.darkDivider : AppColors.divider,
+                height: 1,
+                indent: 16,
+                endIndent: 16,
+              ),
+            _buildCategoryRow(sorted[i], maxAmount, insights.totalSpent, householdProvider, isDark),
           ],
         ],
       ),
@@ -262,64 +295,64 @@ class _InsightsScreenState extends State<InsightsScreen> {
   }
 
   Widget _buildCategoryRow(MapEntry<String, double> entry, double maxAmount,
-      double totalSpent, HouseholdProvider householdProvider) {
+      double totalSpent, HouseholdProvider householdProvider, bool isDark) {
     final category = BillCategories.getById(entry.key);
     final percentage =
         totalSpent > 0 ? (entry.value / totalSpent * 100) : 0.0;
     final barFraction = maxAmount > 0 ? entry.value / maxAmount : 0.0;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Column(
         children: [
           Row(
             children: [
               Container(
-                width: 32,
-                height: 32,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   color: category.color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
-                child: Icon(category.icon, size: 16, color: category.color),
+                child: Icon(category.icon, size: 18, color: category.color),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   category.label,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                   ),
                 ),
               ),
               Text(
                 '${percentage.toStringAsFixed(0)}%',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.textTertiary,
+                  color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               Text(
                 householdProvider.formatAmount(entry.value),
-                style: const TextStyle(
-                  fontSize: 14,
+                style: TextStyle(
+                  fontSize: 15,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+                  color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.xs),
+            borderRadius: BorderRadius.circular(AppRadius.full),
             child: LinearProgressIndicator(
               value: barFraction,
-              minHeight: 6,
-              backgroundColor: AppColors.surfaceVariant,
+              minHeight: 8,
+              backgroundColor: isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceVariant,
               valueColor: AlwaysStoppedAnimation<Color>(category.color),
             ),
           ),
@@ -329,39 +362,35 @@ class _InsightsScreenState extends State<InsightsScreen> {
   }
 
   Widget _buildMemberBreakdown(MonthlyInsights insights,
-      Map<int, String> memberNames, HouseholdProvider householdProvider) {
+      Map<int, String> memberNames, HouseholdProvider householdProvider, bool isDark) {
     final sorted = insights.memberSpend.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
     final maxAmount =
         sorted.isNotEmpty ? sorted.first.value : 1.0;
 
-    const memberColors = [
-      AppColors.primary,
-      AppColors.secondary,
-      Color(0xFF8B5CF6), // purple
-      AppColors.positive,
-      AppColors.accent,
-      AppColors.negative,
-    ];
-
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: [
           for (int i = 0; i < sorted.length; i++) ...[
             if (i > 0)
-              const Divider(color: AppColors.border, height: 1, indent: 16, endIndent: 16),
+              Divider(
+                color: isDark ? AppColors.darkDivider : AppColors.divider,
+                height: 1,
+                indent: 16,
+                endIndent: 16,
+              ),
             _buildMemberRow(
               sorted[i],
               memberNames[sorted[i].key] ?? 'Unknown',
-              memberColors[i % memberColors.length],
+              AppColors.memberColor(i),
               maxAmount,
               householdProvider,
+              isDark,
             ),
           ],
         ],
@@ -370,18 +399,18 @@ class _InsightsScreenState extends State<InsightsScreen> {
   }
 
   Widget _buildMemberRow(MapEntry<int, double> entry, String name, Color color,
-      double maxAmount, HouseholdProvider householdProvider) {
+      double maxAmount, HouseholdProvider householdProvider, bool isDark) {
     final barFraction = maxAmount > 0 ? entry.value / maxAmount : 0.0;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Column(
         children: [
           Row(
             children: [
               Container(
-                width: 10,
-                height: 10,
+                width: 12,
+                height: 12,
                 decoration: BoxDecoration(
                   color: color,
                   shape: BoxShape.circle,
@@ -391,30 +420,30 @@ class _InsightsScreenState extends State<InsightsScreen> {
               Expanded(
                 child: Text(
                   name,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                   ),
                 ),
               ),
               Text(
                 householdProvider.formatAmount(entry.value),
-                style: const TextStyle(
-                  fontSize: 14,
+                style: TextStyle(
+                  fontSize: 15,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+                  color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.xs),
+            borderRadius: BorderRadius.circular(AppRadius.full),
             child: LinearProgressIndicator(
               value: barFraction,
-              minHeight: 6,
-              backgroundColor: AppColors.surfaceVariant,
+              minHeight: 8,
+              backgroundColor: isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceVariant,
               valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
           ),

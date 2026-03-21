@@ -7,7 +7,6 @@ import '../models/bill_item.dart';
 import '../providers/household_provider.dart';
 import '../providers/bill_provider.dart';
 import '../providers/recurring_bill_provider.dart';
-import '../database/database_helper.dart';
 import '../constants.dart';
 
 class BillDetailScreen extends StatefulWidget {
@@ -32,9 +31,9 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
 
   Future<void> _loadBill() async {
     final billId = ModalRoute.of(context)!.settings.arguments as int;
-    final db = DatabaseHelper.instance;
-    final bill = await db.getBill(billId);
-    final items = await db.getBillItems(billId);
+    final billProvider = context.read<BillProvider>();
+    final bill = await billProvider.getBill(billId);
+    final items = await billProvider.getBillItems(billId);
 
     if (mounted) {
       setState(() {
@@ -47,7 +46,6 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (_loading) {
@@ -86,7 +84,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
               icon: const Icon(Icons.repeat_rounded, size: 18),
               label: const Text('Recurring'),
               style: TextButton.styleFrom(
-                foregroundColor: AppColors.secondary,
+                foregroundColor: AppColors.primary,
               ),
             ),
           TextButton(
@@ -107,17 +105,15 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
           children: [
             // Header card
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.sm),
               child: Container(
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.darkSurface : AppColors.surface,
                   borderRadius: BorderRadius.circular(AppRadius.lg),
-                  border: Border.all(
-                    color: isDark ? AppColors.darkBorder : AppColors.border,
-                  ),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(AppSpacing.xl),
                   child: Column(
                     children: [
                       // Category chip and bill type badge row
@@ -131,7 +127,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                               decoration: BoxDecoration(
                                 color: category.color.withAlpha(20),
                                 borderRadius:
-                                    BorderRadius.circular(AppRadius.xxl),
+                                    BorderRadius.circular(AppRadius.full),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -155,9 +151,9 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
-                                color: AppColors.positive.withAlpha(20),
+                                color: AppColors.positiveSurface,
                                 borderRadius:
-                                    BorderRadius.circular(AppRadius.xxl),
+                                    BorderRadius.circular(AppRadius.full),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -177,16 +173,16 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                               ),
                             ),
                           if (!isSettlement) ...[
-                            const SizedBox(width: 8),
+                            const SizedBox(width: AppSpacing.sm),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
                                 color: bill.billType == 'quick'
-                                    ? AppColors.accent.withAlpha(20)
-                                    : AppColors.primary.withAlpha(20),
+                                    ? AppColors.accentSurface
+                                    : AppColors.primarySurface,
                                 borderRadius:
-                                    BorderRadius.circular(AppRadius.xs),
+                                    BorderRadius.circular(AppRadius.full),
                               ),
                               child: Text(
                                 bill.billType == 'quick' ? 'Quick' : 'Full',
@@ -203,7 +199,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                         ],
                       ),
 
-                      const SizedBox(height: 20),
+                      const SizedBox(height: AppSpacing.xl),
 
                       // Amount display
                       Text(
@@ -211,31 +207,29 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                         style: TextStyle(
                           fontSize: 32,
                           fontWeight: FontWeight.w700,
-                          color: colorScheme.onSurface,
+                          color: isDark
+                              ? AppColors.darkTextPrimary
+                              : AppColors.textPrimary,
                           letterSpacing: -0.5,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppSpacing.xs),
                       Text(
                         isSettlement ? 'Amount' : 'Total',
                         style: TextStyle(
                           fontSize: 13,
-                          color: AppColors.textTertiary,
+                          color: isDark
+                              ? AppColors.darkTextSecondary
+                              : AppColors.textTertiary,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
 
-                      const SizedBox(height: 20),
+                      const SizedBox(height: AppSpacing.xl),
 
                       // Info rows with alternating backgrounds
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                          border: Border.all(
-                            color:
-                                isDark ? AppColors.darkBorder : AppColors.border,
-                          ),
-                        ),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                         child: Column(
                           children: [
                             _InfoRow(
@@ -271,16 +265,20 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
             // Items section
             if (bill.billType == 'full' && _items.isNotEmpty) ...[
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.sm),
                 child: Text(
                   'Items',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
-                        color: colorScheme.onSurface,
+                        color: isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textPrimary,
                       ),
                 ),
               ),
-              ..._items.map((item) {
+              ..._items.asMap().entries.map((entry) {
+                final item = entry.value;
                 final sharedNames = item.sharedByMemberIds
                     .map((id) =>
                         members.where((m) => m.id == id).firstOrNull?.name ??
@@ -293,20 +291,16 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                     : sharedNames.join(', ');
 
                 return Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg, vertical: 3),
                   child: Container(
                     decoration: BoxDecoration(
                       color: isDark ? AppColors.darkSurface : AppColors.surface,
                       borderRadius: BorderRadius.circular(AppRadius.md),
-                      border: Border.all(
-                        color:
-                            isDark ? AppColors.darkBorder : AppColors.border,
-                      ),
                     ),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
+                          horizontal: AppSpacing.lg, vertical: AppSpacing.md),
                       child: Row(
                         children: [
                           // Member initials circles
@@ -325,7 +319,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                                       width: 24,
                                       height: 24,
                                       decoration: BoxDecoration(
-                                        color: _chipColor(i),
+                                        color: AppColors.memberColor(i),
                                         shape: BoxShape.circle,
                                         border: Border.all(
                                           color: isDark
@@ -351,7 +345,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                               ],
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: AppSpacing.md),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -361,7 +355,9 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
-                                    color: colorScheme.onSurface,
+                                    color: isDark
+                                        ? AppColors.darkTextPrimary
+                                        : AppColors.textPrimary,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
@@ -369,7 +365,9 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                                   splitLabel,
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: AppColors.textSecondary,
+                                    color: isDark
+                                        ? AppColors.darkTextSecondary
+                                        : AppColors.textSecondary,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -381,7 +379,9 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 14,
-                              color: colorScheme.onSurface,
+                              color: isDark
+                                  ? AppColors.darkTextPrimary
+                                  : AppColors.textPrimary,
                             ),
                           ),
                         ],
@@ -390,33 +390,41 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                   ),
                 );
               }),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
             ],
 
             // Quick bill: show equal split text
             if (bill.billType == 'quick') ...[
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.sm),
                 child: Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(AppSpacing.lg),
                   decoration: BoxDecoration(
                     color: isDark ? AppColors.darkSurface : AppColors.surface,
                     borderRadius: BorderRadius.circular(AppRadius.md),
-                    border: Border.all(
-                      color: isDark ? AppColors.darkBorder : AppColors.border,
-                    ),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.people_rounded,
-                          size: 20, color: AppColors.primary),
-                      const SizedBox(width: 12),
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withAlpha(26),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                        ),
+                        child: const Icon(Icons.people_rounded,
+                            size: 18, color: AppColors.primary),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
                       Text(
                         'Split equally among all members',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: colorScheme.onSurface,
+                          color: isDark
+                              ? AppColors.darkTextPrimary
+                              : AppColors.textPrimary,
                         ),
                       ),
                     ],
@@ -428,58 +436,35 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
             // Receipt photo
             if (bill.photoPath != null) ...[
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.sm),
                 child: Text(
                   'Receipt Photo',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
-                        color: colorScheme.onSurface,
+                        color: isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textPrimary,
                       ),
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                    border: Border.all(
-                      color: isDark ? AppColors.darkBorder : AppColors.border,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha(isDark ? 40 : 15),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                    child: Image.file(
-                      File(bill.photoPath!),
-                      fit: BoxFit.contain,
-                    ),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  child: Image.file(
+                    File(bill.photoPath!),
+                    fit: BoxFit.contain,
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSpacing.xxl),
             ],
           ],
         ),
       ),
     );
   }
-
-  static const _chipColors = [
-    AppColors.primary,
-    AppColors.secondary,
-    Color(0xFF8B5CF6),
-    AppColors.positive,
-    AppColors.accent,
-    AppColors.negative,
-  ];
-
-  Color _chipColor(int index) => _chipColors[index % _chipColors.length];
 
   String _initialFor(int memberId, Iterable<dynamic> members) {
     for (final m in members) {
@@ -494,10 +479,11 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
     final category = BillCategories.getById(bill.category);
     final titleController = TextEditingController(text: category.label);
     String selectedFrequency = 'monthly';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius:
@@ -507,7 +493,8 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
         builder: (ctx, setSheetState) => SafeArea(
           child: Padding(
             padding: EdgeInsets.fromLTRB(
-                24, 8, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
+                AppSpacing.xxl, AppSpacing.sm, AppSpacing.xxl,
+                MediaQuery.of(ctx).viewInsets.bottom + AppSpacing.xxl),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -517,31 +504,37 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                   child: Container(
                     width: 40,
                     height: 4,
-                    margin: const EdgeInsets.only(bottom: 20),
+                    margin: const EdgeInsets.only(bottom: AppSpacing.xl),
                     decoration: BoxDecoration(
-                      color: AppColors.border,
+                      color: isDark
+                          ? AppColors.darkDivider
+                          : AppColors.divider,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
                 ),
                 // Title
-                const Text(
+                Text(
                   'Make Recurring',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: isDark
+                        ? AppColors.darkTextPrimary
+                        : AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   'This bill will repeat automatically',
                   style: TextStyle(
                     fontSize: 14,
-                    color: AppColors.textTertiary,
+                    color: isDark
+                        ? AppColors.darkTextSecondary
+                        : AppColors.textTertiary,
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.xl),
                 // Title field
                 TextField(
                   controller: titleController,
@@ -549,54 +542,69 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                     labelText: 'Title',
                     labelStyle:
                         const TextStyle(color: AppColors.textTertiary),
+                    filled: true,
+                    fillColor: isDark
+                        ? AppColors.darkSurfaceVariant
+                        : AppColors.surfaceVariant,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppRadius.md),
-                      borderSide: const BorderSide(color: AppColors.border),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      borderSide: BorderSide.none,
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 // Amount (read-only display)
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 14),
+                      horizontal: AppSpacing.lg, vertical: 14),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceVariant,
+                    color: isDark
+                        ? AppColors.darkSurfaceVariant
+                        : AppColors.surfaceVariant,
                     borderRadius: BorderRadius.circular(AppRadius.md),
-                    border: Border.all(color: AppColors.border),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
+                      Text(
                         'Amount',
                         style: TextStyle(
                           fontSize: 14,
-                          color: AppColors.textSecondary,
+                          color: isDark
+                              ? AppColors.darkTextSecondary
+                              : AppColors.textSecondary,
                         ),
                       ),
                       Text(
                         bill.totalAmount.toStringAsFixed(2),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                          color: isDark
+                              ? AppColors.darkTextPrimary
+                              : AppColors.textPrimary,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 // Frequency picker
-                const Text(
+                Text(
                   'Frequency',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: isDark
+                        ? AppColors.darkTextPrimary
+                        : AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 Row(
                   children: ['weekly', 'monthly', 'yearly'].map((freq) {
                     final isSelected = selectedFrequency == freq;
@@ -604,7 +612,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                     return Expanded(
                       child: Padding(
                         padding: EdgeInsets.only(
-                            right: freq != 'yearly' ? 8 : 0),
+                            right: freq != 'yearly' ? AppSpacing.sm : 0),
                         child: ChoiceChip(
                           label: SizedBox(
                             width: double.infinity,
@@ -617,21 +625,22 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                           },
                           selectedColor:
                               AppColors.primary.withValues(alpha: 0.15),
+                          backgroundColor: isDark
+                              ? AppColors.darkSurfaceVariant
+                              : AppColors.surfaceVariant,
                           labelStyle: TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 13,
                             color: isSelected
                                 ? AppColors.primary
-                                : AppColors.textSecondary,
+                                : isDark
+                                    ? AppColors.darkTextSecondary
+                                    : AppColors.textSecondary,
                           ),
                           shape: RoundedRectangleBorder(
                             borderRadius:
-                                BorderRadius.circular(AppRadius.sm),
-                            side: BorderSide(
-                              color: isSelected
-                                  ? AppColors.primary
-                                  : AppColors.border,
-                            ),
+                                BorderRadius.circular(AppRadius.full),
+                            side: BorderSide.none,
                           ),
                           showCheckmark: false,
                           padding: const EdgeInsets.symmetric(vertical: 8),
@@ -640,7 +649,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                     );
                   }).toList(),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpacing.xxl),
                 // Create button
                 FilledButton(
                   onPressed: () async {
@@ -674,6 +683,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                   },
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppRadius.md),
@@ -693,18 +703,42 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
   }
 
   void _confirmDelete(BuildContext context, Bill bill) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete Bill?'),
-        content: const Text('This cannot be undone.'),
+        backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+        ),
+        title: Text('Delete Bill?',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: isDark
+                  ? AppColors.darkTextPrimary
+                  : AppColors.textPrimary,
+            )),
+        content: Text('This cannot be undone.',
+            style: TextStyle(
+              color: isDark
+                  ? AppColors.darkTextSecondary
+                  : AppColors.textSecondary,
+            )),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+            child: Text('Cancel',
+                style: TextStyle(color: AppColors.textTertiary)),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.negative),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.negative,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+            ),
             onPressed: () async {
               Navigator.pop(dialogContext);
               await context
@@ -746,8 +780,8 @@ class _InfoRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: showBackground
             ? (isDark
-                ? AppColors.darkSurfaceVariant.withAlpha(40)
-                : AppColors.surfaceVariant.withAlpha(120))
+                ? AppColors.darkSurfaceVariant.withAlpha(80)
+                : AppColors.surfaceVariant)
             : Colors.transparent,
         borderRadius: BorderRadius.vertical(
           top: isFirst ? const Radius.circular(AppRadius.md) : Radius.zero,
@@ -761,7 +795,9 @@ class _InfoRow extends StatelessWidget {
             label,
             style: TextStyle(
               fontSize: 13,
-              color: AppColors.textSecondary,
+              color: isDark
+                  ? AppColors.darkTextSecondary
+                  : AppColors.textSecondary,
             ),
           ),
           Text(
@@ -769,7 +805,7 @@ class _InfoRow extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white : AppColors.textPrimary,
+              color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
             ),
           ),
         ],

@@ -58,7 +58,9 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
   }
 
   double get _totalAmount {
-    return _items.fold(0.0, (sum, item) => sum + item.price);
+    return _items
+        .where((item) => item.isIncluded)
+        .fold(0.0, (sum, item) => sum + item.price);
   }
 
   /// Calculates how much each member owes (excluding payer's own share).
@@ -118,6 +120,7 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
     final members = householdProvider.members;
     final memberOwes = _memberOwes;
     final currencySymbol = AppCurrency.getByCode(householdProvider.currency).symbol;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
@@ -127,12 +130,13 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
         children: [
           // Date and payer row
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.sm),
             child: Row(
               children: [
                 Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
+                  child: GestureDetector(
+                    onTap: () async {
                       final picked = await showDatePicker(
                         context: context,
                         initialDate: _billDate,
@@ -144,26 +148,45 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                         setState(() => _billDate = picked);
                       }
                     },
-                    icon: Icon(Icons.calendar_today_rounded,
-                        size: 18, color: AppColors.primary),
-                    label: Text(
-                      DateFormat('dd/MM/yyyy').format(_billDate),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppColors.border),
-                      shape: RoundedRectangleBorder(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.darkSurfaceVariant
+                            : AppColors.surfaceVariant,
                         borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withAlpha(26),
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.md),
+                            ),
+                            child: const Icon(Icons.calendar_today_rounded,
+                                size: 16, color: AppColors.primary),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Text(
+                            DateFormat('dd/MM/yyyy').format(_billDate),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: isDark
+                                  ? AppColors.darkTextPrimary
+                                  : AppColors.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: DropdownButtonFormField<int>(
                     initialValue: _paidByMemberId,
@@ -173,13 +196,17 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                         color: AppColors.textTertiary,
                         fontSize: 13,
                       ),
+                      filled: true,
+                      fillColor: isDark
+                          ? AppColors.darkSurfaceVariant
+                          : AppColors.surfaceVariant,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppRadius.md),
-                        borderSide: const BorderSide(color: AppColors.border),
+                        borderSide: BorderSide.none,
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppRadius.md),
-                        borderSide: const BorderSide(color: AppColors.border),
+                        borderSide: BorderSide.none,
                       ),
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(
@@ -208,7 +235,7 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
             height: 42,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               itemCount: BillCategories.list.length,
               separatorBuilder: (_, __) => const SizedBox(width: 6),
               itemBuilder: (context, index) {
@@ -226,12 +253,12 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                   avatar: Icon(cat.icon, size: 16, color: cat.color),
                   selected: isSelected,
                   selectedColor: cat.color.withAlpha(30),
-                  backgroundColor: AppColors.surface,
-                  side: BorderSide(
-                    color: isSelected ? cat.color.withAlpha(100) : AppColors.border,
-                  ),
+                  backgroundColor: isDark
+                      ? AppColors.darkSurfaceVariant
+                      : AppColors.surfaceVariant,
+                  side: BorderSide.none,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.xl),
+                    borderRadius: BorderRadius.circular(AppRadius.full),
                   ),
                   onSelected: (_) => setState(() => _category = cat.id),
                   showCheckmark: false,
@@ -240,7 +267,7 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
               },
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
 
           // Items list
           Expanded(
@@ -253,26 +280,28 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                           width: 64,
                           height: 64,
                           decoration: BoxDecoration(
-                            color: AppColors.accent.withAlpha(20),
-                            shape: BoxShape.circle,
+                            color: AppColors.accentSurface,
+                            borderRadius: BorderRadius.circular(AppRadius.md),
                           ),
                           child: const Icon(Icons.warning_amber_rounded,
                               size: 32, color: AppColors.accent),
                         ),
-                        const SizedBox(height: 16),
-                        const Text(
+                        const SizedBox(height: AppSpacing.lg),
+                        Text(
                           'No items detected from the receipt',
                           style: TextStyle(
                             color: AppColors.textSecondary,
                             fontSize: 15,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: AppSpacing.md),
                         FilledButton.icon(
                           onPressed: _addManualItem,
                           icon: const Icon(Icons.add_rounded),
                           label: const Text('Add Item Manually'),
                           style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius:
                                   BorderRadius.circular(AppRadius.md),
@@ -289,14 +318,14 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                         // Add item button with dashed outline style
                         return Padding(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
+                              horizontal: AppSpacing.lg, vertical: AppSpacing.md),
                           child: InkWell(
                             onTap: _addManualItem,
                             borderRadius:
                                 BorderRadius.circular(AppRadius.md),
                             child: CustomPaint(
                               painter: _DashedRectPainter(
-                                color: AppColors.primary.withAlpha(100),
+                                color: AppColors.primaryLight,
                                 radius: AppRadius.md,
                               ),
                               child: Container(
@@ -307,7 +336,7 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                                   children: [
                                     Icon(Icons.add_rounded,
                                         size: 20, color: AppColors.primary),
-                                    SizedBox(width: 8),
+                                    SizedBox(width: AppSpacing.sm),
                                     Text(
                                       'Add Item',
                                       style: TextStyle(
@@ -325,20 +354,20 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                       }
                       final item = _items[index];
                       return Dismissible(
-                        key: ValueKey(index),
+                        key: ValueKey(item.uid),
                         direction: DismissDirection.endToStart,
                         background: Container(
                           margin: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 4),
+                              horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
                           decoration: BoxDecoration(
-                            color: AppColors.negative,
+                            color: AppColors.negativeSurface,
                             borderRadius:
                                 BorderRadius.circular(AppRadius.md),
                           ),
                           alignment: Alignment.centerRight,
                           padding: const EdgeInsets.only(right: 20),
                           child: const Icon(Icons.delete_outline_rounded,
-                              color: Colors.white, size: 22),
+                              color: AppColors.negative, size: 22),
                         ),
                         onDismissed: (_) {
                           setState(() => _items.removeAt(index));
@@ -361,12 +390,12 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
 
           // Bottom summary bar
           Container(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-            decoration: const BoxDecoration(
-              color: AppColors.surface,
-              border: Border(
-                top: BorderSide(color: AppColors.border, width: 1),
-              ),
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.lg),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppColors.darkSurfaceVariant
+                  : AppColors.surfaceVariant,
             ),
             child: SafeArea(
               child: Column(
@@ -374,17 +403,21 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Total',
+                      Text('Total',
                           style: TextStyle(
                             fontWeight: FontWeight.w500,
                             fontSize: 14,
-                            color: AppColors.textSecondary,
+                            color: isDark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.textSecondary,
                           )),
                       Text('${_totalAmount.toStringAsFixed(2)} $currencySymbol',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                            color: AppColors.textPrimary,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 17,
+                            color: isDark
+                                ? AppColors.darkTextPrimary
+                                : AppColors.textPrimary,
                           )),
                     ],
                   ),
@@ -400,9 +433,11 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                         children: [
                           Text(
                             '${member?.name ?? "Member"} owes',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
-                              color: AppColors.textSecondary,
+                              color: isDark
+                                  ? AppColors.darkTextSecondary
+                                  : AppColors.textSecondary,
                             ),
                           ),
                           Text('${entry.value.toStringAsFixed(2)} $currencySymbol',
@@ -448,15 +483,22 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
     final currencySymbol = AppCurrency.getByCode(
       context.read<HouseholdProvider>().currency,
     ).symbol;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
+        backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.xl),
         ),
-        title: const Text('Add Item',
-            style: TextStyle(fontWeight: FontWeight.w600)),
+        title: Text('Add Item',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: isDark
+                  ? AppColors.darkTextPrimary
+                  : AppColors.textPrimary,
+            )),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -464,27 +506,37 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
               controller: nameController,
               decoration: InputDecoration(
                 labelText: 'Item Name',
+                filled: true,
+                fillColor: isDark
+                    ? AppColors.darkSurfaceVariant
+                    : AppColors.surfaceVariant,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppRadius.md),
+                  borderSide: BorderSide.none,
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppRadius.md),
-                  borderSide: const BorderSide(color: AppColors.border),
+                  borderSide: BorderSide.none,
                 ),
               ),
               autofocus: true,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             TextField(
               controller: priceController,
               decoration: InputDecoration(
                 labelText: 'Price ($currencySymbol)',
+                filled: true,
+                fillColor: isDark
+                    ? AppColors.darkSurfaceVariant
+                    : AppColors.surfaceVariant,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppRadius.md),
+                  borderSide: BorderSide.none,
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppRadius.md),
-                  borderSide: const BorderSide(color: AppColors.border),
+                  borderSide: BorderSide.none,
                 ),
               ),
               keyboardType:
@@ -521,6 +573,8 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
               }
             },
             style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppRadius.md),
               ),
@@ -534,6 +588,8 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
 }
 
 class _EditableItem {
+  static int _nextId = 0;
+  final int uid = _nextId++;
   String name;
   double price;
   bool isIncluded;

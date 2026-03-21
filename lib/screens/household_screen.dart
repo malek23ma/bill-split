@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/household_provider.dart';
 import '../constants.dart';
+import '../widgets/scale_tap.dart';
 
 class HouseholdScreen extends StatefulWidget {
   const HouseholdScreen({super.key});
@@ -20,74 +21,73 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<HouseholdProvider>();
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
       body: SafeArea(
         child: provider.households.isEmpty
-            ? _buildEmptyState(context, colorScheme, textTheme)
-            : _buildHouseholdList(context, provider, colorScheme, textTheme),
+            ? _buildEmptyState(context, isDark)
+            : _buildHouseholdList(context, provider, isDark),
       ),
       floatingActionButton: provider.households.isNotEmpty
           ? FloatingActionButton.extended(
               onPressed: () => _showCreateSheet(context),
-              backgroundColor: colorScheme.primary,
-              foregroundColor: colorScheme.onPrimary,
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
               elevation: 0,
+              highlightElevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.md),
+                borderRadius: BorderRadius.circular(AppRadius.full),
               ),
               icon: const Icon(Icons.add_rounded),
-              label: const Text('New'),
+              label: const Text(
+                'New',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
             )
           : null,
     );
   }
 
-  Widget _buildEmptyState(
-      BuildContext context, ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildEmptyState(BuildContext context, bool isDark) {
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxxl),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Gradient icon container
+            // Solid color icon container — no gradient
             Container(
-              width: 140,
-              height: 140,
+              width: 120,
+              height: 120,
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    AppColors.primary,
-                    AppColors.primaryLight,
-                  ],
-                ),
+                color: AppColors.primary,
                 borderRadius: BorderRadius.circular(AppRadius.xxl),
               ),
               child: const Icon(
                 Icons.home_rounded,
-                size: 64,
+                size: 56,
                 color: Colors.white,
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: AppSpacing.xxxl),
             Text(
               'Welcome to Bill Split',
-              style: textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurface,
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w700,
+                color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Text(
               'Create a household to start tracking\nand splitting bills with others.',
-              style: textTheme.bodyLarge?.copyWith(
-                color: colorScheme.onSurfaceVariant,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+                color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                 height: 1.5,
               ),
               textAlign: TextAlign.center,
@@ -104,8 +104,8 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
                 style: FilledButton.styleFrom(
-                  backgroundColor: colorScheme.primary,
-                  foregroundColor: colorScheme.onPrimary,
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
@@ -119,29 +119,37 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
     );
   }
 
-  Widget _buildHouseholdList(BuildContext context, HouseholdProvider provider,
-      ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildHouseholdList(
+      BuildContext context, HouseholdProvider provider, bool isDark) {
     return CustomScrollView(
       slivers: [
         // Header
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xxl, AppSpacing.xxl, AppSpacing.xxl, AppSpacing.sm),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Your Households',
-                  style: textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.onSurface,
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w700,
+                    color: isDark
+                        ? AppColors.darkTextPrimary
+                        : AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   '${provider.households.length} household${provider.households.length != 1 ? 's' : ''}',
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: isDark
+                        ? AppColors.darkTextSecondary
+                        : AppColors.textSecondary,
                   ),
                 ),
               ],
@@ -150,108 +158,84 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
         ),
         // List
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 100),
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xxl, AppSpacing.sm, AppSpacing.xxl, 100),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate(
               (context, index) {
                 final household = provider.households[index];
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Material(
-                    color: colorScheme.surface,
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                      onTap: () async {
-                        await provider.setCurrentHousehold(household);
-                        if (context.mounted) {
-                          Navigator.pushNamed(context, '/select-member');
-                        }
-                      },
-                      onLongPress: () =>
-                          _showDeleteDialog(context, household),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(AppRadius.lg),
-                          border: Border.all(
-                            color: colorScheme.outlineVariant.withAlpha(128),
+                  padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                  child: ScaleTap(
+                    onTap: () async {
+                      await provider.setCurrentHousehold(household);
+                      if (context.mounted) {
+                        Navigator.pushNamed(context, '/select-member');
+                      }
+                    },
+                    onLongPress: () => _showDeleteDialog(context, household),
+                    child: Container(
+                      padding: const EdgeInsets.all(AppSpacing.lg),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.darkSurface
+                            : AppColors.surface,
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                      ),
+                      child: Row(
+                        children: [
+                          // Icon container — rounded rect, 10% opacity bg
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withAlpha(25),
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.md),
+                            ),
+                            child: const Icon(
+                              Icons.home_rounded,
+                              color: AppColors.primary,
+                              size: 24,
+                            ),
                           ),
-                        ),
-                        child: IntrinsicHeight(
-                          child: Row(
-                            children: [
-                              // Left accent bar
-                              Container(
-                                width: 4,
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary,
-                                  borderRadius: const BorderRadius.only(
-                                    topLeft: Radius.circular(AppRadius.lg),
-                                    bottomLeft: Radius.circular(AppRadius.lg),
+                          const SizedBox(width: AppSpacing.lg),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  household.name,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark
+                                        ? AppColors.darkTextPrimary
+                                        : AppColors.textPrimary,
                                   ),
                                 ),
-                              ),
-                              // Content
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 16),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 48,
-                                        height: 48,
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primary
-                                              .withAlpha(25),
-                                          borderRadius: BorderRadius.circular(
-                                              AppRadius.md),
-                                        ),
-                                        child: Icon(
-                                          Icons.home_rounded,
-                                          color: AppColors.primary,
-                                          size: 24,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            Text(
-                                              household.name,
-                                              style: textTheme.titleMedium
-                                                  ?.copyWith(
-                                                fontWeight: FontWeight.w600,
-                                                color: colorScheme.onSurface,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              'Tap to enter',
-                                              style: textTheme.bodySmall
-                                                  ?.copyWith(
-                                                color: colorScheme
-                                                    .onSurfaceVariant,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Icon(
-                                        Icons.chevron_right_rounded,
-                                        color: colorScheme.onSurfaceVariant,
-                                      ),
-                                    ],
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Tap to enter',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w400,
+                                    color: isDark
+                                        ? AppColors.darkTextSecondary
+                                        : AppColors.textSecondary,
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            color: isDark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.textTertiary,
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -271,7 +255,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
       TextEditingController(),
       TextEditingController(),
     ];
-    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showModalBottomSheet(
       context: context,
@@ -284,14 +268,15 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
           ),
           child: Container(
             decoration: BoxDecoration(
-              color: colorScheme.surface,
+              color: isDark ? AppColors.darkSurface : AppColors.surface,
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(AppRadius.xl),
               ),
             ),
             child: SingleChildScrollView(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.xxl, AppSpacing.md, AppSpacing.xxl, AppSpacing.xxxl),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -301,28 +286,37 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                       child: Container(
                         width: 40,
                         height: 4,
-                        margin: const EdgeInsets.only(bottom: 24),
+                        margin: const EdgeInsets.only(bottom: AppSpacing.xxl),
                         decoration: BoxDecoration(
-                          color: colorScheme.onSurfaceVariant.withAlpha(77),
+                          color: isDark
+                              ? AppColors.darkDivider
+                              : AppColors.surfaceMuted,
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
                     ),
                     Text(
                       'Create Household',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: colorScheme.onSurface,
-                          ),
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        color: isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textPrimary,
+                      ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.sm),
                     Text(
                       'Set up a new household and add members.',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: isDark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.textSecondary,
+                      ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: AppSpacing.xxl),
                     TextField(
                       controller: nameController,
                       autofocus: true,
@@ -332,32 +326,40 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                         prefixIcon: const Icon(Icons.home_rounded),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(AppRadius.md),
+                          borderSide: BorderSide.none,
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(AppRadius.md),
-                          borderSide: BorderSide(color: colorScheme.outlineVariant),
+                          borderSide: BorderSide.none,
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(AppRadius.md),
-                          borderSide: BorderSide(
-                              color: colorScheme.primary, width: 2),
+                          borderSide: const BorderSide(
+                              color: AppColors.primary, width: 2),
                         ),
                         filled: true,
-                        fillColor: colorScheme.surfaceContainerLowest,
+                        fillColor: isDark
+                            ? AppColors.darkSurfaceVariant
+                            : AppColors.surfaceVariant,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.lg),
                     // Dynamic member fields
                     for (int i = 0; i < memberControllers.length; i++) ...[
                       TextField(
                         controller: memberControllers[i],
                         decoration: InputDecoration(
                           labelText: 'Member ${i + 1}',
-                          hintText: i == 0 ? 'e.g., Malek' : i == 1 ? 'e.g., Zain' : 'Name',
+                          hintText: i == 0
+                              ? 'e.g., Malek'
+                              : i == 1
+                                  ? 'e.g., Zain'
+                                  : 'Name',
                           prefixIcon: const Icon(Icons.person_rounded),
                           suffixIcon: i >= 2
                               ? IconButton(
-                                  icon: const Icon(Icons.close_rounded, size: 20),
+                                  icon: const Icon(Icons.close_rounded,
+                                      size: 20),
                                   onPressed: () {
                                     setSheetState(() {
                                       memberControllers[i].dispose();
@@ -368,21 +370,24 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                               : null,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(AppRadius.md),
+                            borderSide: BorderSide.none,
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(AppRadius.md),
-                            borderSide: BorderSide(color: colorScheme.outlineVariant),
+                            borderSide: BorderSide.none,
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(AppRadius.md),
-                            borderSide: BorderSide(
-                                color: colorScheme.primary, width: 2),
+                            borderSide: const BorderSide(
+                                color: AppColors.primary, width: 2),
                           ),
                           filled: true,
-                          fillColor: colorScheme.surfaceContainerLowest,
+                          fillColor: isDark
+                              ? AppColors.darkSurfaceVariant
+                              : AppColors.surfaceVariant,
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.lg),
                     ],
                     // Add member button
                     SizedBox(
@@ -396,16 +401,21 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                         icon: const Icon(Icons.person_add_rounded, size: 18),
                         label: const Text('Add Member'),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: colorScheme.primary,
-                          side: BorderSide(color: colorScheme.outlineVariant),
+                          foregroundColor: AppColors.primary,
+                          side: BorderSide(
+                            color: isDark
+                                ? AppColors.darkDivider
+                                : AppColors.divider,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(AppRadius.md),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: AppSpacing.md),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: AppSpacing.xxl + 4),
                     Row(
                       children: [
                         Expanded(
@@ -418,19 +428,25 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                                   borderRadius:
                                       BorderRadius.circular(AppRadius.md),
                                 ),
-                                side: BorderSide(color: colorScheme.outlineVariant),
+                                side: BorderSide(
+                                  color: isDark
+                                      ? AppColors.darkDivider
+                                      : AppColors.divider,
+                                ),
                               ),
                               child: Text(
                                 'Cancel',
                                 style: TextStyle(
-                                  color: colorScheme.onSurfaceVariant,
+                                  color: isDark
+                                      ? AppColors.darkTextSecondary
+                                      : AppColors.textSecondary,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AppSpacing.md),
                         Expanded(
                           flex: 2,
                           child: SizedBox(
@@ -471,8 +487,8 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                                 }
                               },
                               style: FilledButton.styleFrom(
-                                backgroundColor: colorScheme.primary,
-                                foregroundColor: colorScheme.onPrimary,
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(
                                   borderRadius:
                                       BorderRadius.circular(AppRadius.md),
@@ -500,11 +516,12 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
   }
 
   void _showDeleteDialog(BuildContext context, household) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
+        backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.lg),
         ),
@@ -512,8 +529,8 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
           width: 56,
           height: 56,
           decoration: BoxDecoration(
-            color: AppColors.negative.withAlpha(25),
-            shape: BoxShape.circle,
+            color: AppColors.negativeSurface,
+            borderRadius: BorderRadius.circular(AppRadius.md),
           ),
           child: const Icon(
             Icons.delete_outline_rounded,
@@ -521,14 +538,17 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
             size: 28,
           ),
         ),
-        title: const Text(
+        title: Text(
           'Delete Household?',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+          ),
         ),
         content: Text(
           'This will delete "${household.name}" and all its bills. This cannot be undone.',
           style: TextStyle(
-            color: colorScheme.onSurfaceVariant,
+            color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
             height: 1.4,
           ),
           textAlign: TextAlign.center,
@@ -547,19 +567,25 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
-                      side: BorderSide(color: colorScheme.outlineVariant),
+                      side: BorderSide(
+                        color: isDark
+                            ? AppColors.darkDivider
+                            : AppColors.divider,
+                      ),
                     ),
                     child: Text(
                       'Cancel',
                       style: TextStyle(
-                        color: colorScheme.onSurfaceVariant,
+                        color: isDark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.textSecondary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: SizedBox(
                   height: 48,

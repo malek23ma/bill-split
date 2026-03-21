@@ -14,112 +14,105 @@ class BillListTile extends StatelessWidget {
     required this.bill,
     required this.paidByName,
     required this.onTap,
-    this.currencySymbol = '₺',
+    this.currencySymbol = '\u20BA',
   });
 
   @override
   Widget build(BuildContext context) {
     final dateStr = DateFormat('dd/MM/yyyy').format(bill.billDate);
     final isSettlement = bill.billType == 'settlement';
-    final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final category = BillCategories.getById(bill.category);
 
-    final leadingColor = isSettlement ? AppColors.positive : category.color;
+    final iconColor = isSettlement ? AppColors.positive : category.color;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Container(
         decoration: BoxDecoration(
           color: isDark ? AppColors.darkSurface : AppColors.surface,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(
-            color: isDark ? AppColors.darkBorder : AppColors.border,
-          ),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
         ),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          child: IntrinsicHeight(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
               children: [
-                // Colored left accent bar
+                // Icon container
                 Container(
-                  width: 4,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
-                    color: leadingColor,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(AppRadius.md),
-                      bottomLeft: Radius.circular(AppRadius.md),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // Leading icon
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: leadingColor.withAlpha(20),
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    color: iconColor.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
                   child: Icon(
-                    isSettlement ? Icons.handshake : category.icon,
-                    color: leadingColor,
-                    size: 20,
+                    isSettlement ? Icons.handshake_rounded : category.icon,
+                    color: iconColor,
+                    size: 22,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 // Content
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (isSettlement)
-                          Text(
-                            'Settled up',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.positive,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (isSettlement)
+                        Row(
+                          children: [
+                            Icon(Icons.handshake_rounded,
+                                size: 14, color: AppColors.positive),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Settled',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.positive,
+                              ),
                             ),
-                          )
-                        else
-                          Text(
-                            '${bill.totalAmount.toStringAsFixed(2)} $currencySymbol',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: colorScheme.onSurface,
-                            ),
-                          ),
-                        const SizedBox(height: 3),
+                          ],
+                        )
+                      else
                         Text(
-                          isSettlement
-                              ? '$dateStr  ·  ${bill.totalAmount.toStringAsFixed(2)} $currencySymbol'
-                              : '$dateStr  ·  Paid by $paidByName',
+                          '${bill.totalAmount.toStringAsFixed(2)} $currencySymbol',
                           style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: isDark
+                                ? AppColors.darkTextPrimary
+                                : AppColors.textPrimary,
                           ),
                         ),
-                      ],
-                    ),
+                      const SizedBox(height: 3),
+                      Text(
+                        isSettlement
+                            ? '$dateStr  \u00B7  ${bill.totalAmount.toStringAsFixed(2)} $currencySymbol'
+                            : '$dateStr  \u00B7  Paid by $paidByName',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark
+                              ? AppColors.darkTextSecondary
+                              : AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 // Trailing badge & chevron
                 if (!isSettlement) ...[
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: bill.billType == 'quick'
-                          ? AppColors.accent.withAlpha(20)
-                          : AppColors.primary.withAlpha(20),
-                      borderRadius: BorderRadius.circular(AppRadius.xxl),
+                          ? AppColors.accentSurface
+                          : AppColors.primarySurface,
+                      borderRadius: BorderRadius.circular(AppRadius.full),
                     ),
                     child: Text(
                       bill.billType == 'quick' ? 'Quick' : 'Full',
@@ -132,17 +125,19 @@ class BillListTile extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  Icon(Icons.chevron_right,
-                      size: 20, color: AppColors.textTertiary),
+                  const SizedBox(width: 8),
+                  Icon(Icons.chevron_right_rounded,
+                      size: 20,
+                      color: isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textTertiary),
                 ],
                 if (isSettlement)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 4),
-                    child: Icon(Icons.chevron_right,
-                        size: 20, color: AppColors.textTertiary),
-                  ),
-                const SizedBox(width: 8),
+                  Icon(Icons.chevron_right_rounded,
+                      size: 20,
+                      color: isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textTertiary),
               ],
             ),
           ),

@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 import '../models/member.dart';
 import '../providers/household_provider.dart';
 import '../providers/bill_provider.dart';
+import '../services/pin_helper.dart';
 import '../constants.dart';
+import '../widgets/scale_tap.dart';
 
 class MemberSelectScreen extends StatelessWidget {
   const MemberSelectScreen({super.key});
@@ -26,44 +28,55 @@ class MemberSelectScreen extends StatelessWidget {
   void _showPinDialog(BuildContext context, Member member) {
     final controller = TextEditingController();
     String? error;
-    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.lg),
           ),
-          icon: Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: colorScheme.primary.withAlpha(25),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.lock_rounded,
-              color: colorScheme.primary,
-              size: 28,
-            ),
-          ),
-          title: Text(
-            'Enter PIN for ${member.name}',
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
+          title: null,
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.primary.withAlpha(30) : AppColors.primarySurface,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: const Icon(
+                  Icons.lock_rounded,
+                  color: AppColors.primary,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Enter PIN for ${member.name}',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 20,
+                  color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
               Text(
                 'Please enter your 4-digit PIN to continue.',
                 style: TextStyle(
-                  color: colorScheme.onSurfaceVariant,
+                  color: isDark
+                      ? AppColors.darkTextSecondary
+                      : AppColors.textSecondary,
                   fontSize: 14,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpacing.xl),
               TextField(
                 controller: controller,
                 autofocus: true,
@@ -75,29 +88,37 @@ class MemberSelectScreen extends StatelessWidget {
                 decoration: InputDecoration(
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppRadius.md),
+                    borderSide: BorderSide.none,
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppRadius.md),
-                    borderSide: BorderSide(color: colorScheme.outlineVariant),
+                    borderSide: BorderSide.none,
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppRadius.md),
-                    borderSide:
-                        BorderSide(color: colorScheme.primary, width: 2),
+                    borderSide: const BorderSide(
+                        color: AppColors.primary, width: 2),
                   ),
                   errorBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppRadius.md),
                     borderSide: const BorderSide(color: AppColors.negative),
                   ),
+                  focusedErrorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    borderSide:
+                        const BorderSide(color: AppColors.negative, width: 2),
+                  ),
                   filled: true,
-                  fillColor: colorScheme.surfaceContainerLowest,
+                  fillColor: isDark
+                      ? AppColors.darkSurfaceVariant
+                      : AppColors.surfaceVariant,
                   counterText: '',
                   errorText: error,
                   contentPadding: const EdgeInsets.symmetric(
-                      vertical: 16, horizontal: 16),
+                      vertical: AppSpacing.md, horizontal: AppSpacing.lg),
                 ),
                 onSubmitted: (_) {
-                  if (controller.text == member.pin) {
+                  if (PinHelper.verifyPin(controller.text, member.pin!)) {
                     Navigator.pop(ctx);
                     _login(context, member);
                   } else {
@@ -108,62 +129,61 @@ class MemberSelectScreen extends StatelessWidget {
               ),
             ],
           ),
-          actionsAlignment: MainAxisAlignment.center,
           actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
           actions: [
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 48,
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      style: OutlinedButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                        ),
-                        side: BorderSide(color: colorScheme.outlineVariant),
-                      ),
-                      child: Text(
-                        'Cancel',
-                        style: TextStyle(
-                          color: colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: FilledButton(
+                onPressed: () {
+                  if (PinHelper.verifyPin(controller.text, member.pin!)) {
+                    Navigator.pop(ctx);
+                    _login(context, member);
+                  } else {
+                    setDialogState(() => error = 'Wrong PIN');
+                    controller.clear();
+                  }
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  'Enter',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: OutlinedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  ),
+                  side: BorderSide(
+                    color: isDark
+                        ? AppColors.darkDivider
+                        : AppColors.divider,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: SizedBox(
-                    height: 48,
-                    child: FilledButton(
-                      onPressed: () {
-                        if (controller.text == member.pin) {
-                          Navigator.pop(ctx);
-                          _login(context, member);
-                        } else {
-                          setDialogState(() => error = 'Wrong PIN');
-                          controller.clear();
-                        }
-                      },
-                      style: FilledButton.styleFrom(
-                        backgroundColor: colorScheme.primary,
-                        foregroundColor: colorScheme.onPrimary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: const Text(
-                        'Enter',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(
+                    color: isDark
+                        ? AppColors.darkTextSecondary
+                        : AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ],
+              ),
             ),
           ],
         ),
@@ -176,10 +196,10 @@ class MemberSelectScreen extends StatelessWidget {
     final provider = context.watch<HouseholdProvider>();
     final members = provider.members;
     final householdName = provider.currentHousehold?.name ?? '';
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
       appBar: AppBar(
         title: Text(householdName),
         backgroundColor: Colors.transparent,
@@ -187,127 +207,127 @@ class MemberSelectScreen extends StatelessWidget {
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               Text(
-                'Welcome back!',
-                style: textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
+                "Who's this?",
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  color: isDark
+                      ? AppColors.darkTextPrimary
+                      : AppColors.textPrimary,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               Text(
-                'Select your profile to continue to $householdName.',
-                style: textTheme.bodyLarge?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
+                'Select your profile',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  color: isDark
+                      ? AppColors.darkTextSecondary
+                      : AppColors.textSecondary,
                   height: 1.4,
                 ),
               ),
-              const SizedBox(height: 36),
+              const SizedBox(height: AppSpacing.xxxl + 4),
               Expanded(
                 child: ListView.separated(
                   itemCount: members.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 16),
+                  separatorBuilder: (_, _) =>
+                      const SizedBox(height: AppSpacing.lg),
                   itemBuilder: (context, index) {
                     final member = members[index];
                     final hasPin =
                         member.pin != null && member.pin!.isNotEmpty;
-                    final initial =
-                        member.name.isNotEmpty ? member.name[0].toUpperCase() : '?';
+                    final initial = member.name.isNotEmpty
+                        ? member.name[0].toUpperCase()
+                        : '?';
+                    final avatarColor = AppColors.memberColor(index);
 
-                    // Alternate between primary and secondary tints
-                    final avatarColors = [
-                      AppColors.primary,
-                      AppColors.secondary,
-                      AppColors.accent,
-                    ];
-                    final avatarColor =
-                        avatarColors[index % avatarColors.length];
-
-                    return Material(
-                      color: colorScheme.surface,
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
-                        onTap: () => _onMemberTap(context, member),
-                        child: Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            borderRadius:
-                                BorderRadius.circular(AppRadius.lg),
-                            border: Border.all(
-                              color: colorScheme.outlineVariant
-                                  .withAlpha(128),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              // Avatar circle
-                              Container(
-                                width: 56,
-                                height: 56,
-                                decoration: BoxDecoration(
-                                  color: avatarColor.withAlpha(30),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    initial,
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: avatarColor,
-                                    ),
+                    return ScaleTap(
+                      onTap: () => _onMemberTap(context, member),
+                      child: Container(
+                        padding: const EdgeInsets.all(AppSpacing.xl),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? AppColors.darkSurface
+                              : AppColors.surface,
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                        ),
+                        child: Row(
+                          children: [
+                            // Avatar — rounded rect (md radius), not circle
+                            Container(
+                              width: 56,
+                              height: 56,
+                              decoration: BoxDecoration(
+                                color: avatarColor.withAlpha(25),
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.md),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  initial,
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w700,
+                                    color: avatarColor,
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 16),
-                              // Name + subtitle
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      member.name,
-                                      style:
-                                          textTheme.titleMedium?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                        color: colorScheme.onSurface,
-                                      ),
+                            ),
+                            const SizedBox(width: AppSpacing.lg),
+                            // Name + subtitle
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    member.name,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark
+                                          ? AppColors.darkTextPrimary
+                                          : AppColors.textPrimary,
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      hasPin
-                                          ? 'PIN protected'
-                                          : 'Tap to enter',
-                                      style: textTheme.bodySmall?.copyWith(
-                                        color:
-                                            colorScheme.onSurfaceVariant,
-                                      ),
+                                  ),
+                                  const SizedBox(height: AppSpacing.xs),
+                                  Text(
+                                    hasPin ? 'PIN protected' : 'Tap to enter',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w400,
+                                      color: isDark
+                                          ? AppColors.darkTextSecondary
+                                          : AppColors.textSecondary,
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
-                              // Lock / arrow icon
-                              if (hasPin)
-                                Icon(
-                                  Icons.lock_rounded,
-                                  size: 20,
-                                  color: colorScheme.onSurfaceVariant
-                                      .withAlpha(128),
-                                )
-                              else
-                                Icon(
-                                  Icons.chevron_right_rounded,
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                            ],
-                          ),
+                            ),
+                            // Lock / chevron
+                            if (hasPin)
+                              Icon(
+                                Icons.lock_rounded,
+                                size: 20,
+                                color: isDark
+                                    ? AppColors.darkTextSecondary
+                                    : AppColors.textTertiary,
+                              )
+                            else
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                color: isDark
+                                    ? AppColors.darkTextSecondary
+                                    : AppColors.textTertiary,
+                              ),
+                          ],
                         ),
                       ),
                     );

@@ -19,19 +19,8 @@ class ItemRow extends StatelessWidget {
     required this.allMembers,
     required this.selectedMemberIds,
     required this.onMembersChanged,
-    this.currencySymbol = '₺',
+    this.currencySymbol = '\u20BA',
   });
-
-  static const _chipColors = [
-    AppColors.primary,
-    AppColors.secondary,
-    Color(0xFF8B5CF6), // tertiary
-    AppColors.positive,
-    AppColors.accent,
-    AppColors.negative,
-  ];
-
-  Color _colorForIndex(int index) => _chipColors[index % _chipColors.length];
 
   void _toggleMember(int memberId) {
     final isSelected = selectedMemberIds.contains(memberId);
@@ -48,21 +37,19 @@ class ItemRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg, vertical: 3),
       child: Container(
         decoration: BoxDecoration(
           color: isDark ? AppColors.darkSurface : AppColors.surface,
           borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(
-            color: isDark ? AppColors.darkBorder : AppColors.border,
-          ),
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg, 14, AppSpacing.lg, 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -75,7 +62,9 @@ class ItemRow extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: colorScheme.onSurface,
+                        color: isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textPrimary,
                       ),
                     ),
                   ),
@@ -84,22 +73,24 @@ class ItemRow extends StatelessWidget {
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 16,
-                      color: colorScheme.onSurface,
+                      color: isDark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.textPrimary,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
 
               // Member chips
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
                 children: [
                   for (int i = 0; i < allMembers.length; i++)
                     _MemberChip(
                       member: allMembers[i],
-                      color: _colorForIndex(i),
+                      color: AppColors.memberColor(i),
                       isSelected:
                           selectedMemberIds.contains(allMembers[i].id),
                       isDark: isDark,
@@ -136,13 +127,13 @@ class _MemberChip extends StatelessWidget {
         ? member.name[0].toUpperCase()
         : '?';
 
-    final bgColor =
-        isSelected ? color.withAlpha(30) : Colors.transparent;
-    final borderColor =
-        isSelected ? color : (isDark ? AppColors.darkBorder : AppColors.border);
-    final borderWidth = isSelected ? 2.0 : 1.0;
-    final textColor =
-        isSelected ? color : (isDark ? AppColors.textTertiary : AppColors.neutral);
+    final bgColor = isSelected
+        ? color.withAlpha(38)
+        : (isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceVariant);
+    final borderColor = isSelected ? color : Colors.transparent;
+    final textColor = isSelected
+        ? color
+        : (isDark ? AppColors.darkTextSecondary : AppColors.neutral);
 
     return GestureDetector(
       onTap: onTap,
@@ -152,21 +143,32 @@ class _MemberChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: bgColor,
-          borderRadius: BorderRadius.circular(AppRadius.xxl),
-          border: Border.all(color: borderColor, width: borderWidth),
+          borderRadius: BorderRadius.circular(AppRadius.full),
+          border: Border.all(
+            color: borderColor,
+            width: isSelected ? 1.5 : 0,
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircleAvatar(
-              radius: 12,
-              backgroundColor: isSelected ? color : (isDark ? AppColors.darkBorder : AppColors.border),
-              child: Text(
-                letter,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: isSelected ? Colors.white : textColor,
+            Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? color
+                    : (isDark ? AppColors.darkDivider : AppColors.surfaceMuted),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Center(
+                child: Text(
+                  letter,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: isSelected ? Colors.white : textColor,
+                  ),
                 ),
               ),
             ),

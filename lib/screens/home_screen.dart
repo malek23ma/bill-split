@@ -5,6 +5,7 @@ import '../providers/bill_provider.dart';
 import '../providers/recurring_bill_provider.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/bill_list_tile.dart';
+import '../widgets/scale_tap.dart';
 import '../constants.dart';
 import 'insights_screen.dart';
 
@@ -37,32 +38,39 @@ class _HomeScreenState extends State<HomeScreen> {
     final householdProvider = context.watch<HouseholdProvider>();
     final billProvider = context.watch<BillProvider>();
     final currentMember = householdProvider.currentMember;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
       appBar: _currentTab == 0
           ? AppBar(
-              backgroundColor: AppColors.surface,
+              backgroundColor:
+                  isDark ? AppColors.darkSurface : AppColors.surface,
               surfaceTintColor: Colors.transparent,
               elevation: 0,
               title: Text(
                 householdProvider.currentHousehold?.name ?? 'Home',
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w700,
+                style: TextStyle(
+                  color:
+                      isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
                   fontSize: 20,
                 ),
               ),
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.settings_outlined,
-                      color: AppColors.textSecondary),
+                  icon: Icon(Icons.settings_outlined,
+                      color: isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary),
                   onPressed: () => Navigator.pushNamed(context, '/settings'),
                   tooltip: 'Settings',
                 ),
                 IconButton(
-                  icon: const Icon(Icons.person_outline_rounded,
-                      color: AppColors.textSecondary),
+                  icon: Icon(Icons.person_outline_rounded,
+                      color: isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary),
                   onPressed: () {
                     Navigator.pushNamedAndRemoveUntil(
                         context, '/', (route) => false);
@@ -71,13 +79,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(width: 4),
               ],
-              bottom: PreferredSize(
-                preferredSize: const Size.fromHeight(1),
-                child: Container(
-                  color: AppColors.border,
-                  height: 1,
-                ),
-              ),
             )
           : null,
       body: IndexedStack(
@@ -88,41 +89,30 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       floatingActionButton: _currentTab == 0
-          ? FloatingActionButton.extended(
+          ? FloatingActionButton(
               onPressed: () {
                 Navigator.pushNamed(context, '/bill-type');
               },
-              icon: const Icon(Icons.add_rounded, color: Colors.white),
-              label: const Text(
-                'Add Bill',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
               backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.md),
+                borderRadius: BorderRadius.circular(AppRadius.lg),
               ),
+              child: const Icon(Icons.add_rounded, size: 28),
             )
           : null,
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentTab,
-        onTap: (index) => setState(() => _currentTab = index),
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.textTertiary,
-        backgroundColor: Theme.of(context).colorScheme.surface,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentTab,
+        onDestinationSelected: (i) => setState(() => _currentTab = i),
+        backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
+        indicatorColor: isDark ? AppColors.primary.withAlpha(40) : AppColors.primarySurface,
         elevation: 0,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_long_rounded),
-            label: 'Bills',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.insights_rounded),
-            label: 'Insights',
-          ),
+        destinations: const [
+          NavigationDestination(
+              icon: Icon(Icons.receipt_long_rounded), label: 'Bills'),
+          NavigationDestination(
+              icon: Icon(Icons.bar_chart_rounded), label: 'Insights'),
         ],
       ),
     );
@@ -136,13 +126,19 @@ class _HomeScreenState extends State<HomeScreen> {
       for (final m in members) m.id!: m.name,
     };
     final summary = billProvider.monthlySummary;
-    final currencySymbol = AppCurrency.getByCode(householdProvider.currency).symbol;
+    final currencySymbol =
+        AppCurrency.getByCode(householdProvider.currency).symbol;
 
     final recurringProvider = context.watch<RecurringBillProvider>();
     final dueBills = recurringProvider.dueBills;
 
-    return Column(
-      children: [
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 88),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
         // Recurring bills due banner
         if (dueBills.isNotEmpty)
           Padding(
@@ -152,115 +148,122 @@ class _HomeScreenState extends State<HomeScreen> {
                 final cat = BillCategories.getById(recurring.category);
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.accent.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                      border: Border.all(
-                        color: AppColors.accent.withValues(alpha: 0.3),
+                  child: ScaleTap(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.darkSurfaceVariant
+                            : AppColors.accentSurface,
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
                       ),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: AppColors.accent.withValues(alpha: 0.15),
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.sm),
-                            ),
-                            child: const Icon(
-                              Icons.repeat_rounded,
-                              size: 20,
-                              color: AppColors.accent,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  recurring.title,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  '${recurring.amount.toStringAsFixed(2)} $currencySymbol \u2022 ${cat.label}',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          FilledButton(
-                            onPressed: () async {
-                              final householdId = householdProvider
-                                  .currentHousehold?.id;
-                              final memberId = currentMember?.id;
-                              if (householdId == null || memberId == null) {
-                                return;
-                              }
-                              await recurringProvider.confirmBill(
-                                recurring,
-                                billProvider,
-                                householdId,
-                                memberId,
-                              );
-                            },
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 8),
-                              minimumSize: Size.zero,
-                              shape: RoundedRectangleBorder(
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color:
+                                    AppColors.accent.withValues(alpha: 0.10),
                                 borderRadius:
-                                    BorderRadius.circular(AppRadius.sm),
+                                    BorderRadius.circular(AppRadius.md),
+                              ),
+                              child: const Icon(
+                                Icons.repeat_rounded,
+                                size: 20,
+                                color: AppColors.accent,
                               ),
                             ),
-                            child: const Text(
-                              'Confirm',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    recurring.title,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark
+                                          ? AppColors.darkTextPrimary
+                                          : AppColors.textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '${recurring.amount.toStringAsFixed(2)} $currencySymbol \u2022 ${cat.label}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isDark
+                                          ? AppColors.darkTextSecondary
+                                          : AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          TextButton(
-                            onPressed: () async {
-                              final householdId = householdProvider
-                                  .currentHousehold?.id;
-                              if (householdId == null) return;
-                              await recurringProvider.dismissBill(
-                                recurring,
-                                householdId,
-                              );
-                            },
-                            style: TextButton.styleFrom(
-                              foregroundColor: AppColors.textTertiary,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 8),
-                              minimumSize: Size.zero,
-                            ),
-                            child: const Text(
-                              'Skip',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
+                            FilledButton(
+                              onPressed: () async {
+                                final householdId =
+                                    householdProvider.currentHousehold?.id;
+                                final memberId = currentMember?.id;
+                                if (householdId == null || memberId == null) {
+                                  return;
+                                }
+                                await recurringProvider.confirmBill(
+                                  recurring,
+                                  billProvider,
+                                  householdId,
+                                  memberId,
+                                );
+                              },
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 8),
+                                minimumSize: Size.zero,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadius.full),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: const Text(
+                                'Confirm',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 8),
+                            TextButton(
+                              onPressed: () async {
+                                final householdId =
+                                    householdProvider.currentHousehold?.id;
+                                if (householdId == null) return;
+                                await recurringProvider.dismissBill(
+                                  recurring,
+                                  householdId,
+                                );
+                              },
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.textTertiary,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 8),
+                                minimumSize: Size.zero,
+                              ),
+                              child: const Text(
+                                'Skip',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -291,9 +294,8 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Container(
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: isDark ? AppColors.darkSurface : AppColors.surface,
                 borderRadius: BorderRadius.circular(AppRadius.lg),
-                border: Border.all(color: AppColors.border),
               ),
               child: summary.billCount > 0
                   ? Theme(
@@ -310,9 +312,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           width: 36,
                           height: 36,
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.1),
+                            color:
+                                AppColors.primary.withValues(alpha: 0.10),
                             borderRadius:
-                                BorderRadius.circular(AppRadius.sm),
+                                BorderRadius.circular(AppRadius.md),
                           ),
                           child: const Icon(
                             Icons.calendar_month_rounded,
@@ -322,30 +325,40 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         title: Text(
                           summary.monthLabel,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w700,
+                            color: isDark
+                                ? AppColors.darkTextPrimary
+                                : AppColors.textPrimary,
                           ),
                         ),
                         subtitle: Text(
                           '${summary.billCount} bills \u2022 ${summary.memberSpend.values.fold(0.0, (a, b) => a + b).toStringAsFixed(2)} $currencySymbol total',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: AppColors.textTertiary,
+                            color: isDark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.textTertiary,
                           ),
                         ),
-                        initiallyExpanded: true,
+                        initiallyExpanded: false,
                         children: [
                           Padding(
                             padding:
                                 const EdgeInsets.fromLTRB(16, 0, 16, 16),
                             child: Column(
                               children: [
-                                const Divider(
-                                    color: AppColors.border, height: 1),
+                                Divider(
+                                  color: isDark
+                                      ? AppColors.darkDivider
+                                      : AppColors.divider,
+                                  height: 1,
+                                ),
                                 const SizedBox(height: 12),
-                                ...members.map((m) {
+                                ...members.asMap().entries.map((entry) {
+                                  final idx = entry.key;
+                                  final m = entry.value;
                                   final spent =
                                       summary.memberSpend[m.id] ?? 0.0;
                                   final totalSpend = summary
@@ -354,16 +367,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                   final proportion = totalSpend > 0
                                       ? (spent / totalSpend)
                                       : 0.0;
-                                  final memberColors = [
-                                    AppColors.primary,
-                                    AppColors.secondary,
-                                    AppColors.accent,
-                                  ];
-                                  final colorIndex =
-                                      members.toList().indexOf(m) %
-                                          memberColors.length;
                                   final barColor =
-                                      memberColors[colorIndex];
+                                      AppColors.memberColor(idx);
 
                                   return Padding(
                                     padding:
@@ -377,20 +382,25 @@ class _HomeScreenState extends State<HomeScreen> {
                                           children: [
                                             Text(
                                               m.name,
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontSize: 13,
                                                 fontWeight: FontWeight.w500,
-                                                color:
-                                                    AppColors.textSecondary,
+                                                color: isDark
+                                                    ? AppColors
+                                                        .darkTextSecondary
+                                                    : AppColors
+                                                        .textSecondary,
                                               ),
                                             ),
                                             Text(
                                               '${spent.toStringAsFixed(2)} $currencySymbol',
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontSize: 13,
                                                 fontWeight: FontWeight.w600,
-                                                color:
-                                                    AppColors.textPrimary,
+                                                color: isDark
+                                                    ? AppColors
+                                                        .darkTextPrimary
+                                                    : AppColors.textPrimary,
                                               ),
                                             ),
                                           ],
@@ -403,8 +413,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                           child: LinearProgressIndicator(
                                             value: proportion,
                                             minHeight: 6,
-                                            backgroundColor:
-                                                AppColors.surfaceVariant,
+                                            backgroundColor: isDark
+                                                ? AppColors
+                                                    .darkSurfaceVariant
+                                                : AppColors.surfaceVariant,
                                             valueColor:
                                                 AlwaysStoppedAnimation<
                                                     Color>(barColor),
@@ -428,10 +440,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             width: 36,
                             height: 36,
                             decoration: BoxDecoration(
-                              color:
-                                  AppColors.primary.withValues(alpha: 0.1),
+                              color: AppColors.primary
+                                  .withValues(alpha: 0.10),
                               borderRadius:
-                                  BorderRadius.circular(AppRadius.sm),
+                                  BorderRadius.circular(AppRadius.md),
                             ),
                             child: const Icon(
                               Icons.calendar_month_rounded,
@@ -445,18 +457,22 @@ class _HomeScreenState extends State<HomeScreen> {
                             children: [
                               Text(
                                 summary.monthLabel,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark
+                                      ? AppColors.darkTextPrimary
+                                      : AppColors.textPrimary,
                                 ),
                               ),
                               const SizedBox(height: 2),
-                              const Text(
+                              Text(
                                 'No bills this month yet',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: AppColors.textTertiary,
+                                  color: isDark
+                                      ? AppColors.darkTextSecondary
+                                      : AppColors.textTertiary,
                                 ),
                               ),
                             ],
@@ -467,157 +483,166 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-        // Bills header
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-          child: Row(
-            children: [
-              Text(
-                'Recent Bills',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-              ),
-              const SizedBox(width: 8),
-              if (billProvider.bills.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(AppRadius.xl),
-                  ),
-                  child: Text(
-                    '${billProvider.bills.length}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
+        // Recent Bills — collapsible
         const SizedBox(height: 8),
-
-        // Bills list with swipe to delete
-        Expanded(
-          child: billProvider.bills.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceVariant,
-                            borderRadius:
-                                BorderRadius.circular(AppRadius.xl),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkSurface : AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+            ),
+            child: Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                initiallyExpanded: false,
+                tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+                childrenPadding: EdgeInsets.zero,
+                shape: const Border(),
+                collapsedShape: const Border(),
+                title: Row(
+                  children: [
+                    Text(
+                      'Recent Bills',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: isDark
+                                ? AppColors.darkTextPrimary
+                                : AppColors.textPrimary,
                           ),
-                          child: const Icon(
-                            Icons.receipt_long_rounded,
-                            size: 40,
-                            color: AppColors.textTertiary,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'No bills yet',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Tap the button below to add your first bill',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppColors.textTertiary,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
                     ),
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 80),
-                  itemCount: billProvider.bills.length,
-                  itemBuilder: (context, index) {
-                    final bill = billProvider.bills[index];
-                    final paidBy = members
-                        .where((m) => m.id == bill.paidByMemberId)
-                        .firstOrNull;
-
-                    return Dismissible(
-                      key: ValueKey(bill.id),
-                      direction: DismissDirection.endToStart,
-                      background: Container(
-                        alignment: Alignment.centerRight,
-                        padding: const EdgeInsets.only(right: 24),
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 4),
+                    const SizedBox(width: 8),
+                    if (billProvider.bills.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: AppColors.negative,
-                          borderRadius:
-                              BorderRadius.circular(AppRadius.lg),
+                          color: isDark
+                              ? AppColors.primary.withAlpha(30)
+                              : AppColors.primarySurface,
+                          borderRadius: BorderRadius.circular(AppRadius.full),
                         ),
-                        child: const Icon(Icons.delete_outline_rounded,
-                            color: Colors.white),
-                      ),
-                      confirmDismiss: (_) async => true,
-                      onDismissed: (_) async {
-                        // Save for undo
-                        final deletedBill = bill;
-                        final deletedItems = bill.billType == 'full'
-                            ? await billProvider.getBillItems(bill.id!)
-                            : <dynamic>[];
-
-                        await billProvider.deleteBill(
-                            bill.id!, bill.householdId);
-
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).clearSnackBars();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Text('Bill deleted'),
-                            duration: const Duration(seconds: 4),
-                            action: SnackBarAction(
-                              label: 'UNDO',
-                              onPressed: () {
-                                billProvider.reinsertBill(
-                                  deletedBill,
-                                  deletedItems.cast(),
-                                );
-                              },
-                            ),
+                        child: Text(
+                          '${billProvider.bills.length}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
                           ),
+                        ),
+                      ),
+                  ],
+                ),
+                children: [
+                  if (billProvider.bills.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? AppColors.darkSurfaceVariant
+                                    : AppColors.surfaceVariant,
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.lg),
+                              ),
+                              child: Icon(
+                                Icons.receipt_long_rounded,
+                                size: 32,
+                                color: isDark
+                                    ? AppColors.darkTextSecondary
+                                    : AppColors.textTertiary,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'No bills yet',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: isDark
+                                    ? AppColors.darkTextPrimary
+                                    : AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    ...billProvider.bills.map((bill) {
+            final paidBy = members
+                .where((m) => m.id == bill.paidByMemberId)
+                .firstOrNull;
+
+            return Dismissible(
+              key: ValueKey(bill.id),
+              direction: DismissDirection.endToStart,
+              background: Container(
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.only(right: 24),
+                margin: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.negative,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+                child: const Icon(Icons.delete_outline_rounded,
+                    color: Colors.white),
+              ),
+              confirmDismiss: (_) async => true,
+              onDismissed: (_) async {
+                final deletedBill = bill;
+                final deletedItems = bill.billType == 'full'
+                    ? await billProvider.getBillItems(bill.id!)
+                    : <dynamic>[];
+
+                await billProvider.deleteBill(
+                    bill.id!, bill.householdId);
+
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).clearSnackBars();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('Bill deleted'),
+                    duration: const Duration(seconds: 4),
+                    action: SnackBarAction(
+                      label: 'UNDO',
+                      onPressed: () {
+                        billProvider.reinsertBill(
+                          deletedBill,
+                          deletedItems.cast(),
                         );
                       },
-                      child: BillListTile(
-                        bill: bill,
-                        paidByName: paidBy?.name ?? 'Unknown',
-                        currencySymbol: currencySymbol,
-                        onTap: () {
-                          Navigator.pushNamed(
-                            context,
-                            '/bill-detail',
-                            arguments: bill.id,
-                          );
-                        },
-                      ),
-                    );
-                  },
-                ),
+                    ),
+                  ),
+                );
+              },
+              child: BillListTile(
+                bill: bill,
+                paidByName: paidBy?.name ?? 'Unknown',
+                currencySymbol: currencySymbol,
+                onTap: () {
+                  Navigator.pushNamed(
+                    context,
+                    '/bill-detail',
+                    arguments: bill.id,
+                  );
+                },
+              ),
+            );
+          }),
+                ],
+              ),
+            ),
+          ),
         ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -630,18 +655,21 @@ class _HomeScreenState extends State<HomeScreen> {
     String otherName,
   ) {
     final currentMemberId = householdProvider.currentMember!.id!;
-    final currSymbol = AppCurrency.getByCode(householdProvider.currency).symbol;
+    final currSymbol =
+        AppCurrency.getByCode(householdProvider.currency).symbol;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     // Other member's balance negated tells us who owes whom.
     // Positive amount from BalanceCard means other owes current member.
     final otherBalance = billProvider.memberBalances[otherMemberId] ?? 0.0;
-    final otherOwes = otherBalance < -0.01; // other has negative balance = they owe
+    final otherOwes =
+        otherBalance < -0.01; // other has negative balance = they owe
     final whoOwes = otherOwes ? otherName : 'You';
     final payerId = otherOwes ? otherMemberId : currentMemberId;
     final receiverId = otherOwes ? currentMemberId : otherMemberId;
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius:
             BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
@@ -658,7 +686,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(
-                  color: AppColors.border,
+                  color: isDark ? AppColors.darkDivider : AppColors.divider,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -667,8 +695,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  color: AppColors.primary.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: const Icon(
                   Icons.handshake_outlined,
@@ -677,20 +705,24 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Settle Up?',
                 style: TextStyle(
                   fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  color: isDark
+                      ? AppColors.darkTextPrimary
+                      : AppColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 '$whoOwes owes ${amount.toStringAsFixed(2)} $currSymbol',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
-                  color: AppColors.textSecondary,
+                  color: isDark
+                      ? AppColors.darkTextSecondary
+                      : AppColors.textSecondary,
                 ),
               ),
               const SizedBox(height: 24),
@@ -712,13 +744,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.primary,
-                        side: const BorderSide(color: AppColors.border),
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 14),
+                        side: BorderSide(
+                            color: isDark
+                                ? AppColors.darkDivider
+                                : AppColors.divider),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius:
-                              BorderRadius.circular(AppRadius.md),
+                              BorderRadius.circular(AppRadius.full),
                         ),
+                        elevation: 0,
                       ),
                       child: const Text(
                         'Partial Amount',
@@ -741,12 +776,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 14),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius:
-                              BorderRadius.circular(AppRadius.md),
+                              BorderRadius.circular(AppRadius.full),
                         ),
+                        elevation: 0,
                       ),
                       child: const Text(
                         'Settle All',
@@ -783,20 +818,23 @@ class _HomeScreenState extends State<HomeScreen> {
     int receiverId,
   ) {
     final controller = TextEditingController();
-    final currSymbol = AppCurrency.getByCode(householdProvider.currency).symbol;
+    final currSymbol =
+        AppCurrency.getByCode(householdProvider.currency).symbol;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
+        backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.lg),
         ),
-        title: const Text(
+        title: Text(
           'Partial Settlement',
           style: TextStyle(
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w800,
+            color:
+                isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
           ),
         ),
         content: Column(
@@ -805,9 +843,11 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Text(
               'Total owed: ${totalOwed.toStringAsFixed(2)} $currSymbol',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
-                color: AppColors.textTertiary,
+                color: isDark
+                    ? AppColors.darkTextSecondary
+                    : AppColors.textTertiary,
               ),
             ),
             const SizedBox(height: 12),
@@ -818,15 +858,23 @@ class _HomeScreenState extends State<HomeScreen> {
                   const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
                 labelText: 'Amount paid',
-                labelStyle:
-                    const TextStyle(color: AppColors.textTertiary),
+                labelStyle: TextStyle(
+                    color: isDark
+                        ? AppColors.darkTextSecondary
+                        : AppColors.textTertiary),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppRadius.md),
-                  borderSide: const BorderSide(color: AppColors.border),
+                  borderSide: BorderSide(
+                      color: isDark
+                          ? AppColors.darkDivider
+                          : AppColors.divider),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppRadius.md),
-                  borderSide: const BorderSide(color: AppColors.border),
+                  borderSide: BorderSide(
+                      color: isDark
+                          ? AppColors.darkDivider
+                          : AppColors.divider),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppRadius.md),
@@ -868,8 +916,9 @@ class _HomeScreenState extends State<HomeScreen> {
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.primary,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.md),
+                borderRadius: BorderRadius.circular(AppRadius.full),
               ),
+              elevation: 0,
             ),
             child: const Text('Settle'),
           ),
