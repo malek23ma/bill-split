@@ -23,7 +23,7 @@ class DatabaseHelper {
     final path = join(dbPath, fileName);
     return await openDatabase(
       path,
-      version: 7,
+      version: 8,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -47,6 +47,7 @@ class DatabaseHelper {
         pin TEXT,
         is_active INTEGER NOT NULL DEFAULT 1,
         is_admin INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT '',
         FOREIGN KEY (household_id) REFERENCES households(id)
       )
     ''');
@@ -212,6 +213,16 @@ class DatabaseHelper {
         WHERE id IN (
           SELECT MIN(id) FROM members GROUP BY household_id
         )
+      ''');
+    }
+    if (oldVersion < 8) {
+      await db.execute("ALTER TABLE members ADD COLUMN created_at TEXT NOT NULL DEFAULT ''");
+      // Backfill existing members with their household's created_at
+      await db.execute('''
+        UPDATE members SET created_at = (
+          SELECT h.created_at FROM households h WHERE h.id = members.household_id
+        )
+        WHERE created_at = ''
       ''');
     }
   }

@@ -100,8 +100,9 @@ class BillProvider extends ChangeNotifier {
               (_memberBalances[receiverId] ?? 0) - bill.totalAmount;
         } else {
           // Legacy settlements (before v5) without receiverMemberId:
-          // fall back to splitting across all other members.
-          final otherMembers = members.where((m) => m.id != payerId).toList();
+          // fall back to splitting across other members who existed at bill time.
+          final otherMembers = members.where((m) =>
+              m.id != payerId && !m.createdAt.isAfter(bill.billDate)).toList();
           if (otherMembers.isNotEmpty) {
             final perPerson = bill.totalAmount / otherMembers.length;
             _memberBalances[payerId] =
@@ -113,12 +114,14 @@ class BillProvider extends ChangeNotifier {
           }
         }
       } else if (bill.billType == 'quick') {
-        // Quick bill: split equally among ALL members.
-        // Payer gets credit for what others owe; each other member is debited their share.
-        final totalMembers = members.length;
+        // Quick bill: split equally among members who existed when the bill was created.
+        // Members added after the bill date are excluded from this bill's split.
+        final eligibleMembers = members.where((m) =>
+            !m.createdAt.isAfter(bill.billDate)).toList();
+        final totalMembers = eligibleMembers.length;
         if (totalMembers > 1) {
           final perPersonShare = bill.totalAmount / totalMembers;
-          final otherMembers = members.where((m) => m.id != payerId).toList();
+          final otherMembers = eligibleMembers.where((m) => m.id != payerId).toList();
           for (final other in otherMembers) {
             _memberBalances[payerId] =
                 (_memberBalances[payerId] ?? 0) + perPersonShare;
