@@ -185,9 +185,11 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                   child: DropdownButtonFormField<int>(
                     initialValue: _paidByMemberId,
                     decoration: InputDecoration(
-                      labelText: 'Paid by',
-                      labelStyle: const TextStyle(
-                        color: AppColors.textTertiary,
+                      hintText: 'Paid by',
+                      hintStyle: TextStyle(
+                        color: isDark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.textTertiary,
                         fontSize: 13,
                       ),
                       filled: true,
@@ -198,13 +200,9 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                         borderRadius: BorderRadius.circular(AppRadius.md),
                         borderSide: BorderSide.none,
                       ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                        borderSide: BorderSide.none,
-                      ),
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
+                          horizontal: 12, vertical: 12),
                     ),
                     items: members
                         .map((m) => DropdownMenuItem(
