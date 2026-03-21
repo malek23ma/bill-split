@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class SettingsProvider extends ChangeNotifier {
+  static const _secureStorage = FlutterSecureStorage();
+  static const _apiKeyStorageKey = 'groq_api_key';
+
   ThemeMode _themeMode = ThemeMode.system;
   String _apiKey = '';
   bool _loaded = false;
@@ -18,7 +22,15 @@ class SettingsProvider extends ChangeNotifier {
       'dark' => ThemeMode.dark,
       _ => ThemeMode.system,
     };
-    _apiKey = prefs.getString('groq_api_key') ?? '';
+
+    // Migrate API key from SharedPreferences to secure storage (one-time)
+    final legacyKey = prefs.getString('groq_api_key');
+    if (legacyKey != null && legacyKey.isNotEmpty) {
+      await _secureStorage.write(key: _apiKeyStorageKey, value: legacyKey);
+      await prefs.remove('groq_api_key');
+    }
+
+    _apiKey = await _secureStorage.read(key: _apiKeyStorageKey) ?? '';
     _loaded = true;
     notifyListeners();
   }
@@ -32,8 +44,7 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<void> setApiKey(String key) async {
     _apiKey = key.trim();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('groq_api_key', _apiKey);
+    await _secureStorage.write(key: _apiKeyStorageKey, value: _apiKey);
     notifyListeners();
   }
 }
