@@ -79,23 +79,17 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
         title: const Text('Bill Details'),
         actions: [
           if (!isSettlement)
-            TextButton.icon(
+            IconButton(
               onPressed: () => _showMakeRecurringSheet(context, bill),
-              icon: const Icon(Icons.repeat_rounded, size: 18),
-              label: const Text('Recurring'),
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.primary,
-              ),
+              icon: const Icon(Icons.repeat_rounded, size: 20),
+              tooltip: 'Make Recurring',
+              color: AppColors.primary,
             ),
-          TextButton(
+          IconButton(
             onPressed: () => _confirmDelete(context, bill),
-            child: Text(
-              'Delete',
-              style: TextStyle(
-                color: AppColors.negative,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            icon: const Icon(Icons.delete_outline_rounded, size: 20),
+            tooltip: 'Delete',
+            color: AppColors.negative,
           ),
         ],
       ),

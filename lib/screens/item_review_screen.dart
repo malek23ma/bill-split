@@ -150,7 +150,7 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                          horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
                       decoration: BoxDecoration(
                         color: isDark
                             ? AppColors.darkSurfaceVariant
@@ -159,26 +159,20 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                       ),
                       child: Row(
                         children: [
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withAlpha(26),
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.md),
-                            ),
-                            child: const Icon(Icons.calendar_today_rounded,
-                                size: 16, color: AppColors.primary),
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          Text(
-                            DateFormat('dd/MM/yyyy').format(_billDate),
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                              color: isDark
-                                  ? AppColors.darkTextPrimary
-                                  : AppColors.textPrimary,
+                          Icon(Icons.calendar_today_rounded,
+                              size: 16, color: AppColors.primary),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              DateFormat('dd/MM/yyyy').format(_billDate),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                                color: isDark
+                                    ? AppColors.darkTextPrimary
+                                    : AppColors.textPrimary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],

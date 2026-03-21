@@ -23,7 +23,7 @@ class DatabaseHelper {
     final path = join(dbPath, fileName);
     return await openDatabase(
       path,
-      version: 8,
+      version: 9,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -224,6 +224,21 @@ class DatabaseHelper {
         )
         WHERE created_at = ''
       ''');
+    }
+    if (oldVersion < 9) {
+      // Fix v8 backfill: members who have never paid or shared any bill
+      // are likely recently-added and should get current timestamp instead
+      // of the household's creation date.
+      final now = DateTime.now().toIso8601String();
+      await db.execute('''
+        UPDATE members SET created_at = ?
+        WHERE id NOT IN (
+          SELECT DISTINCT paid_by_member_id FROM bills
+        )
+        AND id NOT IN (
+          SELECT DISTINCT bim.member_id FROM bill_item_members bim
+        )
+      ''', [now]);
     }
   }
 
