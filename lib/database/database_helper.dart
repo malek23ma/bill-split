@@ -23,7 +23,7 @@ class DatabaseHelper {
     final path = join(dbPath, fileName);
     return await openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -45,6 +45,7 @@ class DatabaseHelper {
         household_id INTEGER NOT NULL,
         name TEXT NOT NULL,
         pin TEXT,
+        is_active INTEGER NOT NULL DEFAULT 1,
         FOREIGN KEY (household_id) REFERENCES households(id)
       )
     ''');
@@ -199,6 +200,9 @@ class DatabaseHelper {
       // Add receiver_member_id for pair-based settlements
       await db.execute("ALTER TABLE bills ADD COLUMN receiver_member_id INTEGER");
     }
+    if (oldVersion < 6) {
+      await db.execute("ALTER TABLE members ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1");
+    }
   }
 
   Future<void> updateMemberPin(int memberId, String? pin) async {
@@ -209,6 +213,16 @@ class DatabaseHelper {
       where: 'id = ?',
       whereArgs: [memberId],
     );
+  }
+
+  Future<void> updateMemberName(int memberId, String name) async {
+    final db = await database;
+    await db.update('members', {'name': name}, where: 'id = ?', whereArgs: [memberId]);
+  }
+
+  Future<void> setMemberActive(int memberId, bool active) async {
+    final db = await database;
+    await db.update('members', {'is_active': active ? 1 : 0}, where: 'id = ?', whereArgs: [memberId]);
   }
 
   // --- Household CRUD ---
@@ -260,6 +274,16 @@ class DatabaseHelper {
   }
 
   Future<List<Member>> getMembersByHousehold(int householdId) async {
+    final db = await database;
+    final maps = await db.query(
+      'members',
+      where: 'household_id = ? AND is_active = 1',
+      whereArgs: [householdId],
+    );
+    return maps.map((map) => Member.fromMap(map)).toList();
+  }
+
+  Future<List<Member>> getAllMembersByHousehold(int householdId) async {
     final db = await database;
     final maps = await db.query(
       'members',

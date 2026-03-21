@@ -3,12 +3,14 @@ class Member {
   final int householdId;
   final String name;
   final String? pin;
+  final bool isActive;
 
   Member({
     this.id,
     required this.householdId,
     required this.name,
     this.pin,
+    this.isActive = true,
   });
 
   Map<String, dynamic> toMap() {
@@ -17,6 +19,7 @@ class Member {
       'household_id': householdId,
       'name': name,
       'pin': pin,
+      'is_active': isActive ? 1 : 0,
     };
   }
 
@@ -26,6 +29,7 @@ class Member {
       householdId: map['household_id'] as int,
       name: map['name'] as String,
       pin: map['pin'] as String?,
+      isActive: (map['is_active'] as int?) != 0,
     );
   }
 
