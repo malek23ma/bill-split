@@ -23,7 +23,7 @@ class DatabaseHelper {
     final path = join(dbPath, fileName);
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -62,10 +62,12 @@ class DatabaseHelper {
         created_at TEXT NOT NULL,
         category TEXT NOT NULL DEFAULT 'other',
         recurring_bill_id INTEGER,
+        receiver_member_id INTEGER,
         FOREIGN KEY (household_id) REFERENCES households(id),
         FOREIGN KEY (entered_by_member_id) REFERENCES members(id),
         FOREIGN KEY (paid_by_member_id) REFERENCES members(id),
-        FOREIGN KEY (recurring_bill_id) REFERENCES recurring_bills(id)
+        FOREIGN KEY (recurring_bill_id) REFERENCES recurring_bills(id),
+        FOREIGN KEY (receiver_member_id) REFERENCES members(id)
       )
     ''');
 
@@ -193,6 +195,10 @@ class DatabaseHelper {
         }
       }
     }
+    if (oldVersion < 5) {
+      // Add receiver_member_id for pair-based settlements
+      await db.execute("ALTER TABLE bills ADD COLUMN receiver_member_id INTEGER");
+    }
   }
 
   Future<void> updateMemberPin(int memberId, String? pin) async {
@@ -212,6 +218,18 @@ class DatabaseHelper {
     return await db.insert('households', household.toMap());
   }
 
+  Future<int> createHouseholdWithMembers(String name, List<String> memberNames) async {
+    final db = await database;
+    late int householdId;
+    await db.transaction((txn) async {
+      householdId = await txn.insert('households', Household(name: name).toMap());
+      for (final memberName in memberNames) {
+        await txn.insert('members', Member(householdId: householdId, name: memberName).toMap());
+      }
+    });
+    return householdId;
+  }
+
   Future<List<Household>> getHouseholds() async {
     final db = await database;
     final maps = await db.query('households', orderBy: 'created_at DESC');
@@ -220,17 +238,18 @@ class DatabaseHelper {
 
   Future<void> deleteHousehold(int id) async {
     final db = await database;
-    // Delete bill_item_members for all bill items in this household's bills
-    await db.delete('bill_item_members',
-        where: 'bill_item_id IN (SELECT bi.id FROM bill_items bi JOIN bills b ON bi.bill_id = b.id WHERE b.household_id = ?)',
-        whereArgs: [id]);
-    await db.delete('bill_items',
-        where: 'bill_id IN (SELECT id FROM bills WHERE household_id = ?)',
-        whereArgs: [id]);
-    await db.delete('bills', where: 'household_id = ?', whereArgs: [id]);
-    await db.delete('recurring_bills', where: 'household_id = ?', whereArgs: [id]);
-    await db.delete('members', where: 'household_id = ?', whereArgs: [id]);
-    await db.delete('households', where: 'id = ?', whereArgs: [id]);
+    await db.transaction((txn) async {
+      await txn.delete('bill_item_members',
+          where: 'bill_item_id IN (SELECT bi.id FROM bill_items bi JOIN bills b ON bi.bill_id = b.id WHERE b.household_id = ?)',
+          whereArgs: [id]);
+      await txn.delete('bill_items',
+          where: 'bill_id IN (SELECT id FROM bills WHERE household_id = ?)',
+          whereArgs: [id]);
+      await txn.delete('bills', where: 'household_id = ?', whereArgs: [id]);
+      await txn.delete('recurring_bills', where: 'household_id = ?', whereArgs: [id]);
+      await txn.delete('members', where: 'household_id = ?', whereArgs: [id]);
+      await txn.delete('households', where: 'id = ?', whereArgs: [id]);
+    });
   }
 
   // --- Member CRUD ---
@@ -277,24 +296,34 @@ class DatabaseHelper {
 
   Future<void> deleteBill(int id) async {
     final db = await database;
-    // Delete bill_item_members for all items in this bill
-    await db.delete('bill_item_members',
-        where: 'bill_item_id IN (SELECT id FROM bill_items WHERE bill_id = ?)',
-        whereArgs: [id]);
-    await db.delete('bill_items', where: 'bill_id = ?', whereArgs: [id]);
-    await db.delete('bills', where: 'id = ?', whereArgs: [id]);
+    await db.transaction((txn) async {
+      await txn.delete('bill_item_members',
+          where: 'bill_item_id IN (SELECT id FROM bill_items WHERE bill_id = ?)',
+          whereArgs: [id]);
+      await txn.delete('bill_items', where: 'bill_id = ?', whereArgs: [id]);
+      await txn.delete('bills', where: 'id = ?', whereArgs: [id]);
+    });
   }
 
   // --- BillItem CRUD ---
 
   Future<void> insertBillItems(List<BillItem> items) async {
     final db = await database;
-    for (final item in items) {
-      final itemId = await db.insert('bill_items', item.toMap());
-      if (item.sharedByMemberIds.isNotEmpty) {
-        await insertBillItemMembers(itemId, item.sharedByMemberIds);
+    await db.transaction((txn) async {
+      for (final item in items) {
+        final itemId = await txn.insert('bill_items', item.toMap());
+        if (item.sharedByMemberIds.isNotEmpty) {
+          final batch = txn.batch();
+          for (final memberId in item.sharedByMemberIds) {
+            batch.insert('bill_item_members', {
+              'bill_item_id': itemId,
+              'member_id': memberId,
+            });
+          }
+          await batch.commit(noResult: true);
+        }
       }
-    }
+    });
   }
 
   Future<List<BillItem>> getBillItems(int billId) async {
@@ -304,13 +333,28 @@ class DatabaseHelper {
       where: 'bill_id = ?',
       whereArgs: [billId],
     );
-    final items = <BillItem>[];
-    for (final map in maps) {
-      final itemId = map['id'] as int;
-      final memberIds = await getBillItemMemberIds(itemId);
-      items.add(BillItem.fromMap(map, memberIds: memberIds));
+    if (maps.isEmpty) return [];
+
+    // Single query to get all member assignments for this bill's items
+    final itemIds = maps.map((m) => m['id'] as int).toList();
+    final placeholders = List.filled(itemIds.length, '?').join(',');
+    final memberMaps = await db.rawQuery(
+      'SELECT bill_item_id, member_id FROM bill_item_members WHERE bill_item_id IN ($placeholders)',
+      itemIds,
+    );
+
+    // Group member IDs by bill_item_id
+    final membersByItem = <int, List<int>>{};
+    for (final row in memberMaps) {
+      final itemId = row['bill_item_id'] as int;
+      final memberId = row['member_id'] as int;
+      (membersByItem[itemId] ??= []).add(memberId);
     }
-    return items;
+
+    return maps.map((map) {
+      final itemId = map['id'] as int;
+      return BillItem.fromMap(map, memberIds: membersByItem[itemId] ?? []);
+    }).toList();
   }
 
   // --- BillItemMembers (junction table) ---

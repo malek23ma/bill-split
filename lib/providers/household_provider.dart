@@ -23,10 +23,7 @@ class HouseholdProvider extends ChangeNotifier {
   }
 
   Future<Household> createHousehold(String name, List<String> memberNames) async {
-    final id = await _db.insertHousehold(Household(name: name));
-    for (final memberName in memberNames) {
-      await _db.insertMember(Member(householdId: id, name: memberName));
-    }
+    final id = await _db.createHouseholdWithMembers(name, memberNames);
     await loadHouseholds();
     return _households.firstWhere((h) => h.id == id);
   }
@@ -46,14 +43,18 @@ class HouseholdProvider extends ChangeNotifier {
   String get currency => _currentHousehold?.currency ?? 'TRY';
 
   String formatAmount(double amount) {
+    if (_currentHousehold == null) return amount.toStringAsFixed(2);
     final curr = AppCurrency.getByCode(currency);
     return '${amount.toStringAsFixed(2)} ${curr.symbol}';
   }
 
   Future<void> addMember(String name) async {
     if (_currentHousehold == null) return;
+    final trimmed = name.trim();
+    if (trimmed.isEmpty || trimmed.length > 50) return;
+    if (_members.any((m) => m.name.toLowerCase() == trimmed.toLowerCase())) return;
     await _db.insertMember(
-      Member(householdId: _currentHousehold!.id!, name: name),
+      Member(householdId: _currentHousehold!.id!, name: trimmed),
     );
     _members = await _db.getMembersByHousehold(_currentHousehold!.id!);
     notifyListeners();

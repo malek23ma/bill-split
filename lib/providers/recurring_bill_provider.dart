@@ -57,11 +57,15 @@ class RecurringBillProvider extends ChangeNotifier {
       case 'weekly':
         nextDue = now.add(const Duration(days: 7));
       case 'yearly':
-        nextDue = DateTime(now.year + 1, now.month, now.day);
+        final maxDay = DateTime(now.year + 2, now.month, 0).day;
+        final clampedDay = now.day > maxDay ? maxDay : now.day;
+        nextDue = DateTime(now.year + 1, now.month, clampedDay);
       default: // monthly
         final nextMonth = now.month == 12 ? 1 : now.month + 1;
         final nextYear = now.month == 12 ? now.year + 1 : now.year;
-        nextDue = DateTime(nextYear, nextMonth, now.day);
+        final maxDay = DateTime(nextYear, nextMonth + 1, 0).day;
+        final clampedDay = now.day > maxDay ? maxDay : now.day;
+        nextDue = DateTime(nextYear, nextMonth, clampedDay);
     }
 
     await _db.insertRecurringBill(RecurringBill(

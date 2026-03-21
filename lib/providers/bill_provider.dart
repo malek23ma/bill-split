@@ -45,13 +45,28 @@ class BillProvider extends ChangeNotifier {
   Map<int, double> _memberBalances = {};
   MonthlySummary? _monthlySummary;
 
+  // Cache key: bill count + sum of IDs to detect changes cheaply
+  int _balanceCacheKey = -1;
+
   List<Bill> get bills => _bills;
   Map<int, double> get memberBalances => _memberBalances;
   MonthlySummary? get monthlySummary => _monthlySummary;
 
+  int _computeCacheKey() {
+    if (_bills.isEmpty) return 0;
+    return Object.hash(
+      _bills.length,
+      _bills.fold<int>(0, (sum, b) => sum + (b.id ?? 0)),
+    );
+  }
+
   Future<void> loadBills(int householdId) async {
     _bills = await _db.getBillsByHousehold(householdId);
-    await _calculateBalances(householdId);
+    final newKey = _computeCacheKey();
+    if (newKey != _balanceCacheKey) {
+      await _calculateBalances(householdId);
+      _balanceCacheKey = newKey;
+    }
     _calculateMonthlySummary();
     notifyListeners();
   }
@@ -64,17 +79,26 @@ class BillProvider extends ChangeNotifier {
       final payerId = bill.paidByMemberId;
 
       if (bill.billType == 'settlement') {
-        // Settlement: payer gets credit, each other member is debited equally.
-        // For 2-member households this is the full amount to one other person.
-        // Will be refined to per-pair settlements in Task 13.
-        final otherMembers = members.where((m) => m.id != payerId).toList();
-        if (otherMembers.isNotEmpty) {
-          final perPerson = bill.totalAmount / otherMembers.length;
+        // Settlement: payer transfers money to a specific receiver.
+        // Only the payer-receiver pair is affected.
+        final receiverId = bill.receiverMemberId;
+        if (receiverId != null) {
           _memberBalances[payerId] =
               (_memberBalances[payerId] ?? 0) + bill.totalAmount;
-          for (final other in otherMembers) {
-            _memberBalances[other.id!] =
-                (_memberBalances[other.id!] ?? 0) - perPerson;
+          _memberBalances[receiverId] =
+              (_memberBalances[receiverId] ?? 0) - bill.totalAmount;
+        } else {
+          // Legacy settlements (before v5) without receiverMemberId:
+          // fall back to splitting across all other members.
+          final otherMembers = members.where((m) => m.id != payerId).toList();
+          if (otherMembers.isNotEmpty) {
+            final perPerson = bill.totalAmount / otherMembers.length;
+            _memberBalances[payerId] =
+                (_memberBalances[payerId] ?? 0) + bill.totalAmount;
+            for (final other in otherMembers) {
+              _memberBalances[other.id!] =
+                  (_memberBalances[other.id!] ?? 0) - perPerson;
+            }
           }
         }
       } else if (bill.billType == 'quick') {
@@ -191,6 +215,7 @@ class BillProvider extends ChangeNotifier {
       totalAmount: amount,
       billDate: DateTime.now(),
       category: 'other',
+      receiverMemberId: receiverMemberId,
     );
     await _db.insertBill(bill);
     await loadBills(householdId);
@@ -207,6 +232,10 @@ class BillProvider extends ChangeNotifier {
     final savedFile =
         await File(tempPath).copy(p.join(photosDir.path, fileName));
     return savedFile.path;
+  }
+
+  Future<Bill?> getBill(int billId) async {
+    return await _db.getBill(billId);
   }
 
   Future<List<BillItem>> getBillItems(int billId) async {
