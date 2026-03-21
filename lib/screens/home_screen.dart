@@ -4,11 +4,12 @@ import '../providers/household_provider.dart';
 import '../providers/bill_provider.dart';
 import '../models/bill.dart';
 import '../models/bill_item.dart';
+import '../models/member.dart';
 import '../providers/recurring_bill_provider.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/bill_list_tile.dart';
 import '../widgets/filter_bottom_sheet.dart';
-import '../widgets/filter_chips_bar.dart';
+import '../widgets/filtered_results_sheet.dart';
 import '../widgets/scale_tap.dart';
 import '../constants.dart';
 import 'insights_screen.dart';
@@ -63,27 +64,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               actions: [
                 IconButton(
-                  icon: Stack(
-                    children: [
-                      Icon(Icons.filter_list_rounded,
-                          color: isDark
-                              ? AppColors.darkTextSecondary
-                              : AppColors.textSecondary),
-                      if (billProvider.activeFilter?.hasActiveFilters ?? false)
-                        Positioned(
-                          right: 0,
-                          top: 0,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: AppColors.primary,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
+                  icon: Icon(Icons.filter_list_rounded,
+                      color: isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary),
                   onPressed: () => _showFilterSheet(context),
                   tooltip: 'Filter',
                 ),
@@ -363,9 +347,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                         subtitle: Text(
-                          (billProvider.activeFilter?.hasActiveFilters ?? false)
-                              ? '${billProvider.filteredBills.length} of ${summary.billCount} bills \u2022 ${billProvider.filteredBills.fold(0.0, (sum, b) => sum + b.totalAmount).toStringAsFixed(2)} $currencySymbol filtered'
-                              : '${summary.billCount} bills \u2022 ${summary.memberSpend.values.fold(0.0, (a, b) => a + b).toStringAsFixed(2)} $currencySymbol total',
+                          '${summary.billCount} bills \u2022 ${summary.memberSpend.values.fold(0.0, (a, b) => a + b).toStringAsFixed(2)} $currencySymbol total',
                           style: TextStyle(
                             fontSize: 12,
                             color: isDark
@@ -514,19 +496,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-        // Filter chips bar
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 200),
-          child: (billProvider.activeFilter?.hasActiveFilters ?? false)
-              ? FilterChipsBar(
-                  key: const ValueKey('chips'),
-                  filter: billProvider.activeFilter!,
-                  members: members,
-                  onFilterChanged: (f) => billProvider.setFilter(f),
-                )
-              : const SizedBox.shrink(key: ValueKey('empty')),
-        ),
-
         // Recent Bills — collapsible
         const SizedBox(height: 8),
         Padding(
@@ -547,9 +516,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 title: Row(
                   children: [
                     Text(
-                      (billProvider.activeFilter?.hasActiveFilters ?? false)
-                          ? 'Filtered Bills'
-                          : 'Recent Bills',
+                      'Recent Bills',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w800,
                             color: isDark
@@ -558,83 +525,29 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                     ),
                     const SizedBox(width: 8),
-                    if (billProvider.filteredBills.isNotEmpty)
+                    if (billProvider.bills.isNotEmpty)
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: (billProvider.activeFilter?.hasActiveFilters ?? false)
-                              ? AppColors.accent.withAlpha(30)
-                              : (isDark
-                                  ? AppColors.primary.withAlpha(30)
-                                  : AppColors.primarySurface),
+                          color: isDark
+                              ? AppColors.primary.withAlpha(30)
+                              : AppColors.primarySurface,
                           borderRadius: BorderRadius.circular(AppRadius.full),
                         ),
                         child: Text(
-                          '${billProvider.filteredBills.length}',
-                          style: TextStyle(
+                          '${billProvider.bills.length}',
+                          style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: (billProvider.activeFilter?.hasActiveFilters ?? false)
-                                ? AppColors.accent
-                                : AppColors.primary,
+                            color: AppColors.primary,
                           ),
                         ),
                       ),
                   ],
                 ),
                 children: [
-                  if (billProvider.filteredBills.isEmpty && billProvider.bills.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Center(
-                        child: Column(
-                          children: [
-                            Container(
-                              width: 64,
-                              height: 64,
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? AppColors.darkSurfaceVariant
-                                    : AppColors.surfaceVariant,
-                                borderRadius:
-                                    BorderRadius.circular(AppRadius.lg),
-                              ),
-                              child: Icon(
-                                Icons.filter_list_off_rounded,
-                                size: 48,
-                                color: isDark
-                                    ? AppColors.darkTextSecondary
-                                    : AppColors.textTertiary,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'No bills match filters',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: isDark
-                                    ? AppColors.darkTextPrimary
-                                    : AppColors.textSecondary,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            TextButton(
-                              onPressed: () => billProvider.clearFilter(),
-                              child: const Text(
-                                'Clear filters',
-                                style: TextStyle(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  else if (billProvider.bills.isEmpty)
+                  if (billProvider.bills.isEmpty)
                     Padding(
                       padding: const EdgeInsets.all(32),
                       child: Center(
@@ -674,7 +587,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     )
                   else
-                    ...billProvider.filteredBills.map((bill) {
+                    ...billProvider.bills.map((bill) {
             final paidBy = members
                 .where((m) => m.id == bill.paidByMemberId)
                 .firstOrNull;
@@ -766,7 +679,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _showFilterSheet(BuildContext context) {
     final billProvider = context.read<BillProvider>();
-    final members = context.read<HouseholdProvider>().members;
+    final householdProvider = context.read<HouseholdProvider>();
+    final members = householdProvider.members;
+    final currencySymbol = AppCurrency.getByCode(householdProvider.currency).symbol;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -774,11 +689,62 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (_) => FilterBottomSheet(
         currentFilter: billProvider.activeFilter,
         members: members,
-        onApply: (filter) {
-          billProvider.setFilter(filter);
+        onApply: (filter) async {
+          if (filter == null || !filter.hasActiveFilters) {
+            billProvider.clearFilter();
+            return;
+          }
+          await billProvider.setFilter(filter);
+          if (!context.mounted) return;
+          // Show filtered results sheet
+          _showFilteredResults(context, billProvider, members, currencySymbol);
         },
       ),
     );
+  }
+
+  void _showFilteredResults(BuildContext context, BillProvider billProvider,
+      List<Member> members, String currencySymbol) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        builder: (_, scrollController) => FilteredResultsSheet(
+          filteredBills: billProvider.filteredBills,
+          filter: billProvider.activeFilter!,
+          members: members,
+          currencySymbol: currencySymbol,
+          onBillTap: (bill) async {
+            final result = await Navigator.pushNamed(context, '/bill-detail', arguments: bill);
+            if (result is Map && result['deleted'] == true && context.mounted) {
+              final deletedBill = result['bill'] as Bill;
+              final deletedItems = result['items'] as List<BillItem>;
+              ScaffoldMessenger.of(context).clearSnackBars();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('Bill deleted'),
+                  duration: const Duration(seconds: 4),
+                  action: SnackBarAction(
+                    label: 'UNDO',
+                    onPressed: () {
+                      billProvider.reinsertBill(deletedBill, deletedItems);
+                    },
+                  ),
+                ),
+              );
+            }
+          },
+          onClearFilters: () => billProvider.clearFilter(),
+        ),
+      ),
+    ).then((_) {
+      // Clear filters when sheet is dismissed
+      billProvider.clearFilter();
+    });
   }
 
   void _confirmSettleUp(
