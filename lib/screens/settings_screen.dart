@@ -603,14 +603,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           InkWell(
                             borderRadius: BorderRadius.circular(AppRadius.md),
-                            onLongPress: () {
-                              final isSelf = currentMember?.id == members[i].id;
-                              if (isAdmin) {
-                                _showMemberOptions(context, members[i], household);
-                              } else if (isSelf) {
-                                _showRenameDialog(context, members[i], household);
-                              }
-                            },
+                            onLongPress: isAdmin
+                                ? () => _showMemberOptions(context, members[i], household)
+                                : null,
                             child: Padding(
                               padding: const EdgeInsets.symmetric(vertical: 10),
                               child: Row(
