@@ -369,74 +369,89 @@ class _HomeScreenState extends State<HomeScreen> {
                                   height: 1,
                                 ),
                                 const SizedBox(height: 12),
-                                ...members.asMap().entries.map((entry) {
-                                  final idx = entry.key;
-                                  final m = entry.value;
-                                  final spent =
-                                      summary.memberSpend[m.id] ?? 0.0;
+                                // Stacked bar
+                                Builder(builder: (context) {
                                   final totalSpend = summary
                                       .memberSpend.values
                                       .fold(0.0, (a, b) => a + b);
-                                  final proportion = totalSpend > 0
-                                      ? (spent / totalSpend)
-                                      : 0.0;
-                                  final barColor =
-                                      AppColors.memberColor(idx);
-
-                                  return Padding(
-                                    padding:
-                                        const EdgeInsets.only(bottom: 10),
-                                    child: Column(
-                                      children: [
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment
-                                                  .spaceBetween,
-                                          children: [
-                                            Text(
-                                              m.name,
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w500,
-                                                color: isDark
-                                                    ? AppColors
-                                                        .darkTextSecondary
-                                                    : AppColors
-                                                        .textSecondary,
-                                              ),
-                                            ),
-                                            Text(
-                                              '${spent.toStringAsFixed(2)} $currencySymbol',
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w600,
-                                                color: isDark
-                                                    ? AppColors
-                                                        .darkTextPrimary
-                                                    : AppColors.textPrimary,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 6),
-                                        ClipRRect(
-                                          borderRadius:
-                                              BorderRadius.circular(
-                                                  AppRadius.xs),
-                                          child: LinearProgressIndicator(
-                                            value: proportion,
-                                            minHeight: 6,
-                                            backgroundColor: isDark
-                                                ? AppColors
-                                                    .darkSurfaceVariant
-                                                : AppColors.surfaceVariant,
-                                            valueColor:
-                                                AlwaysStoppedAnimation<
-                                                    Color>(barColor),
+                                  final spenders = members
+                                      .asMap()
+                                      .entries
+                                      .where((e) =>
+                                          (summary.memberSpend[e.value.id] ?? 0) > 0)
+                                      .toList();
+                                  return Column(
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(AppRadius.full),
+                                        child: SizedBox(
+                                          height: 10,
+                                          child: Row(
+                                            children: [
+                                              for (int i = 0; i < spenders.length; i++)
+                                                Expanded(
+                                                  flex: ((summary.memberSpend[spenders[i].value.id] ?? 0) / totalSpend * 1000).round().clamp(1, 1000),
+                                                  child: Container(
+                                                    decoration: BoxDecoration(
+                                                      color: AppColors.memberColor(spenders[i].key),
+                                                      border: i < spenders.length - 1
+                                                          ? Border(right: BorderSide(
+                                                              color: isDark ? AppColors.darkSurface : AppColors.surface,
+                                                              width: 2,
+                                                            ))
+                                                          : null,
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
                                           ),
                                         ),
-                                      ],
-                                    ),
+                                      ),
+                                      const SizedBox(height: 10),
+                                      for (final entry in spenders)
+                                        Padding(
+                                          padding: const EdgeInsets.only(bottom: 6),
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                width: 10,
+                                                height: 10,
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.memberColor(entry.key),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  entry.value.name,
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w500,
+                                                    color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                                                  ),
+                                                ),
+                                              ),
+                                              Text(
+                                                '${((summary.memberSpend[entry.value.id] ?? 0) / totalSpend * 100).toStringAsFixed(0)}%',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                '${(summary.memberSpend[entry.value.id] ?? 0).toStringAsFixed(2)} $currencySymbol',
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                    ],
                                   );
                                 }),
                               ],
@@ -710,9 +725,9 @@ class _HomeScreenState extends State<HomeScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => DraggableScrollableSheet(
-        initialChildSize: 0.75,
+        initialChildSize: 0.7,
         minChildSize: 0.4,
-        maxChildSize: 0.95,
+        maxChildSize: 0.9,
         builder: (_, scrollController) => FilteredResultsSheet(
           filteredBills: billProvider.filteredBills,
           filter: billProvider.activeFilter!,
