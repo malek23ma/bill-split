@@ -1,0 +1,93 @@
+Bill Split — 21 Improvements (ALL DONE)
+=========================================
+
+=== DONE (Round 1 — Data & Logic) ===
+
+2. [DONE] No transaction wrapping on multi-table writes
+   Files: lib/database/database_helper.dart (insertBillItems, deleteHousehold, deleteBill)
+   Fix: Wrapped in db.transaction()
+
+3. [DONE] Settlement model is incomplete (3+ member households)
+   Files: lib/models/bill.dart, lib/providers/bill_provider.dart, lib/database/database_helper.dart
+   Fix: Added receiverMemberId field + DB migration v5 + pair-based balance logic
+
+6. [DONE] Hardcoded Groq API endpoint and model name
+   Files: lib/services/cloud_receipt_scanner.dart
+   Fix: Extracted to configurable constructor params with defaults
+
+7. [DONE] No error handling in CloudReceiptScanner.scanAndParse
+   Files: lib/services/cloud_receipt_scanner.dart
+   Fix: Added validation for missing/empty fields and type-safe item parsing
+
+8. [DONE] N+1 query in getBillItems
+   Files: lib/database/database_helper.dart (getBillItems)
+   Fix: Replaced N+1 queries with 2-query batch fetch using IN clause
+
+10. [DONE] RecurringBill.getNextDueDate() month overflow
+    Files: lib/models/recurring_bill.dart, lib/providers/recurring_bill_provider.dart
+    Fix: Clamp day to actual days in target month using DateTime(y, m+1, 0).day
+
+
+=== DONE (Round 2 — UI & Structure) ===
+
+11. [DONE] _ScaleTap duplicated 4 times
+    Files: Created lib/widgets/scale_tap.dart, removed duplicates from 4 screens
+    Fix: Extracted to shared public widget, updated all imports
+
+12. [DONE] BillTypeScreen ignores dark mode entirely
+    Files: lib/screens/bill_type_screen.dart
+    Fix: Added isDark checks throughout — scaffold, appbar, cards, text, icons
+
+13. [NOT A BUG] DropdownButtonFormField initialValue
+    Note: Flutter 3.33+ deprecated 'value' in favor of 'initialValue'. Original code correct.
+
+15. [DONE] Total includes excluded items in ItemReviewScreen
+    Files: lib/screens/item_review_screen.dart (_totalAmount getter)
+    Fix: Added .where((item) => item.isIncluded) filter
+
+17. [DONE] createHousehold is not atomic
+    Files: lib/providers/household_provider.dart, lib/database/database_helper.dart
+    Fix: Created createHouseholdWithMembers() with db.transaction()
+
+20. [DONE] Dismissible key uses index instead of stable ID
+    Files: lib/screens/item_review_screen.dart
+    Fix: Added uid field to _EditableItem with auto-incrementing counter
+
+21. [DONE] _SectionHeader ignores dark mode
+    Files: lib/screens/settings_screen.dart
+    Fix: Added isDark check, uses darkTextSecondary in dark mode
+
+
+=== DONE (Round 3 — Security, Performance, Architecture) ===
+
+1. [DONE] PIN stored in plaintext
+   Files: Created lib/services/pin_helper.dart, updated settings_screen.dart, member_select_screen.dart
+   Fix: SHA-256 hash with random salt. Backward-compatible with legacy unhashed PINs.
+
+4. [DONE — already was] Memory leak in ReceiptScanner
+   Files: lib/screens/camera_screen.dart
+   Note: CameraScreen.dispose() already calls _scanner.dispose() at line 37.
+
+5. [DONE] No Equatable or == override on models
+   Files: lib/models/bill.dart, member.dart, household.dart, bill_item.dart, recurring_bill.dart
+   Fix: Added == and hashCode overrides based on id field
+
+9. [DONE] _calculateBalances is O(bills * items * members)
+   Files: lib/providers/bill_provider.dart
+   Fix: Added cache key (bill count + ID sum). Skips recalculation when bills unchanged.
+
+14. [DONE] API key stored in plaintext SharedPreferences
+    Files: lib/providers/settings_provider.dart
+    Fix: Migrated to flutter_secure_storage with one-time auto-migration from SharedPreferences.
+
+16. [DONE] No addMember input validation
+    Files: lib/providers/household_provider.dart
+    Fix: Rejects empty, >50 char, and duplicate names (case-insensitive).
+
+18. [DONE] Currency fallback edge case
+    Files: lib/providers/household_provider.dart
+    Fix: formatAmount returns plain number when household is null.
+
+19. [DONE] BillDetailScreen bypasses provider pattern
+    Files: lib/screens/bill_detail_screen.dart, lib/providers/bill_provider.dart
+    Fix: Added getBill() to BillProvider, removed direct DatabaseHelper import.
