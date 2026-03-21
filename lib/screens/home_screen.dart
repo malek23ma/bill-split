@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
+import '../database/database_helper.dart';
 import '../providers/household_provider.dart';
 import '../providers/bill_provider.dart';
 import '../providers/recurring_bill_provider.dart';
@@ -60,6 +62,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               actions: [
+                IconButton(
+                  icon: Icon(Icons.file_download_outlined,
+                      color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary),
+                  onPressed: () => _exportBills(context),
+                  tooltip: 'Export',
+                ),
                 IconButton(
                   icon: Stack(
                     children: [
@@ -729,6 +737,16 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _exportBills(BuildContext context) async {
+    final billProvider = context.read<BillProvider>();
+    final allMembers = await DatabaseHelper.instance.getAllMembersByHousehold(
+      context.read<HouseholdProvider>().currentHousehold!.id!,
+    );
+    final path = await billProvider.exportFilteredBillsCsv(allMembers);
+    if (!context.mounted) return;
+    await Share.shareXFiles([XFile(path)], subject: 'Bill Split Export');
   }
 
   void _showFilterSheet(BuildContext context) {

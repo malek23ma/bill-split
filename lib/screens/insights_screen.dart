@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
+import '../database/database_helper.dart';
 import '../providers/bill_provider.dart';
 import '../providers/household_provider.dart';
 import '../constants.dart';
@@ -89,10 +91,14 @@ class _InsightsScreenState extends State<InsightsScreen> {
           IconButton(
             icon: Icon(Icons.file_download_outlined,
                 color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Export coming soon')),
+            onPressed: () async {
+              final billProvider = context.read<BillProvider>();
+              final allMembers = await DatabaseHelper.instance.getAllMembersByHousehold(
+                context.read<HouseholdProvider>().currentHousehold!.id!,
               );
+              final path = await billProvider.exportFilteredBillsCsv(allMembers);
+              if (!context.mounted) return;
+              await Share.shareXFiles([XFile(path)], subject: 'Bill Split Export');
             },
             tooltip: 'Export',
           ),

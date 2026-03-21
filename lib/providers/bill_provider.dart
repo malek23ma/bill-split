@@ -6,6 +6,7 @@ import '../database/database_helper.dart';
 import '../models/bill.dart';
 import '../models/bill_filter.dart';
 import '../models/bill_item.dart';
+import '../models/member.dart';
 
 class MonthlySummary {
   final int billCount;
@@ -362,6 +363,43 @@ class BillProvider extends ChangeNotifier {
       categorySpend: categorySpend,
       memberSpend: memberSpend,
     );
+  }
+
+  Future<String> exportFilteredBillsCsv(List<Member> allMembers) async {
+    final bills = filteredBills;
+    final buf = StringBuffer();
+    buf.writeln('Date,Bill Type,Category,Paid By,Total,Items,Shared With');
+
+    for (final bill in bills) {
+      final payer = allMembers.where((m) => m.id == bill.paidByMemberId).firstOrNull;
+      final payerName = payer?.name ?? 'Unknown';
+      final date = '${bill.billDate.year}-${bill.billDate.month.toString().padLeft(2, '0')}-${bill.billDate.day.toString().padLeft(2, '0')}';
+
+      String items = '';
+      String sharedWith = '';
+      if (bill.billType == 'full') {
+        final billItems = await _db.getBillItems(bill.id!);
+        items = billItems.map((i) => i.name).join(';');
+        final memberIds = <int>{};
+        for (final item in billItems) {
+          memberIds.addAll(item.sharedByMemberIds);
+        }
+        sharedWith = memberIds
+            .map((id) => allMembers.where((m) => m.id == id).firstOrNull?.name ?? 'Unknown')
+            .join(';');
+      } else {
+        sharedWith = allMembers.map((m) => m.name).join(';');
+      }
+
+      buf.writeln('"$date","${bill.billType}","${bill.category}","$payerName",${bill.totalAmount},"$items","$sharedWith"');
+    }
+
+    final dir = await getTemporaryDirectory();
+    final now = DateTime.now();
+    final fileName = 'billsplit_export_${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}.csv';
+    final file = File('${dir.path}/$fileName');
+    await file.writeAsString(buf.toString());
+    return file.path;
   }
 
   /// Returns the date of the oldest bill, or null if no bills exist.
