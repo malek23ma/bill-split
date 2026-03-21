@@ -4,6 +4,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import '../database/database_helper.dart';
 import '../models/bill.dart';
+import '../models/bill_filter.dart';
 import '../models/bill_item.dart';
 
 class MonthlySummary {
@@ -48,9 +49,18 @@ class BillProvider extends ChangeNotifier {
   // Cache key: bill count + sum of IDs to detect changes cheaply
   int _balanceCacheKey = -1;
 
+  BillFilter? _activeFilter;
+  BillFilter? get activeFilter => _activeFilter;
+  Map<int, List<int>> _billSharedMemberIds = {};
+
   List<Bill> get bills => _bills;
   Map<int, double> get memberBalances => _memberBalances;
   MonthlySummary? get monthlySummary => _monthlySummary;
+
+  List<Bill> get filteredBills {
+    if (_activeFilter == null || !_activeFilter!.hasActiveFilters) return _bills;
+    return _bills.where((bill) => _matchesFilter(bill)).toList();
+  }
 
   int _computeCacheKey() {
     if (_bills.isEmpty) return 0;
@@ -270,6 +280,54 @@ class BillProvider extends ChangeNotifier {
       await _db.insertBillItems(itemsWithBillId);
     }
     await loadBills(bill.householdId);
+  }
+
+  Future<void> setFilter(BillFilter? filter) async {
+    _activeFilter = filter;
+    if (filter?.memberId != null && !(filter?.filterByPaidBy ?? true)) {
+      await _loadSharedMemberIds();
+    }
+    notifyListeners();
+  }
+
+  void clearFilter() {
+    _activeFilter = null;
+    notifyListeners();
+  }
+
+  bool _matchesFilter(Bill bill) {
+    final f = _activeFilter!;
+    if (f.category != null && bill.category != f.category) return false;
+    if (f.dateFrom != null && bill.billDate.isBefore(f.dateFrom!)) return false;
+    if (f.dateTo != null && bill.billDate.isAfter(
+        DateTime(f.dateTo!.year, f.dateTo!.month, f.dateTo!.day, 23, 59, 59))) {
+      return false;
+    }
+    if (f.memberId != null) {
+      if (f.filterByPaidBy) {
+        if (bill.paidByMemberId != f.memberId) return false;
+      } else {
+        final sharedIds = _billSharedMemberIds[bill.id!] ?? [];
+        if (!sharedIds.contains(f.memberId)) return false;
+      }
+    }
+    return true;
+  }
+
+  Future<void> _loadSharedMemberIds() async {
+    _billSharedMemberIds = {};
+    for (final bill in _bills) {
+      if (bill.billType == 'full') {
+        final items = await _db.getBillItems(bill.id!);
+        final memberIds = <int>{};
+        for (final item in items) {
+          memberIds.addAll(item.sharedByMemberIds);
+        }
+        _billSharedMemberIds[bill.id!] = memberIds.toList();
+      } else {
+        _billSharedMemberIds[bill.id!] = [];
+      }
+    }
   }
 
   MonthlyInsights getInsightsForMonth(int year, int month) {
