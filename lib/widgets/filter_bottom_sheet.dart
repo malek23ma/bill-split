@@ -162,47 +162,41 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
             // ── Category section ──
             _SectionLabel(label: 'Category', color: textColor),
             const SizedBox(height: AppSpacing.sm),
-            Wrap(
-              spacing: AppSpacing.sm,
-              runSpacing: AppSpacing.sm,
-              children: BillCategories.list.map((cat) {
-                final selected = _category == cat.id;
-                return FilterChip(
-                  selected: selected,
-                  label: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(cat.icon, size: 16,
-                          color: selected ? Colors.white : cat.color),
-                      const SizedBox(width: 6),
-                      Text(cat.label),
-                    ],
-                  ),
-                  selectedColor: AppColors.primary,
-                  checkmarkColor: Colors.white,
-                  labelStyle: TextStyle(
-                    color: selected ? Colors.white : textColor,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 13,
-                  ),
-                  backgroundColor:
-                      isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceVariant,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.full),
-                    side: BorderSide(
-                      color: selected
-                          ? AppColors.primary
-                          : (isDark ? AppColors.darkDivider : AppColors.divider),
-                    ),
-                  ),
-                  showCheckmark: false,
-                  onSelected: (_) {
-                    setState(() {
-                      _category = selected ? null : cat.id;
-                    });
-                  },
-                );
-              }).toList(),
+            DropdownButtonFormField<String?>(
+              initialValue: _category,
+              isExpanded: true,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor:
+                    isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceVariant,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg, vertical: AppSpacing.md,
+                ),
+              ),
+              dropdownColor: isDark ? AppColors.darkSurface : AppColors.surface,
+              style: TextStyle(color: textColor, fontSize: 14),
+              items: [
+                DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text('All categories',
+                      style: TextStyle(color: secondaryText)),
+                ),
+                ...BillCategories.list.map((cat) => DropdownMenuItem<String?>(
+                      value: cat.id,
+                      child: Row(
+                        children: [
+                          Icon(cat.icon, size: 18, color: cat.color),
+                          const SizedBox(width: 10),
+                          Text(cat.label),
+                        ],
+                      ),
+                    )),
+              ],
+              onChanged: (val) => setState(() => _category = val),
             ),
 
             const SizedBox(height: AppSpacing.xxl),

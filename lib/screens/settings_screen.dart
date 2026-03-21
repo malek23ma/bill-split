@@ -395,48 +395,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   size: 18, color: AppColors.primary),
                             ),
                             const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'Currency',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
-                                ),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceVariant,
-                                borderRadius: BorderRadius.circular(AppRadius.md),
-                              ),
-                              child: DropdownButton<String>(
-                                value: currentCurrency.code,
-                                underline: const SizedBox.shrink(),
-                                isDense: true,
-                                borderRadius: BorderRadius.circular(AppRadius.md),
-                                dropdownColor: isDark ? AppColors.darkSurface : AppColors.surface,
-                                items: AppCurrency.list.map((c) {
-                                  return DropdownMenuItem<String>(
-                                    value: c.code,
-                                    child: Text(
-                                      '${c.symbol}  ${c.name} (${c.code})',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                                onChanged: (code) {
-                                  if (code != null) {
-                                    context.read<HouseholdProvider>().updateCurrency(code);
-                                  }
-                                },
+                            Text(
+                              'Currency',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                               ),
                             ),
                           ],
+                        ),
+                        const SizedBox(height: 10),
+                        DropdownButtonFormField<String>(
+                          initialValue: currentCurrency.code,
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceVariant,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          ),
+                          dropdownColor: isDark ? AppColors.darkSurface : AppColors.surface,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                          ),
+                          items: AppCurrency.list.map((c) {
+                            return DropdownMenuItem<String>(
+                              value: c.code,
+                              child: Text('${c.symbol}  ${c.name} (${c.code})'),
+                            );
+                          }).toList(),
+                          onChanged: (code) {
+                            if (code != null) {
+                              context.read<HouseholdProvider>().updateCurrency(code);
+                            }
+                          },
                         ),
                         const SizedBox(height: 20),
                         // Dark mode toggle

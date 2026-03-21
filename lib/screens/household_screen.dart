@@ -229,6 +229,20 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                               ],
                             ),
                           ),
+                          IconButton(
+                            icon: Icon(
+                              Icons.delete_outline_rounded,
+                              color: isDark
+                                  ? AppColors.darkTextSecondary
+                                  : AppColors.textTertiary,
+                              size: 20,
+                            ),
+                            onPressed: () => _showDeleteDialog(context, household),
+                            tooltip: 'Delete household',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                          ),
+                          const SizedBox(width: 4),
                           Icon(
                             Icons.chevron_right_rounded,
                             color: isDark
