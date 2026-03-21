@@ -5,6 +5,8 @@ import '../providers/bill_provider.dart';
 import '../providers/recurring_bill_provider.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/bill_list_tile.dart';
+import '../widgets/filter_bottom_sheet.dart';
+import '../widgets/filter_chips_bar.dart';
 import '../widgets/scale_tap.dart';
 import '../constants.dart';
 import 'insights_screen.dart';
@@ -58,6 +60,31 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               actions: [
+                IconButton(
+                  icon: Stack(
+                    children: [
+                      Icon(Icons.filter_list_rounded,
+                          color: isDark
+                              ? AppColors.darkTextSecondary
+                              : AppColors.textSecondary),
+                      if (billProvider.activeFilter?.hasActiveFilters ?? false)
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  onPressed: () => _showFilterSheet(context),
+                  tooltip: 'Filter',
+                ),
                 IconButton(
                   icon: Icon(Icons.settings_outlined,
                       color: isDark
@@ -483,6 +510,14 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
+        // Filter chips bar
+        if (billProvider.activeFilter?.hasActiveFilters ?? false)
+          FilterChipsBar(
+            filter: billProvider.activeFilter!,
+            members: members,
+            onFilterChanged: (f) => billProvider.setFilter(f),
+          ),
+
         // Recent Bills — collapsible
         const SizedBox(height: 8),
         Padding(
@@ -534,7 +569,57 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
                 children: [
-                  if (billProvider.bills.isEmpty)
+                  if (billProvider.filteredBills.isEmpty && billProvider.bills.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? AppColors.darkSurfaceVariant
+                                    : AppColors.surfaceVariant,
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.lg),
+                              ),
+                              child: Icon(
+                                Icons.filter_list_off_rounded,
+                                size: 32,
+                                color: isDark
+                                    ? AppColors.darkTextSecondary
+                                    : AppColors.textTertiary,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'No bills match filters',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: isDark
+                                    ? AppColors.darkTextPrimary
+                                    : AppColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextButton(
+                              onPressed: () => billProvider.clearFilter(),
+                              child: const Text(
+                                'Clear filters',
+                                style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else if (billProvider.bills.isEmpty)
                     Padding(
                       padding: const EdgeInsets.all(32),
                       child: Center(
@@ -574,7 +659,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     )
                   else
-                    ...billProvider.bills.map((bill) {
+                    ...billProvider.filteredBills.map((bill) {
             final paidBy = members
                 .where((m) => m.id == bill.paidByMemberId)
                 .firstOrNull;
@@ -642,6 +727,23 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         ],
+      ),
+    );
+  }
+
+  void _showFilterSheet(BuildContext context) {
+    final billProvider = context.read<BillProvider>();
+    final members = context.read<HouseholdProvider>().members;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => FilterBottomSheet(
+        currentFilter: billProvider.activeFilter,
+        members: members,
+        onApply: (filter) {
+          billProvider.setFilter(filter);
+        },
       ),
     );
   }
