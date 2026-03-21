@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/household_provider.dart';
+import '../models/member.dart';
 import '../database/database_helper.dart';
 import '../services/pin_helper.dart';
 import '../constants.dart';
@@ -126,6 +127,218 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const SnackBar(content: Text('PIN removed'), duration: Duration(seconds: 1)),
       );
     }
+  }
+
+  void _showMemberOptions(BuildContext context, Member member, HouseholdProvider provider) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.darkDivider : AppColors.divider,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              ListTile(
+                leading: Icon(
+                  Icons.edit_rounded,
+                  color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                ),
+                title: Text(
+                  'Rename',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showRenameDialog(context, member, provider);
+                },
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.person_remove_rounded,
+                  color: AppColors.negative,
+                ),
+                title: const Text(
+                  'Remove from household',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.negative,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showRemoveConfirmation(context, member, provider);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showRenameDialog(BuildContext context, Member member, HouseholdProvider provider) {
+    final controller = TextEditingController(text: member.name);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
+        title: Text(
+          'Rename Member',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+          ),
+        ),
+        content: TextFormField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 50,
+          decoration: InputDecoration(
+            labelText: 'Name',
+            filled: true,
+            fillColor: isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceVariant,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
+            ),
+          ),
+          onFieldSubmitted: (_) async {
+            await provider.renameMember(member.id!, controller.text);
+            if (ctx.mounted) Navigator.pop(ctx);
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: TextButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+            ),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          FilledButton(
+            onPressed: () async {
+              await provider.renameMember(member.id!, controller.text);
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+            ),
+            child: const Text(
+              'Save',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRemoveConfirmation(BuildContext context, Member member, HouseholdProvider provider) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
+        title: Text(
+          'Remove ${member.name}?',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+          ),
+        ),
+        content: Text(
+          'They will be hidden from new bills. Existing bills and balances are preserved.',
+          style: TextStyle(
+            color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+            fontSize: 14,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: TextButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+            ),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final success = await provider.softDeleteMember(member.id!);
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (!success && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Cannot remove the last member')),
+                );
+              }
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.negative,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+            ),
+            child: const Text(
+              'Remove',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -587,6 +800,104 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ],
                         ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 24),
+
+            // Members section
+            _SectionHeader('Members'),
+            const SizedBox(height: 12),
+            Builder(
+              builder: (context) {
+                final household = context.watch<HouseholdProvider>();
+                final members = household.members;
+                return Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkSurface : AppColors.surface,
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (int i = 0; i < members.length; i++) ...[
+                          if (i > 0)
+                            Divider(
+                              height: 1,
+                              color: isDark ? AppColors.darkDivider : AppColors.divider,
+                            ),
+                          InkWell(
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            onLongPress: () => _showMemberOptions(context, members[i], household),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 36,
+                                    height: 36,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.memberColor(i).withAlpha(25),
+                                      borderRadius: BorderRadius.circular(AppRadius.md),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        members[i].name.isNotEmpty
+                                            ? members[i].name[0].toUpperCase()
+                                            : '?',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.memberColor(i),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      members[i].name,
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                        color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                  if (household.currentMember?.id == members[i].id)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                                      ),
+                                      child: const Text(
+                                        'You',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Hold to edit',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
