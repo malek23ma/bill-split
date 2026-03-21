@@ -40,6 +40,7 @@ class _CameraScreenState extends State<CameraScreen>
 
   Future<void> _captureAndProcess(ImageSource source) async {
     final billType = ModalRoute.of(context)!.settings.arguments as String;
+    final apiKey = context.read<SettingsProvider>().apiKey;
 
     final image = await _picker.pickImage(
       source: source,
@@ -54,7 +55,6 @@ class _CameraScreenState extends State<CameraScreen>
 
     try {
       ParsedReceipt parsed;
-      final apiKey = context.read<SettingsProvider>().apiKey;
 
       if (apiKey.isNotEmpty) {
         final cloudScanner = CloudReceiptScanner(apiKey: apiKey);

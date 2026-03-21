@@ -98,7 +98,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
               );
               final path = await billProvider.exportFilteredBillsCsv(allMembers);
               if (!context.mounted) return;
-              await Share.shareXFiles([XFile(path)], subject: 'Bill Split Export');
+              await SharePlus.instance.share(ShareParams(files: [XFile(path)], subject: 'Bill Split Export'));
             },
             tooltip: 'Export',
           ),

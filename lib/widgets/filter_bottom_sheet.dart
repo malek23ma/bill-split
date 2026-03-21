@@ -211,7 +211,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
             _SectionLabel(label: 'Member', color: textColor),
             const SizedBox(height: AppSpacing.sm),
             DropdownButtonFormField<int?>(
-              value: _memberId,
+              initialValue: _memberId,
               isExpanded: true,
               decoration: InputDecoration(
                 filled: true,

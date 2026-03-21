@@ -93,19 +93,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   confirmController.clear();
                   return;
                 }
+                final household = context.read<HouseholdProvider>();
+                final messenger = ScaffoldMessenger.of(context);
                 await DatabaseHelper.instance.updateMemberPin(memberId, PinHelper.hashPin(pin));
                 // Reload members to reflect the change
-                final household = context.read<HouseholdProvider>();
                 await household.setCurrentHousehold(household.currentHousehold!);
                 household.setCurrentMember(
                   household.members.firstWhere((m) => m.id == memberId),
                 );
                 if (ctx.mounted) Navigator.pop(ctx);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('PIN set'), duration: Duration(seconds: 1)),
-                  );
-                }
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('PIN set'), duration: Duration(seconds: 1)),
+                );
               },
               child: const Text('Save'),
             ),
@@ -116,17 +115,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _removePin(BuildContext context, int memberId) async {
-    await DatabaseHelper.instance.updateMemberPin(memberId, null);
     final household = context.read<HouseholdProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+    await DatabaseHelper.instance.updateMemberPin(memberId, null);
     await household.setCurrentHousehold(household.currentHousehold!);
     household.setCurrentMember(
       household.members.firstWhere((m) => m.id == memberId),
     );
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('PIN removed'), duration: Duration(seconds: 1)),
-      );
-    }
+    messenger.showSnackBar(
+      const SnackBar(content: Text('PIN removed'), duration: Duration(seconds: 1)),
+    );
   }
 
   void _showMemberOptions(BuildContext context, Member member, HouseholdProvider provider) {

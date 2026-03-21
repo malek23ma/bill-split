@@ -521,12 +521,17 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
 
         // Filter chips bar
-        if (billProvider.activeFilter?.hasActiveFilters ?? false)
-          FilterChipsBar(
-            filter: billProvider.activeFilter!,
-            members: members,
-            onFilterChanged: (f) => billProvider.setFilter(f),
-          ),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          child: (billProvider.activeFilter?.hasActiveFilters ?? false)
+              ? FilterChipsBar(
+                  key: const ValueKey('chips'),
+                  filter: billProvider.activeFilter!,
+                  members: members,
+                  onFilterChanged: (f) => billProvider.setFilter(f),
+                )
+              : const SizedBox.shrink(key: ValueKey('empty')),
+        ),
 
         // Recent Bills — collapsible
         const SizedBox(height: 8),
@@ -597,7 +602,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               child: Icon(
                                 Icons.filter_list_off_rounded,
-                                size: 32,
+                                size: 48,
                                 color: isDark
                                     ? AppColors.darkTextSecondary
                                     : AppColors.textTertiary,
@@ -691,6 +696,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               confirmDismiss: (_) async => true,
               onDismissed: (_) async {
+                final messenger = ScaffoldMessenger.of(context);
                 final deletedBill = bill;
                 final deletedItems = bill.billType == 'full'
                     ? await billProvider.getBillItems(bill.id!)
@@ -699,9 +705,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 await billProvider.deleteBill(
                     bill.id!, bill.householdId);
 
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).clearSnackBars();
-                ScaffoldMessenger.of(context).showSnackBar(
+                messenger.clearSnackBars();
+                messenger.showSnackBar(
                   SnackBar(
                     content: const Text('Bill deleted'),
                     duration: const Duration(seconds: 4),
@@ -722,23 +727,24 @@ class _HomeScreenState extends State<HomeScreen> {
                 paidByName: paidBy?.name ?? 'Unknown',
                 currencySymbol: currencySymbol,
                 onTap: () async {
+                  final messenger = ScaffoldMessenger.of(context);
                   final result = await Navigator.pushNamed(
                     context,
                     '/bill-detail',
                     arguments: bill.id,
                   );
-                  if (result is Map && result['deleted'] == true && context.mounted) {
+                  if (result is Map && result['deleted'] == true) {
                     final deletedBill = result['bill'] as Bill;
                     final deletedItems = result['items'] as List<BillItem>;
-                    ScaffoldMessenger.of(context).clearSnackBars();
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    messenger.clearSnackBars();
+                    messenger.showSnackBar(
                       SnackBar(
                         content: const Text('Bill deleted'),
                         duration: const Duration(seconds: 4),
                         action: SnackBarAction(
                           label: 'UNDO',
                           onPressed: () {
-                            context.read<BillProvider>().reinsertBill(deletedBill, deletedItems);
+                            billProvider.reinsertBill(deletedBill, deletedItems);
                           },
                         ),
                       ),
@@ -765,7 +771,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     final path = await billProvider.exportFilteredBillsCsv(allMembers);
     if (!context.mounted) return;
-    await Share.shareXFiles([XFile(path)], subject: 'Bill Split Export');
+    await SharePlus.instance.share(ShareParams(files: [XFile(path)], subject: 'Bill Split Export'));
   }
 
   void _showFilterSheet(BuildContext context) {

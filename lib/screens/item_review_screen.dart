@@ -237,7 +237,7 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               itemCount: BillCategories.list.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              separatorBuilder: (_, _) => const SizedBox(width: 6),
               itemBuilder: (context, index) {
                 final cat = BillCategories.list[index];
                 final isSelected = _category == cat.id;
