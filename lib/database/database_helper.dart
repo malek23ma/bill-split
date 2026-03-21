@@ -462,6 +462,21 @@ class DatabaseHelper {
     );
   }
 
+  Future<void> reactivateRecurringBill(int id) async {
+    final db = await database;
+    await db.update('recurring_bills', {'active': 1}, where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> updateRecurringBill(RecurringBill bill) async {
+    final db = await database;
+    await db.update('recurring_bills', bill.toMap(), where: 'id = ?', whereArgs: [bill.id]);
+  }
+
+  Future<void> deleteRecurringBillPermanently(int id) async {
+    final db = await database;
+    await db.delete('recurring_bills', where: 'id = ?', whereArgs: [id]);
+  }
+
   // --- Household currency ---
 
   Future<void> updateHouseholdCurrency(int id, String currency) async {

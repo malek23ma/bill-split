@@ -9,6 +9,9 @@ class RecurringBillProvider extends ChangeNotifier {
   List<RecurringBill> _dueBills = [];
   List<RecurringBill> get dueBills => _dueBills;
 
+  List<RecurringBill> _allRecurringBills = [];
+  List<RecurringBill> get allRecurringBills => _allRecurringBills;
+
   Future<void> loadDueBills(int householdId) async {
     _dueBills = await _db.getDueRecurringBills(householdId);
     notifyListeners();
@@ -82,6 +85,33 @@ class RecurringBillProvider extends ChangeNotifier {
 
   Future<void> deleteRecurring(int id, int householdId) async {
     await _db.deactivateRecurringBill(id);
+    await loadDueBills(householdId);
+  }
+
+  Future<void> loadAllRecurringBills(int householdId) async {
+    _allRecurringBills = await _db.getRecurringBillsByHousehold(householdId);
+    notifyListeners();
+  }
+
+  Future<void> toggleActive(int id, bool active, int householdId) async {
+    if (active) {
+      await _db.reactivateRecurringBill(id);
+    } else {
+      await _db.deactivateRecurringBill(id);
+    }
+    await loadAllRecurringBills(householdId);
+    await loadDueBills(householdId);
+  }
+
+  Future<void> updateRecurring(RecurringBill bill, int householdId) async {
+    await _db.updateRecurringBill(bill);
+    await loadAllRecurringBills(householdId);
+    await loadDueBills(householdId);
+  }
+
+  Future<void> deleteRecurringPermanently(int id, int householdId) async {
+    await _db.deleteRecurringBillPermanently(id);
+    await loadAllRecurringBills(householdId);
     await loadDueBills(householdId);
   }
 }
