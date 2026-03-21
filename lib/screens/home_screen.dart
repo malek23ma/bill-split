@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
-import '../database/database_helper.dart';
 import '../providers/household_provider.dart';
 import '../providers/bill_provider.dart';
 import '../models/bill.dart';
@@ -64,12 +62,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               actions: [
-                IconButton(
-                  icon: Icon(Icons.file_download_outlined,
-                      color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary),
-                  onPressed: () => _exportBills(context),
-                  tooltip: 'Export',
-                ),
                 IconButton(
                   icon: Stack(
                     children: [
@@ -371,7 +363,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                         subtitle: Text(
-                          '${summary.billCount} bills \u2022 ${summary.memberSpend.values.fold(0.0, (a, b) => a + b).toStringAsFixed(2)} $currencySymbol total',
+                          (billProvider.activeFilter?.hasActiveFilters ?? false)
+                              ? '${billProvider.filteredBills.length} of ${summary.billCount} bills \u2022 ${billProvider.filteredBills.fold(0.0, (sum, b) => sum + b.totalAmount).toStringAsFixed(2)} $currencySymbol filtered'
+                              : '${summary.billCount} bills \u2022 ${summary.memberSpend.values.fold(0.0, (a, b) => a + b).toStringAsFixed(2)} $currencySymbol total',
                           style: TextStyle(
                             fontSize: 12,
                             color: isDark
@@ -553,7 +547,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 title: Row(
                   children: [
                     Text(
-                      'Recent Bills',
+                      (billProvider.activeFilter?.hasActiveFilters ?? false)
+                          ? 'Filtered Bills'
+                          : 'Recent Bills',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w800,
                             color: isDark
@@ -562,22 +558,26 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                     ),
                     const SizedBox(width: 8),
-                    if (billProvider.bills.isNotEmpty)
+                    if (billProvider.filteredBills.isNotEmpty)
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: isDark
-                              ? AppColors.primary.withAlpha(30)
-                              : AppColors.primarySurface,
+                          color: (billProvider.activeFilter?.hasActiveFilters ?? false)
+                              ? AppColors.accent.withAlpha(30)
+                              : (isDark
+                                  ? AppColors.primary.withAlpha(30)
+                                  : AppColors.primarySurface),
                           borderRadius: BorderRadius.circular(AppRadius.full),
                         ),
                         child: Text(
-                          '${billProvider.bills.length}',
-                          style: const TextStyle(
+                          '${billProvider.filteredBills.length}',
+                          style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
+                            color: (billProvider.activeFilter?.hasActiveFilters ?? false)
+                                ? AppColors.accent
+                                : AppColors.primary,
                           ),
                         ),
                       ),
@@ -762,16 +762,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
-  }
-
-  Future<void> _exportBills(BuildContext context) async {
-    final billProvider = context.read<BillProvider>();
-    final allMembers = await DatabaseHelper.instance.getAllMembersByHousehold(
-      context.read<HouseholdProvider>().currentHousehold!.id!,
-    );
-    final path = await billProvider.exportFilteredBillsCsv(allMembers);
-    if (!context.mounted) return;
-    await SharePlus.instance.share(ShareParams(files: [XFile(path)], subject: 'Bill Split Export'));
   }
 
   void _showFilterSheet(BuildContext context) {

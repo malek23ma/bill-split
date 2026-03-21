@@ -372,87 +372,88 @@ class _InsightsScreenState extends State<InsightsScreen> {
     final sorted = insights.memberSpend.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
-    final maxAmount =
-        sorted.isNotEmpty ? sorted.first.value : 1.0;
+    final totalSpent = insights.totalSpent > 0 ? insights.totalSpent : 1.0;
 
     return Container(
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
       ),
+      padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          for (int i = 0; i < sorted.length; i++) ...[
-            if (i > 0)
-              Divider(
-                color: isDark ? AppColors.darkDivider : AppColors.divider,
-                height: 1,
-                indent: 16,
-                endIndent: 16,
+          // Stacked bar showing proportional spend
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.full),
+            child: SizedBox(
+              height: 12,
+              child: Row(
+                children: [
+                  for (int i = 0; i < sorted.length; i++)
+                    Expanded(
+                      flex: (sorted[i].value / totalSpent * 1000).round().clamp(1, 1000),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.memberColor(i),
+                          // Add small gap between segments
+                          border: i < sorted.length - 1
+                              ? Border(right: BorderSide(
+                                  color: isDark ? AppColors.darkSurface : AppColors.surface,
+                                  width: 2,
+                                ))
+                              : null,
+                        ),
+                      ),
+                    ),
+                ],
               ),
-            _buildMemberRow(
-              sorted[i],
-              memberNames[sorted[i].key] ?? 'Unknown',
-              AppColors.memberColor(i),
-              maxAmount,
-              householdProvider,
-              isDark,
             ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMemberRow(MapEntry<int, double> entry, String name, Color color,
-      double maxAmount, HouseholdProvider householdProvider, bool isDark) {
-    final barFraction = maxAmount > 0 ? entry.value / maxAmount : 0.0;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
+          ),
+          const SizedBox(height: 16),
+          // Member legend with amounts and percentages
+          for (int i = 0; i < sorted.length; i++) ...[
+            if (i > 0) const SizedBox(height: 10),
+            Row(
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: AppColors.memberColor(i),
+                    shape: BoxShape.circle,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  name,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    memberNames[sorted[i].key] ?? 'Unknown',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                Text(
+                  '${(sorted[i].value / totalSpent * 100).toStringAsFixed(0)}%',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  householdProvider.formatAmount(sorted[i].value),
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                   ),
                 ),
-              ),
-              Text(
-                householdProvider.formatAmount(entry.value),
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.full),
-            child: LinearProgressIndicator(
-              value: barFraction,
-              minHeight: 8,
-              backgroundColor: isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceVariant,
-              valueColor: AlwaysStoppedAnimation<Color>(color),
+              ],
             ),
-          ),
+          ],
         ],
       ),
     );
