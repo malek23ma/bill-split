@@ -64,4 +64,12 @@ class BillItem {
       sharedByMemberIds: sharedByMemberIds ?? this.sharedByMemberIds,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is BillItem && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }

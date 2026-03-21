@@ -10,6 +10,7 @@ class Bill {
   final DateTime createdAt;
   final String category;
   final int? recurringBillId;
+  final int? receiverMemberId; // only used for settlements: who receives the payment
 
   Bill({
     this.id,
@@ -23,6 +24,7 @@ class Bill {
     DateTime? createdAt,
     this.category = 'other',
     this.recurringBillId,
+    this.receiverMemberId,
   }) : createdAt = createdAt ?? DateTime.now();
 
   Map<String, dynamic> toMap() {
@@ -38,6 +40,7 @@ class Bill {
       'created_at': createdAt.toIso8601String(),
       'category': category,
       'recurring_bill_id': recurringBillId,
+      'receiver_member_id': receiverMemberId,
     };
   }
 
@@ -54,6 +57,15 @@ class Bill {
       createdAt: DateTime.parse(map['created_at'] as String),
       category: map['category'] as String? ?? 'other',
       recurringBillId: map['recurring_bill_id'] as int?,
+      receiverMemberId: map['receiver_member_id'] as int?,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Bill && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }

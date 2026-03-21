@@ -28,4 +28,12 @@ class Household {
       createdAt: DateTime.parse(map['created_at'] as String),
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Household && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }

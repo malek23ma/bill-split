@@ -55,19 +55,25 @@ class RecurringBill {
       case 'weekly':
         return nextDueDate.add(const Duration(days: 7));
       case 'monthly':
-        return DateTime(
-          nextDueDate.year + (nextDueDate.month == 12 ? 1 : 0),
-          nextDueDate.month == 12 ? 1 : nextDueDate.month + 1,
-          nextDueDate.day,
-        );
+        final nextYear = nextDueDate.year + (nextDueDate.month == 12 ? 1 : 0);
+        final nextMonth = nextDueDate.month == 12 ? 1 : nextDueDate.month + 1;
+        final maxDay = DateTime(nextYear, nextMonth + 1, 0).day;
+        final clampedDay = nextDueDate.day > maxDay ? maxDay : nextDueDate.day;
+        return DateTime(nextYear, nextMonth, clampedDay);
       case 'yearly':
-        return DateTime(
-          nextDueDate.year + 1,
-          nextDueDate.month,
-          nextDueDate.day,
-        );
+        final maxDay = DateTime(nextDueDate.year + 2, nextDueDate.month, 0).day;
+        final clampedDay = nextDueDate.day > maxDay ? maxDay : nextDueDate.day;
+        return DateTime(nextDueDate.year + 1, nextDueDate.month, clampedDay);
       default:
         return nextDueDate.add(const Duration(days: 30));
     }
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RecurringBill && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }

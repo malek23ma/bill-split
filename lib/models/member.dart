@@ -28,4 +28,12 @@ class Member {
       pin: map['pin'] as String?,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Member && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }
