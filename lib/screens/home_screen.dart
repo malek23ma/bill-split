@@ -4,6 +4,8 @@ import 'package:share_plus/share_plus.dart';
 import '../database/database_helper.dart';
 import '../providers/household_provider.dart';
 import '../providers/bill_provider.dart';
+import '../models/bill.dart';
+import '../models/bill_item.dart';
 import '../providers/recurring_bill_provider.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/bill_list_tile.dart';
@@ -719,12 +721,29 @@ class _HomeScreenState extends State<HomeScreen> {
                 bill: bill,
                 paidByName: paidBy?.name ?? 'Unknown',
                 currencySymbol: currencySymbol,
-                onTap: () {
-                  Navigator.pushNamed(
+                onTap: () async {
+                  final result = await Navigator.pushNamed(
                     context,
                     '/bill-detail',
                     arguments: bill.id,
                   );
+                  if (result is Map && result['deleted'] == true && context.mounted) {
+                    final deletedBill = result['bill'] as Bill;
+                    final deletedItems = result['items'] as List<BillItem>;
+                    ScaffoldMessenger.of(context).clearSnackBars();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Bill deleted'),
+                        duration: const Duration(seconds: 4),
+                        action: SnackBarAction(
+                          label: 'UNDO',
+                          onPressed: () {
+                            context.read<BillProvider>().reinsertBill(deletedBill, deletedItems);
+                          },
+                        ),
+                      ),
+                    );
+                  }
                 },
               ),
             );
