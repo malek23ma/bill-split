@@ -91,7 +91,11 @@ class BillSplitApp extends StatelessWidget {
           elevation: 0,
           scrolledUnderElevation: 0,
           centerTitle: false,
-          systemOverlayStyle: SystemUiOverlayStyle.dark,
+          systemOverlayStyle: const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.dark,
+            statusBarBrightness: Brightness.light,
+          ),
           titleTextStyle: GoogleFonts.lexend(
             fontSize: 20,
             fontWeight: FontWeight.w700,
@@ -249,7 +253,11 @@ class BillSplitApp extends StatelessWidget {
           elevation: 0,
           scrolledUnderElevation: 0,
           centerTitle: false,
-          systemOverlayStyle: SystemUiOverlayStyle.light,
+          systemOverlayStyle: const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.light,
+            statusBarBrightness: Brightness.dark,
+          ),
           titleTextStyle: GoogleFonts.lexend(
             fontSize: 20,
             fontWeight: FontWeight.w700,
