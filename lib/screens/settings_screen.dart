@@ -897,6 +897,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       ),
                                     ),
                                   ),
+                                  if (members[i].isAdmin)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      margin: const EdgeInsets.only(right: 6),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.accent.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                                      ),
+                                      child: const Text(
+                                        'Admin',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.accent,
+                                        ),
+                                      ),
+                                    ),
                                   if (household.currentMember?.id == members[i].id)
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -913,19 +930,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         ),
                                       ),
                                     ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Hold to edit',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
-                                    ),
-                                  ),
                                 ],
                               ),
                             ),
                           ),
                         ],
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () => _showAddMemberDialog(context, household),
+                            icon: const Icon(Icons.person_add_rounded, size: 18),
+                            label: const Text('Add Member'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.primary,
+                              side: BorderSide(
+                                color: isDark ? AppColors.darkDivider : AppColors.divider,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(AppRadius.md),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -987,9 +1015,182 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ),
+            // Danger zone — admin only
+            if (context.watch<HouseholdProvider>().currentMember?.isAdmin ?? false) ...[
+              const SizedBox(height: 24),
+              _SectionHeader('Danger Zone'),
+              const SizedBox(height: 12),
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.darkSurface : AppColors.surface,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(
+                    color: AppColors.negative.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: ListTile(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                  ),
+                  leading: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: AppColors.negative.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: const Icon(Icons.delete_forever_rounded,
+                        size: 18, color: AppColors.negative),
+                  ),
+                  title: const Text(
+                    'Delete Household',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.negative,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Permanently delete this household and all its data',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
+                    ),
+                  ),
+                  onTap: () => _confirmDeleteHousehold(context),
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showAddMemberDialog(BuildContext context, HouseholdProvider provider) {
+    final controller = TextEditingController();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
+        title: Text(
+          'Add Member',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+          ),
+        ),
+        content: TextFormField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 50,
+          decoration: InputDecoration(
+            labelText: 'Name',
+            filled: true,
+            fillColor: isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceVariant,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
+            ),
+          ),
+          onFieldSubmitted: (_) async {
+            if (controller.text.trim().isNotEmpty) {
+              await provider.addMember(controller.text);
+              if (ctx.mounted) Navigator.pop(ctx);
+            }
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          FilledButton(
+            onPressed: () async {
+              if (controller.text.trim().isNotEmpty) {
+                await provider.addMember(controller.text);
+                if (ctx.mounted) Navigator.pop(ctx);
+              }
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+            ),
+            child: const Text('Add', style: TextStyle(fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteHousehold(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final provider = context.read<HouseholdProvider>();
+    final householdName = provider.currentHousehold?.name ?? '';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+        ),
+        title: Text('Delete Household?',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+            )),
+        content: Text(
+          'This will delete "$householdName" and all its bills. This cannot be undone.',
+          style: TextStyle(
+            color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel',
+                style: TextStyle(color: AppColors.textTertiary)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.negative,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+            ),
+            onPressed: () async {
+              final householdId = provider.currentHousehold?.id;
+              if (householdId != null) {
+                Navigator.pop(ctx); // close dialog
+                await provider.deleteHousehold(householdId);
+                if (context.mounted) {
+                  Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                }
+              }
+            },
+            child: const Text('Delete'),
+          ),
+        ],
       ),
     );
   }

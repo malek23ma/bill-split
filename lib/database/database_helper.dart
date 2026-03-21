@@ -23,7 +23,7 @@ class DatabaseHelper {
     final path = join(dbPath, fileName);
     return await openDatabase(
       path,
-      version: 6,
+      version: 7,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -46,6 +46,7 @@ class DatabaseHelper {
         name TEXT NOT NULL,
         pin TEXT,
         is_active INTEGER NOT NULL DEFAULT 1,
+        is_admin INTEGER NOT NULL DEFAULT 0,
         FOREIGN KEY (household_id) REFERENCES households(id)
       )
     ''');
@@ -203,6 +204,16 @@ class DatabaseHelper {
     if (oldVersion < 6) {
       await db.execute("ALTER TABLE members ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1");
     }
+    if (oldVersion < 7) {
+      await db.execute("ALTER TABLE members ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0");
+      // Set the first (lowest ID) member per household as admin
+      await db.execute('''
+        UPDATE members SET is_admin = 1
+        WHERE id IN (
+          SELECT MIN(id) FROM members GROUP BY household_id
+        )
+      ''');
+    }
   }
 
   Future<void> updateMemberPin(int memberId, String? pin) async {
@@ -237,8 +248,12 @@ class DatabaseHelper {
     late int householdId;
     await db.transaction((txn) async {
       householdId = await txn.insert('households', Household(name: name).toMap());
-      for (final memberName in memberNames) {
-        await txn.insert('members', Member(householdId: householdId, name: memberName).toMap());
+      for (int i = 0; i < memberNames.length; i++) {
+        await txn.insert('members', Member(
+          householdId: householdId,
+          name: memberNames[i],
+          isAdmin: i == 0, // first member is admin
+        ).toMap());
       }
     });
     return householdId;
