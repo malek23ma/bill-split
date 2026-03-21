@@ -83,6 +83,9 @@ class BillProvider extends ChangeNotifier {
   }
 
   Future<void> _calculateBalances(int householdId) async {
+    // Fix created_at for members with zero bill participation
+    // so they aren't included in historical quick bill splits
+    await _db.fixNewMemberDates(householdId);
     final members = await _db.getMembersByHousehold(householdId);
     _memberBalances = {for (final m in members) m.id!: 0.0};
 

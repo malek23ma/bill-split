@@ -518,6 +518,30 @@ class DatabaseHelper {
     await db.delete('recurring_bills', where: 'id = ?', whereArgs: [id]);
   }
 
+  // --- Member date fix ---
+
+  /// Fix created_at for members who have zero bill participation.
+  /// These members were added after all existing bills and should not
+  /// be included in historical quick bill splits.
+  Future<void> fixNewMemberDates(int householdId) async {
+    final db = await database;
+    final now = DateTime.now().toIso8601String();
+    await db.execute('''
+      UPDATE members SET created_at = ?
+      WHERE household_id = ?
+      AND id NOT IN (
+        SELECT DISTINCT paid_by_member_id FROM bills WHERE household_id = ?
+      )
+      AND id NOT IN (
+        SELECT DISTINCT bim.member_id
+        FROM bill_item_members bim
+        JOIN bill_items bi ON bim.bill_item_id = bi.id
+        JOIN bills b ON bi.bill_id = b.id
+        WHERE b.household_id = ?
+      )
+    ''', [now, householdId, householdId, householdId]);
+  }
+
   // --- Household currency ---
 
   Future<void> updateHouseholdCurrency(int id, String currency) async {
