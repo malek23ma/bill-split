@@ -403,77 +403,6 @@ class MemberSelectScreen extends StatelessWidget {
     );
   }
 
-  void _showAddMemberDialog(BuildContext context, HouseholdProvider provider) {
-    final controller = TextEditingController();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-        ),
-        title: Text(
-          'Add Member',
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
-          ),
-        ),
-        content: TextFormField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 50,
-          decoration: InputDecoration(
-            labelText: 'Name',
-            filled: true,
-            fillColor: isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceVariant,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              borderSide: BorderSide.none,
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              borderSide: const BorderSide(color: AppColors.primary, width: 2),
-            ),
-          ),
-          onFieldSubmitted: (_) async {
-            if (controller.text.trim().isNotEmpty) {
-              await provider.addMember(controller.text);
-              if (ctx.mounted) Navigator.pop(ctx);
-            }
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel',
-                style: TextStyle(
-                  color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
-                  fontWeight: FontWeight.w600,
-                )),
-          ),
-          FilledButton(
-            onPressed: () async {
-              if (controller.text.trim().isNotEmpty) {
-                await provider.addMember(controller.text);
-                if (ctx.mounted) Navigator.pop(ctx);
-              }
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-            ),
-            child: const Text('Add', style: TextStyle(fontWeight: FontWeight.w600)),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<HouseholdProvider>();
@@ -520,29 +449,10 @@ class MemberSelectScreen extends StatelessWidget {
               const SizedBox(height: AppSpacing.xxxl + 4),
               Expanded(
                 child: ListView.separated(
-                  itemCount: members.length + 1, // +1 for add button
+                  itemCount: members.length,
                   separatorBuilder: (_, _) =>
                       const SizedBox(height: AppSpacing.lg),
                   itemBuilder: (context, index) {
-                    // Last item is the add member button
-                    if (index == members.length) {
-                      return OutlinedButton.icon(
-                        onPressed: () => _showAddMemberDialog(context, provider),
-                        icon: const Icon(Icons.person_add_rounded, size: 20),
-                        label: const Text('Add Member',
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.primary,
-                          side: BorderSide(
-                            color: isDark ? AppColors.darkDivider : AppColors.divider,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.lg),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                        ),
-                      );
-                    }
                     final member = members[index];
                     final hasPin =
                         member.pin != null && member.pin!.isNotEmpty;

@@ -935,6 +935,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ),
                         ],
+                        if (household.currentMember?.isAdmin ?? false) ...[
                         const SizedBox(height: 8),
                         SizedBox(
                           width: double.infinity,
@@ -954,6 +955,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ),
                         ),
+                        ],
                       ],
                     ),
                   ),
@@ -1110,31 +1112,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
             }
           },
         ),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+        actionsAlignment: MainAxisAlignment.center,
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(
-              'Cancel',
-              style: TextStyle(
-                color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
-                fontWeight: FontWeight.w600,
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: FilledButton(
+              onPressed: () async {
+                if (controller.text.trim().isNotEmpty) {
+                  await provider.addMember(controller.text);
+                  if (ctx.mounted) Navigator.pop(ctx);
+                }
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
               ),
+              child: const Text('Add', style: TextStyle(fontWeight: FontWeight.w600)),
             ),
           ),
-          FilledButton(
-            onPressed: () async {
-              if (controller.text.trim().isNotEmpty) {
-                await provider.addMember(controller.text);
-                if (ctx.mounted) Navigator.pop(ctx);
-              }
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.md),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: OutlinedButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: OutlinedButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                side: BorderSide(
+                  color: isDark ? AppColors.darkDivider : AppColors.divider,
+                ),
+              ),
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-            child: const Text('Add', style: TextStyle(fontWeight: FontWeight.w600)),
           ),
         ],
       ),
