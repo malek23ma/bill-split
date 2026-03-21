@@ -45,6 +45,8 @@ class BillProvider extends ChangeNotifier {
 
   List<Bill> _bills = [];
   Map<int, double> _memberBalances = {};
+  // Pairwise balances: _pairwise[a][b] > 0 means b owes a that amount
+  Map<int, Map<int, double>> _pairwiseBalances = {};
   MonthlySummary? _monthlySummary;
 
   // Cache key: bill count + sum of IDs to detect changes cheaply
@@ -56,6 +58,7 @@ class BillProvider extends ChangeNotifier {
 
   List<Bill> get bills => _bills;
   Map<int, double> get memberBalances => _memberBalances;
+  Map<int, Map<int, double>> get pairwiseBalances => _pairwiseBalances;
   MonthlySummary? get monthlySummary => _monthlySummary;
 
   List<Bill> get filteredBills {
@@ -88,37 +91,44 @@ class BillProvider extends ChangeNotifier {
     await _db.fixNewMemberDates(householdId);
     final members = await _db.getMembersByHousehold(householdId);
     _memberBalances = {for (final m in members) m.id!: 0.0};
+    _pairwiseBalances = {
+      for (final m in members) m.id!: {for (final n in members) if (n.id != m.id) n.id!: 0.0}
+    };
+
+    // Helper: record a pairwise debt (debtor owes creditor)
+    void addDebt(int creditorId, int debtorId, double amount) {
+      _memberBalances[creditorId] =
+          (_memberBalances[creditorId] ?? 0) + amount;
+      _memberBalances[debtorId] =
+          (_memberBalances[debtorId] ?? 0) - amount;
+      // Pairwise: creditor is owed by debtor
+      if (_pairwiseBalances.containsKey(creditorId) &&
+          _pairwiseBalances[creditorId]!.containsKey(debtorId)) {
+        _pairwiseBalances[creditorId]![debtorId] =
+            (_pairwiseBalances[creditorId]![debtorId] ?? 0) + amount;
+        _pairwiseBalances[debtorId]![creditorId] =
+            (_pairwiseBalances[debtorId]![creditorId] ?? 0) - amount;
+      }
+    }
 
     for (final bill in _bills) {
       final payerId = bill.paidByMemberId;
 
       if (bill.billType == 'settlement') {
-        // Settlement: payer transfers money to a specific receiver.
-        // Only the payer-receiver pair is affected.
         final receiverId = bill.receiverMemberId;
         if (receiverId != null) {
-          _memberBalances[payerId] =
-              (_memberBalances[payerId] ?? 0) + bill.totalAmount;
-          _memberBalances[receiverId] =
-              (_memberBalances[receiverId] ?? 0) - bill.totalAmount;
+          addDebt(payerId, receiverId, bill.totalAmount);
         } else {
-          // Legacy settlements (before v5) without receiverMemberId:
-          // fall back to splitting across other members who existed at bill time.
           final otherMembers = members.where((m) =>
               m.id != payerId && !m.createdAt.isAfter(bill.billDate)).toList();
           if (otherMembers.isNotEmpty) {
             final perPerson = bill.totalAmount / otherMembers.length;
-            _memberBalances[payerId] =
-                (_memberBalances[payerId] ?? 0) + bill.totalAmount;
             for (final other in otherMembers) {
-              _memberBalances[other.id!] =
-                  (_memberBalances[other.id!] ?? 0) - perPerson;
+              addDebt(payerId, other.id!, perPerson);
             }
           }
         }
       } else if (bill.billType == 'quick') {
-        // Quick bill: split equally among members who existed when the bill was created.
-        // Members added after the bill date are excluded from this bill's split.
         final eligibleMembers = members.where((m) =>
             !m.createdAt.isAfter(bill.billDate)).toList();
         final totalMembers = eligibleMembers.length;
@@ -126,14 +136,10 @@ class BillProvider extends ChangeNotifier {
           final perPersonShare = bill.totalAmount / totalMembers;
           final otherMembers = eligibleMembers.where((m) => m.id != payerId).toList();
           for (final other in otherMembers) {
-            _memberBalances[payerId] =
-                (_memberBalances[payerId] ?? 0) + perPersonShare;
-            _memberBalances[other.id!] =
-                (_memberBalances[other.id!] ?? 0) - perPersonShare;
+            addDebt(payerId, other.id!, perPersonShare);
           }
         }
       } else {
-        // Full bill: iterate items, use sharedByMemberIds for per-item splitting.
         final items = await _db.getBillItems(bill.id!);
 
         for (final item in items) {
@@ -141,10 +147,7 @@ class BillProvider extends ChangeNotifier {
             final perMemberShare = item.price / item.sharedByMemberIds.length;
             for (final memberId in item.sharedByMemberIds) {
               if (memberId != payerId) {
-                _memberBalances[payerId] =
-                    (_memberBalances[payerId] ?? 0) + perMemberShare;
-                _memberBalances[memberId] =
-                    (_memberBalances[memberId] ?? 0) - perMemberShare;
+                addDebt(payerId, memberId, perMemberShare);
               }
             }
           }

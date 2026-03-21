@@ -3,7 +3,8 @@ import '../constants.dart';
 
 class BalanceCard extends StatelessWidget {
   final int currentMemberId;
-  final Map<int, double> memberBalances; // memberId -> balance (positive = owed to them)
+  final Map<int, double> memberBalances; // memberId -> net balance
+  final Map<int, Map<int, double>> pairwiseBalances; // pairwise debts
   final Map<int, String> memberNames; // memberId -> name
   final void Function(int memberId, double amount)? onSettleUp;
   final String currencySymbol;
@@ -12,6 +13,7 @@ class BalanceCard extends StatelessWidget {
     super.key,
     required this.currentMemberId,
     required this.memberBalances,
+    required this.pairwiseBalances,
     required this.memberNames,
     this.onSettleUp,
     this.currencySymbol = '\u20BA',
@@ -21,13 +23,13 @@ class BalanceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    // Use PAIRWISE balances for display — shows actual debts between
+    // the current user and each other member, not global net positions
+    final myPairwise = pairwiseBalances[currentMemberId] ?? {};
     final otherEntries = <int, double>{};
-    for (final entry in memberBalances.entries) {
-      if (entry.key != currentMemberId) {
-        final otherBalance = entry.value;
-        if (otherBalance.abs() > 0.01) {
-          otherEntries[entry.key] = -otherBalance;
-        }
+    for (final entry in myPairwise.entries) {
+      if (entry.value.abs() > 0.01) {
+        otherEntries[entry.key] = entry.value;
       }
     }
 

@@ -288,6 +288,7 @@ class _HomeScreenState extends State<HomeScreen> {
         BalanceCard(
           currentMemberId: currentMember?.id ?? 0,
           memberBalances: billProvider.memberBalances,
+          pairwiseBalances: billProvider.pairwiseBalances,
           memberNames: memberNames,
           currencySymbol: currencySymbol,
           onSettleUp: (otherMemberId, amount) => _confirmSettleUp(
