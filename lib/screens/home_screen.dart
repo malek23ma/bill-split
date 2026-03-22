@@ -301,6 +301,197 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
 
+        // Quick stats row
+        if (billProvider.bills.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Builder(
+              builder: (context) {
+                final now = DateTime.now();
+                final thisMonthBills = billProvider.bills.where((b) =>
+                    b.billDate.year == now.year &&
+                    b.billDate.month == now.month &&
+                    b.billType != 'settlement').toList();
+                final thisMonthTotal = thisMonthBills.fold(0.0, (sum, b) => sum + b.totalAmount);
+                final lastBill = billProvider.bills.first;
+                final daysSince = DateTime.now().difference(lastBill.billDate).inDays;
+                final lastBillText = daysSince == 0
+                    ? 'Today'
+                    : daysSince == 1
+                        ? 'Yesterday'
+                        : '$daysSince days ago';
+
+                return Row(
+                  children: [
+                    // This month total
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.darkSurface : AppColors.surface,
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'This month',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${thisMonthTotal.toStringAsFixed(2)} $currencySymbol',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    // Bill count
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.darkSurface : AppColors.surface,
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Bills',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${thisMonthBills.length}',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    // Last bill
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.darkSurface : AppColors.surface,
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Last bill',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              lastBillText,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+
+        // Spending pulse
+        if (billProvider.bills.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+            child: Builder(
+              builder: (context) {
+                final now = DateTime.now();
+                final thisMonthBills = billProvider.bills.where((b) =>
+                    b.billDate.year == now.year &&
+                    b.billDate.month == now.month &&
+                    b.billType != 'settlement').toList();
+                final thisMonthTotal = thisMonthBills.fold(0.0, (sum, b) => sum + b.totalAmount);
+
+                final lastMonth = now.month == 1
+                    ? DateTime(now.year - 1, 12)
+                    : DateTime(now.year, now.month - 1);
+                final lastMonthBills = billProvider.bills.where((b) =>
+                    b.billDate.year == lastMonth.year &&
+                    b.billDate.month == lastMonth.month &&
+                    b.billType != 'settlement').toList();
+                final lastMonthTotal = lastMonthBills.fold(0.0, (sum, b) => sum + b.totalAmount);
+
+                if (lastMonthTotal < 0.01) return const SizedBox.shrink();
+
+                final diff = thisMonthTotal - lastMonthTotal;
+                final pct = (diff / lastMonthTotal * 100).abs();
+                final isUp = diff > 0;
+                final months = [
+                  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+                ];
+                final lastMonthName = months[lastMonth.month - 1];
+
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? (isUp ? AppColors.negative.withAlpha(15) : AppColors.positive.withAlpha(15))
+                        : (isUp ? AppColors.negativeSurface : AppColors.positiveSurface),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isUp ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+                        size: 18,
+                        color: isUp ? AppColors.negative : AppColors.positive,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${isUp ? '↑' : '↓'} ${pct.toStringAsFixed(0)}% vs $lastMonthName',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: isUp ? AppColors.negative : AppColors.positive,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+
         // Recent Bills — collapsible
         const SizedBox(height: 8),
         Padding(
