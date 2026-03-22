@@ -174,7 +174,7 @@ class _SettleAllSheetState extends State<SettleAllSheet> {
                   horizontal: AppSpacing.lg,
                 ),
                 itemCount: _activeList.length,
-                separatorBuilder: (_, __) =>
+                separatorBuilder: (_, _) =>
                     const SizedBox(height: AppSpacing.sm),
                 itemBuilder: (context, index) {
                   final s = _activeList[index];

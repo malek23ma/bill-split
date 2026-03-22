@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../database/database_helper.dart';
 import '../models/bill_filter.dart';
-import '../models/member.dart';
 import '../providers/bill_provider.dart';
 import '../providers/household_provider.dart';
 import '../widgets/filtered_results_sheet.dart';
