@@ -115,7 +115,7 @@ class BalanceCard extends StatelessWidget {
                 amount: entries[i].value,
                 currencySymbol: currencySymbol,
                 isDark: isDark,
-                compact: !(isOdd && i == entries.length - 1),
+                compact: true,
                 onSettleUp: onSettleUp != null
                     ? () => onSettleUp!(entries[i].key, entries[i].value.abs())
                     : null,
