@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import '../database/database_helper.dart';
 import '../models/bill.dart';
 import '../models/bill_filter.dart';
+import '../services/image_compress_service.dart';
 import '../models/bill_item.dart';
 import '../models/member.dart';
 
@@ -254,6 +255,7 @@ class BillProvider extends ChangeNotifier {
   }
 
   Future<String> _savePhoto(String tempPath) async {
+    final compressed = await ImageCompressService.compress(File(tempPath));
     final appDir = await getApplicationDocumentsDirectory();
     final photosDir = Directory(p.join(appDir.path, 'receipt_photos'));
     if (!await photosDir.exists()) {
@@ -262,7 +264,7 @@ class BillProvider extends ChangeNotifier {
     final fileName =
         'receipt_${DateTime.now().millisecondsSinceEpoch}.jpg';
     final savedFile =
-        await File(tempPath).copy(p.join(photosDir.path, fileName));
+        await compressed.copy(p.join(photosDir.path, fileName));
     return savedFile.path;
   }
 
