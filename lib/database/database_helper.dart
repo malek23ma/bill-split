@@ -5,8 +5,9 @@ import '../models/member.dart';
 import '../models/bill.dart';
 import '../models/bill_item.dart';
 import '../models/recurring_bill.dart';
+import 'data_repository.dart';
 
-class DatabaseHelper {
+class DatabaseHelper implements DataRepository {
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
 
@@ -296,6 +297,7 @@ class DatabaseHelper {
     }
   }
 
+  @override
   Future<void> updateMemberPin(int memberId, String? pin) async {
     final db = await database;
     await db.update(
@@ -306,11 +308,13 @@ class DatabaseHelper {
     );
   }
 
+  @override
   Future<void> updateMemberName(int memberId, String name) async {
     final db = await database;
     await db.update('members', {'name': name}, where: 'id = ?', whereArgs: [memberId]);
   }
 
+  @override
   Future<void> setMemberActive(int memberId, bool active) async {
     final db = await database;
     await db.update('members', {'is_active': active ? 1 : 0}, where: 'id = ?', whereArgs: [memberId]);
@@ -318,11 +322,13 @@ class DatabaseHelper {
 
   // --- Household CRUD ---
 
+  @override
   Future<int> insertHousehold(Household household) async {
     final db = await database;
     return await db.insert('households', household.toMap());
   }
 
+  @override
   Future<int> createHouseholdWithMembers(String name, List<String> memberNames) async {
     final db = await database;
     late int householdId;
@@ -339,12 +345,14 @@ class DatabaseHelper {
     return householdId;
   }
 
+  @override
   Future<List<Household>> getHouseholds() async {
     final db = await database;
     final maps = await db.query('households', orderBy: 'created_at DESC');
     return maps.map((map) => Household.fromMap(map)).toList();
   }
 
+  @override
   Future<void> deleteHousehold(int id) async {
     final db = await database;
     await db.transaction((txn) async {
@@ -363,11 +371,13 @@ class DatabaseHelper {
 
   // --- Member CRUD ---
 
+  @override
   Future<int> insertMember(Member member) async {
     final db = await database;
     return await db.insert('members', member.toMap());
   }
 
+  @override
   Future<List<Member>> getMembersByHousehold(int householdId) async {
     final db = await database;
     final maps = await db.query(
@@ -378,6 +388,7 @@ class DatabaseHelper {
     return maps.map((map) => Member.fromMap(map)).toList();
   }
 
+  @override
   Future<List<Member>> getAllMembersByHousehold(int householdId) async {
     final db = await database;
     final maps = await db.query(
@@ -390,11 +401,13 @@ class DatabaseHelper {
 
   // --- Bill CRUD ---
 
+  @override
   Future<int> insertBill(Bill bill) async {
     final db = await database;
     return await db.insert('bills', bill.toMap());
   }
 
+  @override
   Future<List<Bill>> getBillsByHousehold(int householdId) async {
     final db = await database;
     final maps = await db.query(
@@ -406,6 +419,7 @@ class DatabaseHelper {
     return maps.map((map) => Bill.fromMap(map)).toList();
   }
 
+  @override
   Future<Bill?> getBill(int id) async {
     final db = await database;
     final maps = await db.query('bills', where: 'id = ?', whereArgs: [id]);
@@ -413,6 +427,7 @@ class DatabaseHelper {
     return Bill.fromMap(maps.first);
   }
 
+  @override
   Future<void> deleteBill(int id) async {
     final db = await database;
     await db.transaction((txn) async {
@@ -426,6 +441,7 @@ class DatabaseHelper {
 
   // --- BillItem CRUD ---
 
+  @override
   Future<void> insertBillItems(List<BillItem> items) async {
     final db = await database;
     await db.transaction((txn) async {
@@ -445,6 +461,7 @@ class DatabaseHelper {
     });
   }
 
+  @override
   Future<List<BillItem>> getBillItems(int billId) async {
     final db = await database;
     final maps = await db.query(
@@ -478,6 +495,7 @@ class DatabaseHelper {
 
   // --- BillItemMembers (junction table) ---
 
+  @override
   Future<void> insertBillItemMembers(int billItemId, List<int> memberIds) async {
     final db = await database;
     final batch = db.batch();
@@ -490,6 +508,7 @@ class DatabaseHelper {
     await batch.commit(noResult: true);
   }
 
+  @override
   Future<List<int>> getBillItemMemberIds(int billItemId) async {
     final db = await database;
     final maps = await db.query(
@@ -501,6 +520,7 @@ class DatabaseHelper {
     return maps.map((m) => m['member_id'] as int).toList();
   }
 
+  @override
   Future<void> deleteBillItemMembers(int billItemId) async {
     final db = await database;
     await db.delete('bill_item_members',
@@ -509,11 +529,13 @@ class DatabaseHelper {
 
   // --- RecurringBill CRUD ---
 
+  @override
   Future<int> insertRecurringBill(RecurringBill recurringBill) async {
     final db = await database;
     return await db.insert('recurring_bills', recurringBill.toMap());
   }
 
+  @override
   Future<List<RecurringBill>> getRecurringBillsByHousehold(int householdId) async {
     final db = await database;
     final maps = await db.query(
@@ -525,6 +547,7 @@ class DatabaseHelper {
     return maps.map((map) => RecurringBill.fromMap(map)).toList();
   }
 
+  @override
   Future<List<RecurringBill>> getDueRecurringBills(int householdId) async {
     final db = await database;
     final now = DateTime.now().toIso8601String();
@@ -537,6 +560,7 @@ class DatabaseHelper {
     return maps.map((map) => RecurringBill.fromMap(map)).toList();
   }
 
+  @override
   Future<void> updateRecurringBillNextDate(int id, DateTime nextDate) async {
     final db = await database;
     await db.update(
@@ -547,6 +571,7 @@ class DatabaseHelper {
     );
   }
 
+  @override
   Future<void> deactivateRecurringBill(int id) async {
     final db = await database;
     await db.update(
@@ -557,16 +582,19 @@ class DatabaseHelper {
     );
   }
 
+  @override
   Future<void> reactivateRecurringBill(int id) async {
     final db = await database;
     await db.update('recurring_bills', {'active': 1}, where: 'id = ?', whereArgs: [id]);
   }
 
+  @override
   Future<void> updateRecurringBill(RecurringBill bill) async {
     final db = await database;
     await db.update('recurring_bills', bill.toMap(), where: 'id = ?', whereArgs: [bill.id]);
   }
 
+  @override
   Future<void> deleteRecurringBillPermanently(int id) async {
     final db = await database;
     await db.delete('recurring_bills', where: 'id = ?', whereArgs: [id]);
@@ -577,6 +605,7 @@ class DatabaseHelper {
   /// Fix created_at for members who have zero bill participation.
   /// These members were added after all existing bills and should not
   /// be included in historical quick bill splits.
+  @override
   Future<void> fixNewMemberDates(int householdId) async {
     final db = await database;
     final now = DateTime.now().toIso8601String();
@@ -598,6 +627,7 @@ class DatabaseHelper {
 
   // --- Household currency ---
 
+  @override
   Future<void> updateHouseholdCurrency(int id, String currency) async {
     final db = await database;
     await db.update(
