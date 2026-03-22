@@ -11,6 +11,10 @@ class Bill {
   final String category;
   final int? recurringBillId;
   final int? receiverMemberId; // only used for settlements: who receives the payment
+  final String? remoteId;
+  final String? updatedAt;
+  final String? photoUrl;
+  final int? deletedByMemberId;
 
   Bill({
     this.id,
@@ -25,6 +29,10 @@ class Bill {
     this.category = 'other',
     this.recurringBillId,
     this.receiverMemberId,
+    this.remoteId,
+    this.updatedAt,
+    this.photoUrl,
+    this.deletedByMemberId,
   }) : createdAt = createdAt ?? DateTime.now();
 
   Map<String, dynamic> toMap() {
@@ -41,6 +49,10 @@ class Bill {
       'category': category,
       'recurring_bill_id': recurringBillId,
       'receiver_member_id': receiverMemberId,
+      'remote_id': remoteId,
+      'updated_at': updatedAt,
+      'photo_url': photoUrl,
+      'deleted_by_member_id': deletedByMemberId,
     };
   }
 
@@ -58,6 +70,10 @@ class Bill {
       category: map['category'] as String? ?? 'other',
       recurringBillId: map['recurring_bill_id'] as int?,
       receiverMemberId: map['receiver_member_id'] as int?,
+      remoteId: map['remote_id'] as String?,
+      updatedAt: map['updated_at'] as String?,
+      photoUrl: map['photo_url'] as String?,
+      deletedByMemberId: map['deleted_by_member_id'] as int?,
     );
   }
 

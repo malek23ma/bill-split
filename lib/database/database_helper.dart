@@ -23,7 +23,7 @@ class DatabaseHelper {
     final path = join(dbPath, fileName);
     return await openDatabase(
       path,
-      version: 9,
+      version: 10,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -35,7 +35,9 @@ class DatabaseHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         currency TEXT NOT NULL DEFAULT 'TRY',
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        remote_id TEXT,
+        updated_at TEXT
       )
     ''');
 
@@ -48,6 +50,8 @@ class DatabaseHelper {
         is_active INTEGER NOT NULL DEFAULT 1,
         is_admin INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL DEFAULT '',
+        remote_id TEXT,
+        updated_at TEXT,
         FOREIGN KEY (household_id) REFERENCES households(id)
       )
     ''');
@@ -66,6 +70,10 @@ class DatabaseHelper {
         category TEXT NOT NULL DEFAULT 'other',
         recurring_bill_id INTEGER,
         receiver_member_id INTEGER,
+        remote_id TEXT,
+        updated_at TEXT,
+        photo_url TEXT,
+        deleted_by_member_id INTEGER,
         FOREIGN KEY (household_id) REFERENCES households(id),
         FOREIGN KEY (entered_by_member_id) REFERENCES members(id),
         FOREIGN KEY (paid_by_member_id) REFERENCES members(id),
@@ -82,6 +90,8 @@ class DatabaseHelper {
         price REAL NOT NULL,
         is_included INTEGER NOT NULL DEFAULT 1,
         split_percent INTEGER NOT NULL DEFAULT 50,
+        remote_id TEXT,
+        updated_at TEXT,
         FOREIGN KEY (bill_id) REFERENCES bills(id)
       )
     ''');
@@ -91,6 +101,7 @@ class DatabaseHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         bill_item_id INTEGER NOT NULL,
         member_id INTEGER NOT NULL,
+        remote_id TEXT,
         FOREIGN KEY (bill_item_id) REFERENCES bill_items(id),
         FOREIGN KEY (member_id) REFERENCES members(id)
       )
@@ -107,8 +118,21 @@ class DatabaseHelper {
         frequency TEXT NOT NULL,
         next_due_date TEXT NOT NULL,
         active INTEGER NOT NULL DEFAULT 1,
+        remote_id TEXT,
+        updated_at TEXT,
         FOREIGN KEY (household_id) REFERENCES households(id),
         FOREIGN KEY (paid_by_member_id) REFERENCES members(id)
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE sync_queue (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        table_name TEXT NOT NULL,
+        row_id INTEGER NOT NULL,
+        operation TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        created_at TEXT NOT NULL
       )
     ''');
   }
@@ -239,6 +263,36 @@ class DatabaseHelper {
           SELECT DISTINCT bim.member_id FROM bill_item_members bim
         )
       ''', [now]);
+    }
+    if (oldVersion < 10) {
+      // Add remote_id (UUID) to all synced tables
+      await db.execute("ALTER TABLE households ADD COLUMN remote_id TEXT");
+      await db.execute("ALTER TABLE members ADD COLUMN remote_id TEXT");
+      await db.execute("ALTER TABLE bills ADD COLUMN remote_id TEXT");
+      await db.execute("ALTER TABLE bills ADD COLUMN photo_url TEXT");
+      await db.execute("ALTER TABLE bill_items ADD COLUMN remote_id TEXT");
+      await db.execute("ALTER TABLE bill_item_members ADD COLUMN remote_id TEXT");
+      await db.execute("ALTER TABLE recurring_bills ADD COLUMN remote_id TEXT");
+      await db.execute("ALTER TABLE bills ADD COLUMN deleted_by_member_id INTEGER");
+
+      // Add updated_at to all synced tables for conflict resolution
+      await db.execute("ALTER TABLE households ADD COLUMN updated_at TEXT");
+      await db.execute("ALTER TABLE members ADD COLUMN updated_at TEXT");
+      await db.execute("ALTER TABLE bills ADD COLUMN updated_at TEXT");
+      await db.execute("ALTER TABLE bill_items ADD COLUMN updated_at TEXT");
+      await db.execute("ALTER TABLE recurring_bills ADD COLUMN updated_at TEXT");
+
+      // Sync queue table
+      await db.execute('''
+        CREATE TABLE sync_queue (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          table_name TEXT NOT NULL,
+          row_id INTEGER NOT NULL,
+          operation TEXT NOT NULL,
+          payload TEXT NOT NULL,
+          created_at TEXT NOT NULL
+        )
+      ''');
     }
   }
 

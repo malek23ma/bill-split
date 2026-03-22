@@ -3,12 +3,16 @@ class Household {
   final String name;
   final String currency;
   final DateTime createdAt;
+  final String? remoteId;
+  final String? updatedAt;
 
   Household({
     this.id,
     required this.name,
     this.currency = 'TRY',
     DateTime? createdAt,
+    this.remoteId,
+    this.updatedAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
   Map<String, dynamic> toMap() {
@@ -17,6 +21,8 @@ class Household {
       'name': name,
       'currency': currency,
       'created_at': createdAt.toIso8601String(),
+      'remote_id': remoteId,
+      'updated_at': updatedAt,
     };
   }
 
@@ -26,6 +32,8 @@ class Household {
       name: map['name'] as String,
       currency: map['currency'] as String? ?? 'TRY',
       createdAt: DateTime.parse(map['created_at'] as String),
+      remoteId: map['remote_id'] as String?,
+      updatedAt: map['updated_at'] as String?,
     );
   }
 
