@@ -16,6 +16,7 @@ class InsightsScreen extends StatefulWidget {
 class _InsightsScreenState extends State<InsightsScreen> {
   late int _year;
   late int _month;
+  int _trendMonths = 6;
 
   @override
   void initState() {
@@ -125,6 +126,12 @@ class _InsightsScreenState extends State<InsightsScreen> {
               _buildCategoryBreakdown(insights, householdProvider, isDark),
               const SizedBox(height: 24),
             ],
+
+            // Spending Trends section
+            _buildSectionTitle('Spending Trends', isDark),
+            const SizedBox(height: 12),
+            _buildSpendingTrends(billProvider, householdProvider, isDark),
+            const SizedBox(height: 24),
 
             // By Member section
             if (insights.memberSpend.isNotEmpty) ...[
@@ -454,6 +461,126 @@ class _InsightsScreenState extends State<InsightsScreen> {
               ],
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSpendingTrends(
+      BillProvider billProvider, HouseholdProvider householdProvider, bool isDark) {
+    const monthAbbr = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+
+    // Collect totals for each month going backward
+    final totals = <double>[];
+    final labels = <String>[];
+    int y = _year;
+    int m = _month;
+    for (int i = 0; i < _trendMonths; i++) {
+      final insights = billProvider.getInsightsForMonth(y, m);
+      totals.insert(0, insights.totalSpent);
+      labels.insert(0, monthAbbr[m - 1]);
+      m--;
+      if (m < 1) {
+        m = 12;
+        y--;
+      }
+    }
+
+    final maxTotal = totals.fold<double>(0, (a, b) => a > b ? a : b);
+    const barAreaHeight = 200.0;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      child: Column(
+        children: [
+          // Segmented button
+          SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<int>(
+              segments: const [
+                ButtonSegment(value: 3, label: Text('3M')),
+                ButtonSegment(value: 6, label: Text('6M')),
+                ButtonSegment(value: 9, label: Text('9M')),
+                ButtonSegment(value: 12, label: Text('12M')),
+              ],
+              selected: {_trendMonths},
+              onSelectionChanged: (val) {
+                setState(() => _trendMonths = val.first);
+              },
+              style: ButtonStyle(
+                visualDensity: VisualDensity.compact,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Bar chart
+          SizedBox(
+            height: barAreaHeight + 40, // extra for labels
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                for (int i = 0; i < totals.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 4),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Text(
+                          totals[i] > 0
+                              ? householdProvider.formatAmount(totals[i])
+                              : '',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: isDark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.textTertiary,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          height: maxTotal > 0
+                              ? (totals[i] / maxTotal * barAreaHeight)
+                                  .clamp(4.0, barAreaHeight)
+                              : 4.0,
+                          decoration: BoxDecoration(
+                            color: i == totals.length - 1
+                                ? AppColors.primary
+                                : (isDark
+                                    ? AppColors.darkSurfaceVariant
+                                    : AppColors.surfaceMuted),
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          labels[i],
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: isDark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.textTertiary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ],
       ),
     );
