@@ -12,6 +12,7 @@ import '../widgets/filter_bottom_sheet.dart';
 import '../widgets/filtered_results_sheet.dart';
 import '../widgets/scale_tap.dart';
 import '../constants.dart';
+import '../widgets/settle_all_sheet.dart';
 import 'insights_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -300,6 +301,33 @@ class _HomeScreenState extends State<HomeScreen> {
             memberNames[otherMemberId] ?? 'Unknown',
           ),
         ),
+
+        // Settle All button
+        if (billProvider.pairwiseBalances.values.any(
+            (inner) => inner.values.any((v) => v.abs() > 0.01)))
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _showSettleAllSheet(context),
+                icon: Icon(Icons.account_balance_wallet_rounded, size: 18,
+                    color: AppColors.primary),
+                label: Text('Settle All',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    )),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                      color: isDark ? AppColors.darkDivider : AppColors.divider),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.lg)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+            ),
+          ),
 
         // Quick stats row
         if (billProvider.bills.isNotEmpty)
@@ -672,6 +700,41 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         ],
+      ),
+    );
+  }
+
+  void _showSettleAllSheet(BuildContext context) {
+    final billProvider = context.read<BillProvider>();
+    final householdProvider = context.read<HouseholdProvider>();
+    final memberNames = {
+      for (final m in householdProvider.members) m.id!: m.name,
+    };
+    final currencySymbol = AppCurrency.getByCode(householdProvider.currency).symbol;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.3,
+        maxChildSize: 0.9,
+        builder: (_, scrollController) => SettleAllSheet(
+          optimized: billProvider.computeOptimalSettlements(),
+          rawDebts: billProvider.getRawPairwiseDebts(),
+          memberNames: memberNames,
+          currencySymbol: currencySymbol,
+          onSettle: (fromId, toId, amount) async {
+            Navigator.pop(context);
+            await billProvider.settleUp(
+              householdId: householdProvider.currentHousehold!.id!,
+              payerMemberId: fromId,
+              receiverMemberId: toId,
+              amount: amount,
+            );
+          },
+        ),
       ),
     );
   }
