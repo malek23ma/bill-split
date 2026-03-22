@@ -95,23 +95,29 @@ class BalanceCard extends StatelessWidget {
     }
 
     // 2-column grid for 2+ balance rows
+    // Last item gets full width if odd count
+    final halfWidth = (MediaQuery.of(context).size.width - 42) / 2;
+    final isOdd = entries.length.isOdd;
+
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Wrap(
         spacing: 10,
         runSpacing: 10,
         children: [
-          for (final entry in entries)
+          for (int i = 0; i < entries.length; i++)
             SizedBox(
-              width: (MediaQuery.of(context).size.width - 42) / 2,
+              width: (isOdd && i == entries.length - 1)
+                  ? double.infinity
+                  : halfWidth,
               child: _BalanceRow(
-                memberName: memberNames[entry.key] ?? 'Unknown',
-                amount: entry.value,
+                memberName: memberNames[entries[i].key] ?? 'Unknown',
+                amount: entries[i].value,
                 currencySymbol: currencySymbol,
                 isDark: isDark,
-                compact: true,
+                compact: !(isOdd && i == entries.length - 1),
                 onSettleUp: onSettleUp != null
-                    ? () => onSettleUp!(entry.key, entry.value.abs())
+                    ? () => onSettleUp!(entries[i].key, entries[i].value.abs())
                     : null,
               ),
             ),
