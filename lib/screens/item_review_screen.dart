@@ -182,16 +182,23 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                 ),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
-                  child: DropdownButtonFormField<int>(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Paid by',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: isDark
+                              ? AppColors.darkTextSecondary
+                              : AppColors.textTertiary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      DropdownButtonFormField<int>(
                     initialValue: _paidByMemberId,
                     decoration: InputDecoration(
-                      hintText: 'Paid by',
-                      hintStyle: TextStyle(
-                        color: isDark
-                            ? AppColors.darkTextSecondary
-                            : AppColors.textTertiary,
-                        fontSize: 13,
-                      ),
                       filled: true,
                       fillColor: isDark
                           ? AppColors.darkSurfaceVariant
@@ -202,7 +209,7 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                       ),
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 12),
+                          horizontal: 12, vertical: 10),
                     ),
                     items: members
                         .map((m) => DropdownMenuItem(
@@ -216,6 +223,8 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                         setState(() => _paidByMemberId = value);
                       }
                     },
+                  ),
+                    ],
                   ),
                 ),
               ],
