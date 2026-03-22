@@ -623,10 +623,14 @@ class _HomeScreenState extends State<HomeScreen> {
             final paidBy = members
                 .where((m) => m.id == bill.paidByMemberId)
                 .firstOrNull;
+            final canDelete = currentMember != null &&
+                (bill.paidByMemberId == currentMember.id || currentMember.isAdmin);
 
             return Dismissible(
               key: ValueKey(bill.id),
-              direction: DismissDirection.endToStart,
+              direction: canDelete
+                  ? DismissDirection.endToStart
+                  : DismissDirection.none,
               background: Container(
                 alignment: Alignment.centerRight,
                 padding: EdgeInsets.only(right: AppScale.padding(24)),
