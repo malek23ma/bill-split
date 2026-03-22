@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../database/database_helper.dart';
+import '../models/bill_filter.dart';
+import '../models/member.dart';
 import '../providers/bill_provider.dart';
 import '../providers/household_provider.dart';
+import '../widgets/filtered_results_sheet.dart';
 import '../constants.dart';
 
 class InsightsScreen extends StatefulWidget {
@@ -277,6 +280,42 @@ class _InsightsScreenState extends State<InsightsScreen> {
     );
   }
 
+  void _showCategoryDrillDown(String categoryId) {
+    final billProvider = context.read<BillProvider>();
+    final householdProvider = context.read<HouseholdProvider>();
+    final members = householdProvider.members;
+    final currencySymbol = AppCurrency.getByCode(householdProvider.currency).symbol;
+
+    final filteredBills = billProvider.bills.where((b) =>
+        b.category == categoryId &&
+        b.billDate.year == _year &&
+        b.billDate.month == _month &&
+        b.billType != 'settlement').toList();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        builder: (_, scrollCtrl) => FilteredResultsSheet(
+          scrollController: scrollCtrl,
+          filteredBills: filteredBills,
+          filter: BillFilter(category: categoryId),
+          members: members,
+          currencySymbol: currencySymbol,
+          onBillTap: (bill) {
+            Navigator.pop(context);
+            Navigator.pushNamed(context, '/bill-detail', arguments: bill);
+          },
+          onClearFilters: () {},
+        ),
+      ),
+    );
+  }
+
   Widget _buildCategoryBreakdown(
       MonthlyInsights insights, HouseholdProvider householdProvider, bool isDark) {
     final sorted = insights.categorySpend.entries.toList()
@@ -300,7 +339,10 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 indent: 16,
                 endIndent: 16,
               ),
-            _buildCategoryRow(sorted[i], maxAmount, insights.totalSpent, householdProvider, isDark),
+            GestureDetector(
+              onTap: () => _showCategoryDrillDown(sorted[i].key),
+              child: _buildCategoryRow(sorted[i], maxAmount, insights.totalSpent, householdProvider, isDark),
+            ),
           ],
         ],
       ),
