@@ -141,7 +141,6 @@ class _BalanceRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theyOweYou = amount > 0;
-    final message = theyOweYou ? '$memberName owes you' : 'You owe $memberName';
     final absAmount = amount.abs();
 
     // Per-row colors: green when owed, red when owing
@@ -178,15 +177,22 @@ class _BalanceRow extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            message,
+            memberName,
             style: TextStyle(
-              fontSize: compact ? 12 : 14,
+              fontSize: compact ? 13 : 15,
               color: rowColor,
+              fontWeight: FontWeight.w700,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          Text(
+            theyOweYou ? 'owes you' : 'you owe',
+            style: TextStyle(
+              fontSize: compact ? 11 : 13,
+              color: rowColor.withValues(alpha: 0.7),
               fontWeight: FontWeight.w500,
             ),
             textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 4),
           TweenAnimationBuilder<double>(
