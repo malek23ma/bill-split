@@ -321,7 +321,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         ? 'Yesterday'
                         : '$daysSince days ago';
 
-                return Row(
+                return IntrinsicHeight(
+                  child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     // This month total
                     Expanded(
@@ -422,6 +424,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ],
+                ),
                 );
               },
             ),
