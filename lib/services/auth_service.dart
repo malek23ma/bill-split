@@ -57,8 +57,8 @@ class AuthService {
   }
 
   /// Apple sign in
-  Future<AuthResponse> signInWithApple() async {
-    return await _client.auth.signInWithApple();
+  Future<bool> signInWithApple() async {
+    return await _client.auth.signInWithOAuth(OAuthProvider.apple);
   }
 
   /// Sign out
