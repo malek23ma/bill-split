@@ -1248,7 +1248,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Navigator.pop(ctx); // close dialog
                 await provider.deleteHousehold(householdId);
                 if (context.mounted) {
-                  Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                  Navigator.pushNamedAndRemoveUntil(context, '/households', (route) => false);
                 }
               }
             },
