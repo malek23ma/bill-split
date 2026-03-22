@@ -74,19 +74,46 @@ class BalanceCard extends StatelessWidget {
       );
     }
 
+    final entries = otherEntries.entries.toList();
+    final useGrid = entries.length >= 2;
+
+    if (!useGrid) {
+      // Single full-width row
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: _BalanceRow(
+          memberName: memberNames[entries.first.key] ?? 'Unknown',
+          amount: entries.first.value,
+          currencySymbol: currencySymbol,
+          isDark: isDark,
+          compact: false,
+          onSettleUp: onSettleUp != null
+              ? () => onSettleUp!(entries.first.key, entries.first.value.abs())
+              : null,
+        ),
+      );
+    }
+
+    // 2-column grid for 2+ balance rows
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: Column(
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 10,
         children: [
-          for (final entry in otherEntries.entries)
-            _BalanceRow(
-              memberName: memberNames[entry.key] ?? 'Unknown',
-              amount: entry.value,
-              currencySymbol: currencySymbol,
-              isDark: isDark,
-              onSettleUp: onSettleUp != null
-                  ? () => onSettleUp!(entry.key, entry.value.abs())
-                  : null,
+          for (final entry in entries)
+            SizedBox(
+              width: (MediaQuery.of(context).size.width - 42) / 2,
+              child: _BalanceRow(
+                memberName: memberNames[entry.key] ?? 'Unknown',
+                amount: entry.value,
+                currencySymbol: currencySymbol,
+                isDark: isDark,
+                compact: true,
+                onSettleUp: onSettleUp != null
+                    ? () => onSettleUp!(entry.key, entry.value.abs())
+                    : null,
+              ),
             ),
         ],
       ),
@@ -99,6 +126,7 @@ class _BalanceRow extends StatelessWidget {
   final double amount; // positive = they owe you, negative = you owe them
   final String currencySymbol;
   final bool isDark;
+  final bool compact;
   final VoidCallback? onSettleUp;
 
   const _BalanceRow({
@@ -106,6 +134,7 @@ class _BalanceRow extends StatelessWidget {
     required this.amount,
     required this.currencySymbol,
     required this.isDark,
+    this.compact = false,
     this.onSettleUp,
   });
 
@@ -126,78 +155,86 @@ class _BalanceRow extends StatelessWidget {
         ? Icons.arrow_downward_rounded
         : Icons.arrow_upward_rounded;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(AppRadius.xl),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-        child: Column(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: rowColor.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-              child: Icon(arrowIcon, color: rowColor, size: 20),
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+      ),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 12 : 24,
+        vertical: compact ? 14 : 20,
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: compact ? 32 : 40,
+            height: compact ? 32 : 40,
+            decoration: BoxDecoration(
+              color: rowColor.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-            const SizedBox(height: 8),
-            Text(
-              message,
-              style: TextStyle(
-                fontSize: 14,
-                color: rowColor,
-                fontWeight: FontWeight.w500,
-              ),
+            child: Icon(arrowIcon, color: rowColor, size: compact ? 16 : 20),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            message,
+            style: TextStyle(
+              fontSize: compact ? 12 : 14,
+              color: rowColor,
+              fontWeight: FontWeight.w500,
             ),
-            const SizedBox(height: 4),
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: absAmount),
-              duration: const Duration(milliseconds: 600),
-              curve: Curves.easeOut,
-              builder: (context, value, child) {
-                return Text(
-                  '${value.toStringAsFixed(2)} $currencySymbol',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w800,
-                    color: rowColor,
-                    letterSpacing: -0.5,
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 12),
-            FilledButton.tonal(
-              onPressed: onSettleUp,
-              style: FilledButton.styleFrom(
-                backgroundColor: rowColor.withValues(alpha: 0.12),
-                foregroundColor: rowColor,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.full),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: absAmount),
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeOut,
+            builder: (context, value, child) {
+              return Text(
+                '${value.toStringAsFixed(2)} $currencySymbol',
+                style: TextStyle(
+                  fontSize: compact ? 20 : 32,
+                  fontWeight: FontWeight.w800,
+                  color: rowColor,
+                  letterSpacing: -0.5,
                 ),
-                elevation: 0,
+              );
+            },
+          ),
+          const SizedBox(height: 10),
+          FilledButton.tonal(
+            onPressed: onSettleUp,
+            style: FilledButton.styleFrom(
+              backgroundColor: rowColor.withValues(alpha: 0.12),
+              foregroundColor: rowColor,
+              padding: EdgeInsets.symmetric(
+                horizontal: compact ? 12 : 20,
+                vertical: compact ? 8 : 10,
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.handshake_rounded, size: 16, color: rowColor),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Settle Up',
-                    style: TextStyle(fontWeight: FontWeight.w600, color: rowColor),
-                  ),
-                ],
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.full),
               ),
+              elevation: 0,
             ),
-          ],
-        ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.handshake_rounded, size: compact ? 14 : 16, color: rowColor),
+                const SizedBox(width: 4),
+                Text(
+                  'Settle Up',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: rowColor,
+                    fontSize: compact ? 12 : 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
