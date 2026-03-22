@@ -28,7 +28,7 @@ class BillListTile extends StatelessWidget {
     final iconColor = isSettlement ? AppColors.positive : category.color;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: AppScale.padding(16), vertical: AppScale.padding(4)),
       child: Container(
         decoration: BoxDecoration(
           color: isDark ? AppColors.darkSurface : AppColors.surface,
@@ -38,13 +38,13 @@ class BillListTile extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(AppRadius.lg),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: EdgeInsets.symmetric(horizontal: AppScale.padding(16), vertical: AppScale.padding(14)),
             child: Row(
               children: [
                 // Icon container
                 Container(
-                  width: 44,
-                  height: 44,
+                  width: AppScale.size(44),
+                  height: AppScale.size(44),
                   decoration: BoxDecoration(
                     color: iconColor.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(AppRadius.md),
@@ -52,10 +52,10 @@ class BillListTile extends StatelessWidget {
                   child: Icon(
                     isSettlement ? Icons.handshake_rounded : category.icon,
                     color: iconColor,
-                    size: 22,
+                    size: AppScale.size(22),
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: AppScale.size(14)),
                 // Content
                 Expanded(
                   child: Column(
@@ -65,12 +65,12 @@ class BillListTile extends StatelessWidget {
                         Row(
                           children: [
                             Icon(Icons.handshake_rounded,
-                                size: 14, color: AppColors.positive),
+                                size: AppScale.size(14), color: AppColors.positive),
                             const SizedBox(width: 4),
                             Text(
                               'Settled',
                               style: TextStyle(
-                                fontSize: 15,
+                                fontSize: AppScale.fontSize(15),
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.positive,
                               ),
@@ -81,7 +81,7 @@ class BillListTile extends StatelessWidget {
                         Text(
                           '${bill.totalAmount.toStringAsFixed(2)} $currencySymbol',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: AppScale.fontSize(16),
                             fontWeight: FontWeight.w700,
                             color: isDark
                                 ? AppColors.darkTextPrimary
@@ -94,7 +94,7 @@ class BillListTile extends StatelessWidget {
                             ? '$dateStr  \u00B7  ${bill.totalAmount.toStringAsFixed(2)} $currencySymbol'
                             : '$dateStr  \u00B7  Paid by $paidByName',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: AppScale.fontSize(12),
                           color: isDark
                               ? AppColors.darkTextSecondary
                               : AppColors.textSecondary,
@@ -106,8 +106,8 @@ class BillListTile extends StatelessWidget {
                 // Trailing badge & chevron
                 if (!isSettlement) ...[
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: AppScale.padding(8), vertical: AppScale.padding(3)),
                     decoration: BoxDecoration(
                       color: bill.billType == 'quick'
                           ? AppColors.accentSurface
@@ -117,7 +117,7 @@ class BillListTile extends StatelessWidget {
                     child: Text(
                       bill.billType == 'quick' ? 'Quick' : 'Full',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: AppScale.fontSize(11),
                         fontWeight: FontWeight.w600,
                         color: bill.billType == 'quick'
                             ? AppColors.accent
@@ -127,14 +127,14 @@ class BillListTile extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Icon(Icons.chevron_right_rounded,
-                      size: 20,
+                      size: AppScale.size(20),
                       color: isDark
                           ? AppColors.darkTextSecondary
                           : AppColors.textTertiary),
                 ],
                 if (isSettlement)
                   Icon(Icons.chevron_right_rounded,
-                      size: 20,
+                      size: AppScale.size(20),
                       color: isDark
                           ? AppColors.darkTextSecondary
                           : AppColors.textTertiary),

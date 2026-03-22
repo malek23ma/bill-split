@@ -63,7 +63,7 @@ class FilteredResultsSheet extends StatelessWidget {
           // Drag handle
           Center(
             child: Container(
-              width: 40,
+              width: AppScale.size(40),
               height: 4,
               margin: const EdgeInsets.only(top: AppSpacing.sm, bottom: AppSpacing.md),
               decoration: BoxDecoration(
@@ -82,12 +82,12 @@ class FilteredResultsSheet extends StatelessWidget {
                 Row(
                   children: [
                     Icon(Icons.filter_list_rounded,
-                        size: 20, color: AppColors.accent),
+                        size: AppScale.size(20), color: AppColors.accent),
                     const SizedBox(width: 8),
                     Text(
                       '${filteredBills.length} bill${filteredBills.length == 1 ? '' : 's'} found',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: AppScale.fontSize(18),
                         fontWeight: FontWeight.w700,
                         color: isDark
                             ? AppColors.darkTextPrimary
@@ -98,18 +98,18 @@ class FilteredResultsSheet extends StatelessWidget {
                     Text(
                       '${total.toStringAsFixed(2)} $currencySymbol',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: AppScale.fontSize(16),
                         fontWeight: FontWeight.w700,
                         color: AppColors.primary,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Text(
                   _buildFilterSummary(),
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: AppScale.fontSize(13),
                     color: isDark
                         ? AppColors.darkTextSecondary
                         : AppColors.textSecondary,
@@ -128,13 +128,13 @@ class FilteredResultsSheet extends StatelessWidget {
           Flexible(
             child: filteredBills.isEmpty
                 ? Padding(
-                    padding: const EdgeInsets.all(40),
+                    padding: EdgeInsets.all(AppScale.padding(40)),
                     child: Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.search_off_rounded,
-                              size: 48,
+                              size: AppScale.size(48),
                               color: isDark
                                   ? AppColors.darkTextSecondary
                                   : AppColors.textTertiary),
@@ -142,14 +142,14 @@ class FilteredResultsSheet extends StatelessWidget {
                           Text(
                             'No bills match these filters',
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: AppScale.fontSize(15),
                               fontWeight: FontWeight.w600,
                               color: isDark
                                   ? AppColors.darkTextPrimary
                                   : AppColors.textSecondary,
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          SizedBox(height: AppScale.size(16)),
                           OutlinedButton(
                             onPressed: () {
                               onClearFilters();
@@ -211,7 +211,7 @@ class FilteredResultsSheet extends StatelessWidget {
                     onClearFilters();
                     Navigator.pop(context);
                   },
-                  icon: const Icon(Icons.close_rounded, size: 18),
+                  icon: Icon(Icons.close_rounded, size: AppScale.size(18)),
                   label: const Text('Clear filters'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: isDark
@@ -225,7 +225,7 @@ class FilteredResultsSheet extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding: EdgeInsets.symmetric(vertical: AppScale.padding(14)),
                   ),
                 ),
               ),

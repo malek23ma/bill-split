@@ -88,7 +88,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
           style: TextStyle(
             color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
             fontWeight: FontWeight.w700,
-            fontSize: 20,
+            fontSize: AppScale.fontSize(20),
           ),
         ),
         actions: [
@@ -110,31 +110,31 @@ class _InsightsScreenState extends State<InsightsScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(AppScale.padding(16)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Month selector
             _buildMonthSelector(oldestDate, isDark),
-            const SizedBox(height: 20),
+            SizedBox(height: AppScale.size(20)),
 
             // Total spent card
             _buildTotalSpentCard(insights, householdProvider, isDark),
-            const SizedBox(height: 24),
+            SizedBox(height: AppScale.size(24)),
 
             // By Category section
             if (insights.categorySpend.isNotEmpty) ...[
               _buildSectionTitle('By Category', isDark),
               const SizedBox(height: 12),
               _buildCategoryBreakdown(insights, householdProvider, isDark),
-              const SizedBox(height: 24),
+              SizedBox(height: AppScale.size(24)),
             ],
 
             // Spending Trends section
             _buildSectionTitle('Spending Trends', isDark),
             const SizedBox(height: 12),
             _buildSpendingTrends(billProvider, householdProvider, isDark),
-            const SizedBox(height: 24),
+            SizedBox(height: AppScale.size(24)),
 
             // By Member section
             if (insights.memberSpend.isNotEmpty) ...[
@@ -143,7 +143,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
               _buildMemberBreakdown(insights, memberNames, householdProvider, isDark),
             ],
 
-            const SizedBox(height: 32),
+            SizedBox(height: AppScale.size(32)),
           ],
         ),
       ),
@@ -159,7 +159,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
     ];
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: AppScale.padding(8), vertical: AppScale.padding(8)),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceVariant,
         borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -187,7 +187,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
           Text(
             '${months[_month - 1]} $_year',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: AppScale.fontSize(18),
               fontWeight: FontWeight.w700,
               color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
             ),
@@ -218,7 +218,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
       MonthlyInsights insights, HouseholdProvider householdProvider, bool isDark) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(AppScale.padding(24)),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -226,15 +226,15 @@ class _InsightsScreenState extends State<InsightsScreen> {
       child: Column(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: AppScale.size(40),
+            height: AppScale.size(40),
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.receipt_long_rounded,
-              size: 20,
+              size: AppScale.size(20),
               color: AppColors.primary,
             ),
           ),
@@ -242,7 +242,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
           Text(
             'Total Spent',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: AppScale.fontSize(14),
               fontWeight: FontWeight.w500,
               color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
             ),
@@ -251,7 +251,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
           Text(
             householdProvider.formatAmount(insights.totalSpent),
             style: TextStyle(
-              fontSize: 32,
+              fontSize: AppScale.fontSize(32),
               fontWeight: FontWeight.w700,
               color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
             ),
@@ -260,7 +260,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
           Text(
             '${insights.billCount} bill${insights.billCount == 1 ? '' : 's'}',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: AppScale.fontSize(14),
               color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
             ),
           ),
@@ -273,7 +273,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
     return Text(
       title,
       style: TextStyle(
-        fontSize: 16,
+        fontSize: AppScale.fontSize(16),
         fontWeight: FontWeight.w700,
         color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
       ),
@@ -357,26 +357,26 @@ class _InsightsScreenState extends State<InsightsScreen> {
     final barFraction = maxAmount > 0 ? entry.value / maxAmount : 0.0;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: EdgeInsets.symmetric(horizontal: AppScale.padding(16), vertical: AppScale.padding(14)),
       child: Column(
         children: [
           Row(
             children: [
               Container(
-                width: 36,
-                height: 36,
+                width: AppScale.size(36),
+                height: AppScale.size(36),
                 decoration: BoxDecoration(
                   color: category.color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
-                child: Icon(category.icon, size: 18, color: category.color),
+                child: Icon(category.icon, size: AppScale.size(18), color: category.color),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   category.label,
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: AppScale.fontSize(15),
                     fontWeight: FontWeight.w600,
                     color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                   ),
@@ -385,7 +385,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
               Text(
                 '${percentage.toStringAsFixed(0)}%',
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: AppScale.fontSize(13),
                   fontWeight: FontWeight.w500,
                   color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
                 ),
@@ -394,14 +394,14 @@ class _InsightsScreenState extends State<InsightsScreen> {
               Text(
                 householdProvider.formatAmount(entry.value),
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: AppScale.fontSize(15),
                   fontWeight: FontWeight.w600,
                   color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.full),
             child: LinearProgressIndicator(
@@ -428,7 +428,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
         color: isDark ? AppColors.darkSurface : AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
       ),
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(AppScale.padding(16)),
       child: Column(
         children: [
           // Stacked bar showing proportional spend
@@ -458,10 +458,10 @@ class _InsightsScreenState extends State<InsightsScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: AppScale.size(16)),
           // Member legend with amounts and percentages
           for (int i = 0; i < sorted.length; i++) ...[
-            if (i > 0) const SizedBox(height: 10),
+            if (i > 0) SizedBox(height: 10),
             Row(
               children: [
                 Container(
@@ -477,7 +477,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
                   child: Text(
                     memberNames[sorted[i].key] ?? 'Unknown',
                     style: TextStyle(
-                      fontSize: 15,
+                      fontSize: AppScale.fontSize(15),
                       fontWeight: FontWeight.w600,
                       color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                     ),
@@ -486,7 +486,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 Text(
                   '${(sorted[i].value / totalSpent * 100).toStringAsFixed(0)}%',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: AppScale.fontSize(13),
                     fontWeight: FontWeight.w500,
                     color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
                   ),
@@ -495,7 +495,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 Text(
                   householdProvider.formatAmount(sorted[i].value),
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: AppScale.fontSize(15),
                     fontWeight: FontWeight.w600,
                     color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                   ),
@@ -535,7 +535,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
     const barAreaHeight = 200.0;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(AppScale.padding(16)),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -562,7 +562,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: AppScale.size(16)),
           // Bar chart
           SizedBox(
             height: barAreaHeight + 40, // extra for labels
@@ -580,7 +580,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
                               ? householdProvider.formatAmount(totals[i])
                               : '',
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: AppScale.fontSize(10),
                             fontWeight: FontWeight.w500,
                             color: isDark
                                 ? AppColors.darkTextSecondary
@@ -609,7 +609,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
                         Text(
                           labels[i],
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: AppScale.fontSize(11),
                             fontWeight: FontWeight.w500,
                             color: isDark
                                 ? AppColors.darkTextSecondary

@@ -35,19 +35,19 @@ class BalanceCard extends StatelessWidget {
 
     if (allSettled) {
       return Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(AppScale.padding(16)),
         child: Container(
           width: double.infinity,
           decoration: BoxDecoration(
             color: isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceVariant,
             borderRadius: BorderRadius.circular(AppRadius.xl),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          padding: EdgeInsets.symmetric(horizontal: AppScale.padding(24), vertical: AppScale.padding(24)),
           child: Column(
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: AppScale.size(48),
+                height: AppScale.size(48),
                 decoration: BoxDecoration(
                   color: (isDark ? AppColors.darkTextSecondary : AppColors.textTertiary)
                       .withValues(alpha: 0.10),
@@ -56,14 +56,14 @@ class BalanceCard extends StatelessWidget {
                 child: Icon(
                   Icons.handshake_rounded,
                   color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
-                  size: 24,
+                  size: AppScale.size(24),
                 ),
               ),
               const SizedBox(height: 12),
               Text(
                 'All settled up!',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: AppScale.fontSize(16),
                   color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                   fontWeight: FontWeight.w700,
                 ),
@@ -80,7 +80,7 @@ class BalanceCard extends StatelessWidget {
     if (!useGrid) {
       // Single full-width row
       return Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(AppScale.padding(16)),
         child: _BalanceRow(
           memberName: memberNames[entries.first.key] ?? 'Unknown',
           amount: entries.first.value,
@@ -100,7 +100,7 @@ class BalanceCard extends StatelessWidget {
     final isOdd = entries.length.isOdd;
 
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(AppScale.padding(16)),
       child: Wrap(
         spacing: 10,
         runSpacing: 10,
@@ -181,7 +181,7 @@ class _BalanceRow extends StatelessWidget {
             ),
             child: Icon(arrowIcon, color: rowColor, size: compact ? 16 : 20),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Text(
             memberName,
             style: TextStyle(
@@ -217,7 +217,7 @@ class _BalanceRow extends StatelessWidget {
               );
             },
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           FilledButton.tonal(
             onPressed: onSettleUp,
             style: FilledButton.styleFrom(

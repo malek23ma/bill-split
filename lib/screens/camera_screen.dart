@@ -115,7 +115,7 @@ class _CameraScreenState extends State<CameraScreen>
           style: TextStyle(
             color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
             fontWeight: FontWeight.w700,
-            fontSize: 20,
+            fontSize: AppScale.fontSize(20),
           ),
         ),
         iconTheme: IconThemeData(
@@ -142,15 +142,15 @@ class _CameraScreenState extends State<CameraScreen>
                 child: Opacity(
                   opacity: opacity,
                   child: Container(
-                    width: 88,
-                    height: 88,
+                    width: AppScale.size(88),
+                    height: AppScale.size(88),
                     decoration: BoxDecoration(
                       color: isDark ? AppColors.primary.withAlpha(40) : AppColors.primarySurface,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.document_scanner_rounded,
-                      size: 40,
+                      size: AppScale.size(40),
                       color: AppColors.primary,
                     ),
                   ),
@@ -158,10 +158,10 @@ class _CameraScreenState extends State<CameraScreen>
               );
             },
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: AppScale.size(24)),
           SizedBox(
-            width: 28,
-            height: 28,
+            width: AppScale.size(28),
+            height: AppScale.size(28),
             child: CircularProgressIndicator(
               strokeWidth: 3,
               color: AppColors.primary,
@@ -171,7 +171,7 @@ class _CameraScreenState extends State<CameraScreen>
           Text(
             hasApiKey ? 'Reading receipt with AI...' : 'Reading receipt...',
             style: TextStyle(
-              fontSize: 17,
+              fontSize: AppScale.fontSize(17),
               fontWeight: FontWeight.w700,
               color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
             ),
@@ -180,7 +180,7 @@ class _CameraScreenState extends State<CameraScreen>
           Text(
             'This may take a moment',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: AppScale.fontSize(14),
               color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
             ),
           ),
@@ -191,15 +191,15 @@ class _CameraScreenState extends State<CameraScreen>
 
   Widget _buildIdleState(bool hasApiKey, bool isDark) {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(AppScale.padding(24)),
       child: Column(
         children: [
           const Spacer(flex: 2),
 
           // Dashed border scan area
           SizedBox(
-            width: 200,
-            height: 200,
+            width: AppScale.size(200),
+            height: AppScale.size(200),
             child: CustomPaint(
               painter: _DashedBorderPainter(
                 color: isDark ? AppColors.primary : AppColors.primaryLight,
@@ -210,15 +210,15 @@ class _CameraScreenState extends State<CameraScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
-                      width: 64,
-                      height: 64,
+                      width: AppScale.size(64),
+                      height: AppScale.size(64),
                       decoration: BoxDecoration(
                         color: isDark ? AppColors.primary.withAlpha(40) : AppColors.primarySurface,
                         borderRadius: BorderRadius.circular(AppRadius.lg),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.document_scanner_rounded,
-                        size: 32,
+                        size: AppScale.size(32),
                         color: AppColors.primary,
                       ),
                     ),
@@ -226,7 +226,7 @@ class _CameraScreenState extends State<CameraScreen>
                     Text(
                       'Scan Receipt',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: AppScale.fontSize(14),
                         fontWeight: FontWeight.w600,
                         color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
                       ),
@@ -242,7 +242,7 @@ class _CameraScreenState extends State<CameraScreen>
           Text(
             'Take a photo of your receipt',
             style: TextStyle(
-              fontSize: 22,
+              fontSize: AppScale.fontSize(22),
               fontWeight: FontWeight.w800,
               color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
             ),
@@ -253,7 +253,7 @@ class _CameraScreenState extends State<CameraScreen>
           Text(
             'Position the receipt clearly in the frame',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: AppScale.fontSize(14),
               color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
             ),
             textAlign: TextAlign.center,
@@ -264,13 +264,13 @@ class _CameraScreenState extends State<CameraScreen>
           // Camera button — filled, full width, primary
           SizedBox(
             width: double.infinity,
-            height: 56,
+            height: AppScale.size(56),
             child: FilledButton.icon(
               onPressed: () => _captureAndProcess(ImageSource.camera),
               icon: const Icon(Icons.camera_alt_rounded),
-              label: const Text(
+              label: Text(
                 'Take Photo',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                style: TextStyle(fontSize: AppScale.fontSize(16), fontWeight: FontWeight.w700),
               ),
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
@@ -288,13 +288,13 @@ class _CameraScreenState extends State<CameraScreen>
           // Gallery button — outlined, full width, divider border
           SizedBox(
             width: double.infinity,
-            height: 56,
+            height: AppScale.size(56),
             child: OutlinedButton.icon(
               onPressed: () => _captureAndProcess(ImageSource.gallery),
               icon: const Icon(Icons.photo_library_rounded),
-              label: const Text(
+              label: Text(
                 'Pick from Gallery',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                style: TextStyle(fontSize: AppScale.fontSize(16), fontWeight: FontWeight.w700),
               ),
               style: OutlinedButton.styleFrom(
                 foregroundColor: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
@@ -307,22 +307,22 @@ class _CameraScreenState extends State<CameraScreen>
             ),
           ),
 
-          const SizedBox(height: 16),
+          SizedBox(height: AppScale.size(16)),
 
           // AI hint card
           if (!hasApiKey)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(14),
+              padding: EdgeInsets.all(AppScale.padding(14)),
               decoration: BoxDecoration(
                 color: isDark ? AppColors.accent.withAlpha(25) : AppColors.accentSurface,
                 borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.auto_awesome_rounded,
-                    size: 20,
+                    size: AppScale.size(20),
                     color: AppColors.accent,
                   ),
                   const SizedBox(width: 10),
@@ -330,7 +330,7 @@ class _CameraScreenState extends State<CameraScreen>
                     child: Text(
                       'Set up AI scanning in Settings for better results',
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: AppScale.fontSize(13),
                         color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                       ),
                     ),

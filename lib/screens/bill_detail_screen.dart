@@ -81,13 +81,13 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
           if (!isSettlement)
             IconButton(
               onPressed: () => _showMakeRecurringSheet(context, bill),
-              icon: const Icon(Icons.repeat_rounded, size: 20),
+              icon: Icon(Icons.repeat_rounded, size: AppScale.size(20)),
               tooltip: 'Make Recurring',
               color: AppColors.primary,
             ),
           IconButton(
             onPressed: () => _confirmDelete(context, bill),
-            icon: const Icon(Icons.delete_outline_rounded, size: 20),
+            icon: Icon(Icons.delete_outline_rounded, size: AppScale.size(20)),
             tooltip: 'Delete',
             color: AppColors.negative,
           ),
@@ -116,8 +116,8 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                         children: [
                           if (!isSettlement)
                             Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: AppScale.padding(12), vertical: AppScale.padding(6)),
                               decoration: BoxDecoration(
                                 color: category.color.withAlpha(20),
                                 borderRadius:
@@ -127,12 +127,12 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(category.icon,
-                                      size: 16, color: category.color),
+                                      size: AppScale.size(16), color: category.color),
                                   const SizedBox(width: 6),
                                   Text(
                                     category.label,
                                     style: TextStyle(
-                                      fontSize: 13,
+                                      fontSize: AppScale.fontSize(13),
                                       fontWeight: FontWeight.w600,
                                       color: category.color,
                                     ),
@@ -142,8 +142,8 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                             ),
                           if (isSettlement)
                             Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: AppScale.padding(12), vertical: AppScale.padding(6)),
                               decoration: BoxDecoration(
                                 color: AppColors.positiveSurface,
                                 borderRadius:
@@ -153,12 +153,12 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(Icons.handshake,
-                                      size: 16, color: AppColors.positive),
+                                      size: AppScale.size(16), color: AppColors.positive),
                                   const SizedBox(width: 6),
                                   Text(
                                     'Settlement',
                                     style: TextStyle(
-                                      fontSize: 13,
+                                      fontSize: AppScale.fontSize(13),
                                       fontWeight: FontWeight.w600,
                                       color: AppColors.positive,
                                     ),
@@ -169,8 +169,8 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                           if (!isSettlement) ...[
                             const SizedBox(width: AppSpacing.sm),
                             Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: AppScale.padding(8), vertical: AppScale.padding(4)),
                               decoration: BoxDecoration(
                                 color: bill.billType == 'quick'
                                     ? AppColors.accentSurface
@@ -181,7 +181,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                               child: Text(
                                 bill.billType == 'quick' ? 'Quick' : 'Full',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: AppScale.fontSize(11),
                                   fontWeight: FontWeight.w700,
                                   color: bill.billType == 'quick'
                                       ? AppColors.accent
@@ -199,7 +199,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                       Text(
                         '${bill.totalAmount.toStringAsFixed(2)} $currencySymbol',
                         style: TextStyle(
-                          fontSize: 32,
+                          fontSize: AppScale.fontSize(32),
                           fontWeight: FontWeight.w700,
                           color: isDark
                               ? AppColors.darkTextPrimary
@@ -211,7 +211,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                       Text(
                         isSettlement ? 'Amount' : 'Total',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: AppScale.fontSize(13),
                           color: isDark
                               ? AppColors.darkTextSecondary
                               : AppColors.textTertiary,
@@ -285,8 +285,8 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                     : sharedNames.join(', ');
 
                 return Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.lg, vertical: 3),
+                  padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg, vertical: AppScale.padding(3)),
                   child: Container(
                     decoration: BoxDecoration(
                       color: isDark ? AppColors.darkSurface : AppColors.surface,
@@ -299,8 +299,8 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                         children: [
                           // Member initials circles
                           SizedBox(
-                            width: 36,
-                            height: 36,
+                            width: AppScale.size(36),
+                            height: AppScale.size(36),
                             child: Stack(
                               clipBehavior: Clip.none,
                               children: [
@@ -310,8 +310,8 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                                   Positioned(
                                     left: i * 12.0,
                                     child: Container(
-                                      width: 24,
-                                      height: 24,
+                                      width: AppScale.size(24),
+                                      height: AppScale.size(24),
                                       decoration: BoxDecoration(
                                         color: AppColors.memberColor(i),
                                         shape: BoxShape.circle,
@@ -327,8 +327,8 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                                           _initialFor(
                                               item.sharedByMemberIds[i],
                                               members),
-                                          style: const TextStyle(
-                                            fontSize: 10,
+                                          style: TextStyle(
+                                            fontSize: AppScale.fontSize(10),
                                             fontWeight: FontWeight.w700,
                                             color: Colors.white,
                                           ),
@@ -347,7 +347,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                                 Text(
                                   item.name,
                                   style: TextStyle(
-                                    fontSize: 14,
+                                    fontSize: AppScale.fontSize(14),
                                     fontWeight: FontWeight.w600,
                                     color: isDark
                                         ? AppColors.darkTextPrimary
@@ -358,7 +358,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                                 Text(
                                   splitLabel,
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: AppScale.fontSize(12),
                                     color: isDark
                                         ? AppColors.darkTextSecondary
                                         : AppColors.textSecondary,
@@ -372,7 +372,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                             '${item.price.toStringAsFixed(2)} $currencySymbol',
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
-                              fontSize: 14,
+                              fontSize: AppScale.fontSize(14),
                               color: isDark
                                   ? AppColors.darkTextPrimary
                                   : AppColors.textPrimary,
@@ -401,20 +401,20 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                   child: Row(
                     children: [
                       Container(
-                        width: 32,
-                        height: 32,
+                        width: AppScale.size(32),
+                        height: AppScale.size(32),
                         decoration: BoxDecoration(
                           color: AppColors.primary.withAlpha(26),
                           borderRadius: BorderRadius.circular(AppRadius.md),
                         ),
-                        child: const Icon(Icons.people_rounded,
-                            size: 18, color: AppColors.primary),
+                        child: Icon(Icons.people_rounded,
+                            size: AppScale.size(18), color: AppColors.primary),
                       ),
                       const SizedBox(width: AppSpacing.md),
                       Text(
                         'Split equally among all members',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: AppScale.fontSize(14),
                           fontWeight: FontWeight.w500,
                           color: isDark
                               ? AppColors.darkTextPrimary
@@ -496,7 +496,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                 // Drag handle
                 Center(
                   child: Container(
-                    width: 40,
+                    width: AppScale.size(40),
                     height: 4,
                     margin: const EdgeInsets.only(bottom: AppSpacing.xl),
                     decoration: BoxDecoration(
@@ -511,7 +511,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                 Text(
                   'Make Recurring',
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: AppScale.fontSize(20),
                     fontWeight: FontWeight.w700,
                     color: isDark
                         ? AppColors.darkTextPrimary
@@ -522,7 +522,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                 Text(
                   'This bill will repeat automatically',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: AppScale.fontSize(14),
                     color: isDark
                         ? AppColors.darkTextSecondary
                         : AppColors.textTertiary,
@@ -553,8 +553,8 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                 const SizedBox(height: AppSpacing.lg),
                 // Amount (read-only display)
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.lg, vertical: 14),
+                  padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg, vertical: AppScale.padding(14)),
                   decoration: BoxDecoration(
                     color: isDark
                         ? AppColors.darkSurfaceVariant
@@ -567,7 +567,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                       Text(
                         'Amount',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: AppScale.fontSize(14),
                           color: isDark
                               ? AppColors.darkTextSecondary
                               : AppColors.textSecondary,
@@ -576,7 +576,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                       Text(
                         bill.totalAmount.toStringAsFixed(2),
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: AppScale.fontSize(16),
                           fontWeight: FontWeight.w700,
                           color: isDark
                               ? AppColors.darkTextPrimary
@@ -591,7 +591,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                 Text(
                   'Frequency',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: AppScale.fontSize(14),
                     fontWeight: FontWeight.w600,
                     color: isDark
                         ? AppColors.darkTextPrimary
@@ -624,7 +624,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                               : AppColors.surfaceVariant,
                           labelStyle: TextStyle(
                             fontWeight: FontWeight.w600,
-                            fontSize: 13,
+                            fontSize: AppScale.fontSize(13),
                             color: isSelected
                                 ? AppColors.primary
                                 : isDark
@@ -637,7 +637,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                             side: BorderSide.none,
                           ),
                           showCheckmark: false,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          padding: EdgeInsets.symmetric(vertical: AppScale.padding(8)),
                         ),
                       ),
                     );
@@ -678,7 +678,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding: EdgeInsets.symmetric(vertical: AppScale.padding(14)),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
@@ -781,7 +781,7 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      padding: EdgeInsets.symmetric(horizontal: AppScale.padding(14), vertical: AppScale.padding(11)),
       decoration: BoxDecoration(
         color: showBackground
             ? (isDark
@@ -799,7 +799,7 @@ class _InfoRow extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: AppScale.fontSize(13),
               color: isDark
                   ? AppColors.darkTextSecondary
                   : AppColors.textSecondary,
@@ -808,7 +808,7 @@ class _InfoRow extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: AppScale.fontSize(13),
               fontWeight: FontWeight.w600,
               color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
             ),

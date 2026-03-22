@@ -60,7 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   color:
                       isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                   fontWeight: FontWeight.w800,
-                  fontSize: 20,
+                  fontSize: AppScale.fontSize(20),
                 ),
               ),
               actions: [
@@ -113,7 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppRadius.lg),
               ),
-              child: const Icon(Icons.add_rounded, size: 28),
+              child: Icon(Icons.add_rounded, size: AppScale.size(28)),
             )
           : null,
       bottomNavigationBar: NavigationBar(
@@ -148,19 +148,19 @@ class _HomeScreenState extends State<HomeScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.only(bottom: 88),
+      padding: EdgeInsets.only(bottom: AppScale.padding(88)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
         // Recurring bills due banner
         if (dueBills.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            padding: EdgeInsets.fromLTRB(AppScale.padding(16), AppScale.padding(8), AppScale.padding(16), AppScale.padding(8)),
             child: Column(
               children: dueBills.map((recurring) {
                 final cat = BillCategories.getById(recurring.category);
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: EdgeInsets.only(bottom: AppScale.padding(8)),
                   child: ScaleTap(
                     child: Container(
                       decoration: BoxDecoration(
@@ -170,21 +170,21 @@ class _HomeScreenState extends State<HomeScreen> {
                         borderRadius: BorderRadius.circular(AppRadius.lg),
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.all(14),
+                        padding: EdgeInsets.all(AppScale.padding(14)),
                         child: Row(
                           children: [
                             Container(
-                              width: 40,
-                              height: 40,
+                              width: AppScale.size(40),
+                              height: AppScale.size(40),
                               decoration: BoxDecoration(
                                 color:
                                     AppColors.accent.withValues(alpha: 0.10),
                                 borderRadius:
                                     BorderRadius.circular(AppRadius.md),
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.repeat_rounded,
-                                size: 20,
+                                size: AppScale.size(20),
                                 color: AppColors.accent,
                               ),
                             ),
@@ -196,7 +196,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   Text(
                                     recurring.title,
                                     style: TextStyle(
-                                      fontSize: 14,
+                                      fontSize: AppScale.fontSize(14),
                                       fontWeight: FontWeight.w600,
                                       color: isDark
                                           ? AppColors.darkTextPrimary
@@ -207,7 +207,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   Text(
                                     '${recurring.amount.toStringAsFixed(2)} $currencySymbol \u2022 ${cat.label}',
                                     style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: AppScale.fontSize(12),
                                       color: isDark
                                           ? AppColors.darkTextSecondary
                                           : AppColors.textSecondary,
@@ -233,8 +233,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               },
                               style: FilledButton.styleFrom(
                                 backgroundColor: AppColors.primary,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 8),
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: AppScale.padding(14), vertical: AppScale.padding(8)),
                                 minimumSize: Size.zero,
                                 shape: RoundedRectangleBorder(
                                   borderRadius:
@@ -242,15 +242,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                                 elevation: 0,
                               ),
-                              child: const Text(
+                              child: Text(
                                 'Confirm',
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: AppScale.fontSize(13),
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                             TextButton(
                               onPressed: () async {
                                 final householdId =
@@ -263,14 +263,14 @@ class _HomeScreenState extends State<HomeScreen> {
                               },
                               style: TextButton.styleFrom(
                                 foregroundColor: AppColors.textTertiary,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 8),
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: AppScale.padding(8), vertical: AppScale.padding(8)),
                                 minimumSize: Size.zero,
                               ),
-                              child: const Text(
+                              child: Text(
                                 'Skip',
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: AppScale.fontSize(13),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -306,12 +306,12 @@ class _HomeScreenState extends State<HomeScreen> {
         if (billProvider.pairwiseBalances.values.any(
             (inner) => inner.values.any((v) => v.abs() > 0.01)))
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: EdgeInsets.symmetric(horizontal: AppScale.padding(16)),
             child: SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: () => _showSettleAllSheet(context),
-                icon: Icon(Icons.account_balance_wallet_rounded, size: 18,
+                icon: Icon(Icons.account_balance_wallet_rounded, size: AppScale.size(18),
                     color: AppColors.primary),
                 label: Text('Settle All',
                     style: TextStyle(
@@ -323,7 +323,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: isDark ? AppColors.darkDivider : AppColors.divider),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppRadius.lg)),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: EdgeInsets.symmetric(vertical: AppScale.padding(14)),
                 ),
               ),
             ),
@@ -332,7 +332,7 @@ class _HomeScreenState extends State<HomeScreen> {
         // Quick stats row
         if (billProvider.bills.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: EdgeInsets.symmetric(horizontal: AppScale.padding(16)),
             child: Builder(
               builder: (context) {
                 final now = DateTime.now();
@@ -356,7 +356,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     // This month total
                     Expanded(
                       child: Container(
-                        padding: const EdgeInsets.all(14),
+                        padding: EdgeInsets.all(AppScale.padding(14)),
                         decoration: BoxDecoration(
                           color: isDark ? AppColors.darkSurface : AppColors.surface,
                           borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -367,7 +367,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             Text(
                               'This month',
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: AppScale.fontSize(11),
                                 fontWeight: FontWeight.w500,
                                 color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
                               ),
@@ -376,7 +376,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             Text(
                               '${thisMonthTotal.toStringAsFixed(2)} $currencySymbol',
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: AppScale.fontSize(16),
                                 fontWeight: FontWeight.w800,
                                 color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                               ),
@@ -389,7 +389,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     // Bill count
                     Expanded(
                       child: Container(
-                        padding: const EdgeInsets.all(14),
+                        padding: EdgeInsets.all(AppScale.padding(14)),
                         decoration: BoxDecoration(
                           color: isDark ? AppColors.darkSurface : AppColors.surface,
                           borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -400,7 +400,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             Text(
                               'Bills',
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: AppScale.fontSize(11),
                                 fontWeight: FontWeight.w500,
                                 color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
                               ),
@@ -409,7 +409,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             Text(
                               '${thisMonthBills.length}',
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: AppScale.fontSize(16),
                                 fontWeight: FontWeight.w800,
                                 color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                               ),
@@ -422,7 +422,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     // Last bill
                     Expanded(
                       child: Container(
-                        padding: const EdgeInsets.all(14),
+                        padding: EdgeInsets.all(AppScale.padding(14)),
                         decoration: BoxDecoration(
                           color: isDark ? AppColors.darkSurface : AppColors.surface,
                           borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -433,7 +433,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             Text(
                               'Last bill',
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: AppScale.fontSize(11),
                                 fontWeight: FontWeight.w500,
                                 color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
                               ),
@@ -442,7 +442,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             Text(
                               lastBillText,
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: AppScale.fontSize(16),
                                 fontWeight: FontWeight.w800,
                                 color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                               ),
@@ -461,7 +461,7 @@ class _HomeScreenState extends State<HomeScreen> {
         // Spending pulse
         if (billProvider.bills.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+            padding: EdgeInsets.fromLTRB(AppScale.padding(16), AppScale.padding(10), AppScale.padding(16), 0),
             child: Builder(
               builder: (context) {
                 final now = DateTime.now();
@@ -493,7 +493,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 return Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: EdgeInsets.symmetric(horizontal: AppScale.padding(14), vertical: AppScale.padding(10)),
                   decoration: BoxDecoration(
                     color: isDark
                         ? (isUp ? AppColors.negative.withAlpha(15) : AppColors.positive.withAlpha(15))
@@ -504,14 +504,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Icon(
                         isUp ? Icons.trending_up_rounded : Icons.trending_down_rounded,
-                        size: 18,
+                        size: AppScale.size(18),
                         color: isUp ? AppColors.negative : AppColors.positive,
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Text(
                         '${isUp ? '↑' : '↓'} ${pct.toStringAsFixed(0)}% vs $lastMonthName',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: AppScale.fontSize(13),
                           fontWeight: FontWeight.w600,
                           color: isUp ? AppColors.negative : AppColors.positive,
                         ),
@@ -526,7 +526,7 @@ class _HomeScreenState extends State<HomeScreen> {
         // Recent Bills — collapsible
         const SizedBox(height: 8),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: EdgeInsets.symmetric(horizontal: AppScale.padding(16)),
           child: Container(
             decoration: BoxDecoration(
               color: isDark ? AppColors.darkSurface : AppColors.surface,
@@ -536,7 +536,7 @@ class _HomeScreenState extends State<HomeScreen> {
               data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
               child: ExpansionTile(
                 initiallyExpanded: false,
-                tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+                tilePadding: EdgeInsets.symmetric(horizontal: AppScale.padding(16)),
                 childrenPadding: EdgeInsets.zero,
                 shape: const Border(),
                 collapsedShape: const Border(),
@@ -551,11 +551,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                 : AppColors.textPrimary,
                           ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     if (billProvider.bills.isNotEmpty)
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
+                        padding: EdgeInsets.symmetric(
+                            horizontal: AppScale.padding(8), vertical: AppScale.padding(2)),
                         decoration: BoxDecoration(
                           color: isDark
                               ? AppColors.primary.withAlpha(30)
@@ -564,8 +564,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         child: Text(
                           '${billProvider.bills.length}',
-                          style: const TextStyle(
-                            fontSize: 12,
+                          style: TextStyle(
+                            fontSize: AppScale.fontSize(12),
                             fontWeight: FontWeight.w700,
                             color: AppColors.primary,
                           ),
@@ -576,13 +576,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   if (billProvider.bills.isEmpty)
                     Padding(
-                      padding: const EdgeInsets.all(32),
+                      padding: EdgeInsets.all(AppScale.padding(32)),
                       child: Center(
                         child: Column(
                           children: [
                             Container(
-                              width: 64,
-                              height: 64,
+                              width: AppScale.size(64),
+                              height: AppScale.size(64),
                               decoration: BoxDecoration(
                                 color: isDark
                                     ? AppColors.darkSurfaceVariant
@@ -592,7 +592,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               child: Icon(
                                 Icons.receipt_long_rounded,
-                                size: 32,
+                                size: AppScale.size(32),
                                 color: isDark
                                     ? AppColors.darkTextSecondary
                                     : AppColors.textTertiary,
@@ -602,7 +602,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             Text(
                               'No bills yet',
                               style: TextStyle(
-                                fontSize: 15,
+                                fontSize: AppScale.fontSize(15),
                                 fontWeight: FontWeight.w600,
                                 color: isDark
                                     ? AppColors.darkTextPrimary
@@ -624,9 +624,9 @@ class _HomeScreenState extends State<HomeScreen> {
               direction: DismissDirection.endToStart,
               background: Container(
                 alignment: Alignment.centerRight,
-                padding: const EdgeInsets.only(right: 24),
-                margin: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 4),
+                padding: EdgeInsets.only(right: AppScale.padding(24)),
+                margin: EdgeInsets.symmetric(
+                    horizontal: AppScale.padding(16), vertical: AppScale.padding(4)),
                 decoration: BoxDecoration(
                   color: AppColors.negative,
                   borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -840,15 +840,15 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       builder: (ctx) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+          padding: EdgeInsets.fromLTRB(AppScale.padding(24), AppScale.padding(8), AppScale.padding(24), AppScale.padding(24)),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               // Drag handle
               Container(
-                width: 40,
+                width: AppScale.size(40),
                 height: 4,
-                margin: const EdgeInsets.only(bottom: 20),
+                margin: EdgeInsets.only(bottom: AppScale.padding(20)),
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.darkDivider : AppColors.divider,
                   borderRadius: BorderRadius.circular(2),
@@ -856,15 +856,15 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               // Icon
               Container(
-                width: 56,
-                height: 56,
+                width: AppScale.size(56),
+                height: AppScale.size(56),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.handshake_outlined,
-                  size: 28,
+                  size: AppScale.size(28),
                   color: AppColors.primary,
                 ),
               ),
@@ -872,7 +872,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 'Settle Up?',
                 style: TextStyle(
-                  fontSize: 20,
+                  fontSize: AppScale.fontSize(20),
                   fontWeight: FontWeight.w800,
                   color: isDark
                       ? AppColors.darkTextPrimary
@@ -883,13 +883,13 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 '$whoOwes owes ${amount.toStringAsFixed(2)} $currSymbol',
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: AppScale.fontSize(15),
                   color: isDark
                       ? AppColors.darkTextSecondary
                       : AppColors.textSecondary,
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: AppScale.size(24)),
               // Actions
               Row(
                 children: [
@@ -912,7 +912,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             color: isDark
                                 ? AppColors.darkDivider
                                 : AppColors.divider),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: EdgeInsets.symmetric(vertical: AppScale.padding(14)),
                         shape: RoundedRectangleBorder(
                           borderRadius:
                               BorderRadius.circular(AppRadius.full),
@@ -940,7 +940,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: EdgeInsets.symmetric(vertical: AppScale.padding(14)),
                         shape: RoundedRectangleBorder(
                           borderRadius:
                               BorderRadius.circular(AppRadius.full),
@@ -1008,7 +1008,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               'Total owed: ${totalOwed.toStringAsFixed(2)} $currSymbol',
               style: TextStyle(
-                fontSize: 13,
+                fontSize: AppScale.fontSize(13),
                 color: isDark
                     ? AppColors.darkTextSecondary
                     : AppColors.textTertiary,
@@ -1047,8 +1047,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 suffixText: currSymbol,
               ),
-              style: const TextStyle(
-                  fontSize: 20, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  fontSize: AppScale.fontSize(20), fontWeight: FontWeight.bold),
             ),
           ],
         ),

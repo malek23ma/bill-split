@@ -67,7 +67,7 @@ class _SettleAllSheetState extends State<SettleAllSheet> {
           // Drag handle
           Center(
             child: Container(
-              width: 40,
+              width: AppScale.size(40),
               height: 4,
               decoration: BoxDecoration(
                 color: isDark
@@ -85,7 +85,7 @@ class _SettleAllSheetState extends State<SettleAllSheet> {
             child: Text(
               'Settlement Plan',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: AppScale.fontSize(18),
                 fontWeight: FontWeight.bold,
                 color: isDark
                     ? AppColors.darkTextPrimary
@@ -148,7 +148,7 @@ class _SettleAllSheetState extends State<SettleAllSheet> {
                 children: [
                   Icon(
                     Icons.handshake_rounded,
-                    size: 48,
+                    size: AppScale.size(48),
                     color: isDark
                         ? AppColors.darkTextSecondary
                         : AppColors.textSecondary,
@@ -157,7 +157,7 @@ class _SettleAllSheetState extends State<SettleAllSheet> {
                   Text(
                     'All settled up!',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: AppScale.fontSize(16),
                       color: isDark
                           ? AppColors.darkTextSecondary
                           : AppColors.textSecondary,
@@ -198,7 +198,7 @@ class _SettleAllSheetState extends State<SettleAllSheet> {
                       children: [
                         Icon(
                           Icons.arrow_forward_rounded,
-                          size: 20,
+                          size: AppScale.size(20),
                           color: isDark
                               ? AppColors.darkTextSecondary
                               : AppColors.textSecondary,
@@ -208,7 +208,7 @@ class _SettleAllSheetState extends State<SettleAllSheet> {
                           child: Text(
                             '$fromName → $toName',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: AppScale.fontSize(14),
                               color: isDark
                                   ? AppColors.darkTextPrimary
                                   : AppColors.textPrimary,
@@ -220,7 +220,7 @@ class _SettleAllSheetState extends State<SettleAllSheet> {
                         Text(
                           '${widget.currencySymbol}${s.amount.toStringAsFixed(2)}',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: AppScale.fontSize(14),
                             fontWeight: FontWeight.w600,
                             color: isDark
                                 ? AppColors.darkTextPrimary
@@ -240,9 +240,9 @@ class _SettleAllSheetState extends State<SettleAllSheet> {
                             tapTargetSize:
                                 MaterialTapTargetSize.shrinkWrap,
                           ),
-                          child: const Text(
+                          child: Text(
                             'Pay',
-                            style: TextStyle(fontSize: 13),
+                            style: TextStyle(fontSize: AppScale.fontSize(13)),
                           ),
                         ),
                       ],

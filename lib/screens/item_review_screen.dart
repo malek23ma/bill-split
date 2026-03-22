@@ -136,14 +136,14 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
               children: [
                 Expanded(
                   child: Text('Bill Date', style: TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w500,
+                    fontSize: AppScale.fontSize(12), fontWeight: FontWeight.w500,
                     color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
                   )),
                 ),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Text('Paid by', style: TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w500,
+                    fontSize: AppScale.fontSize(12), fontWeight: FontWeight.w500,
                     color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
                   )),
                 ),
@@ -173,7 +173,7 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                         }
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        padding: EdgeInsets.symmetric(horizontal: AppScale.padding(12)),
                         decoration: BoxDecoration(
                           color: isDark
                               ? AppColors.darkSurfaceVariant
@@ -183,14 +183,14 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                         child: Row(
                           children: [
                             Icon(Icons.calendar_today_rounded,
-                                size: 16, color: AppColors.primary),
-                            const SizedBox(width: 6),
+                                size: AppScale.size(16), color: AppColors.primary),
+                            SizedBox(width: 6),
                             Flexible(
                               child: Text(
                                 DateFormat('dd/MM/yyyy').format(_billDate),
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
-                                  fontSize: 14,
+                                  fontSize: AppScale.fontSize(14),
                                   color: isDark
                                       ? AppColors.darkTextPrimary
                                       : AppColors.textPrimary,
@@ -217,14 +217,14 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                           borderSide: BorderSide.none,
                         ),
                         isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 14),
+                        contentPadding: EdgeInsets.symmetric(
+                            horizontal: AppScale.padding(12), vertical: AppScale.padding(14)),
                       ),
                       items: members
                           .map((m) => DropdownMenuItem(
                                 value: m.id,
                                 child: Text(m.name,
-                                    style: const TextStyle(fontSize: 14)),
+                                    style: TextStyle(fontSize: AppScale.fontSize(14))),
                               ))
                           .toList(),
                       onChanged: (value) {
@@ -241,12 +241,12 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
 
           // Category selector
           SizedBox(
-            height: 42,
+            height: AppScale.size(42),
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               itemCount: BillCategories.list.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 6),
+              separatorBuilder: (_, _) => SizedBox(width: 6),
               itemBuilder: (context, index) {
                 final cat = BillCategories.list[index];
                 final isSelected = _category == cat.id;
@@ -254,12 +254,12 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                   label: Text(
                     cat.label,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: AppScale.fontSize(12),
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                       color: isSelected ? cat.color : AppColors.textSecondary,
                     ),
                   ),
-                  avatar: Icon(cat.icon, size: 16, color: cat.color),
+                  avatar: Icon(cat.icon, size: AppScale.size(16), color: cat.color),
                   selected: isSelected,
                   selectedColor: cat.color.withAlpha(30),
                   backgroundColor: isDark
@@ -286,21 +286,21 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Container(
-                          width: 64,
-                          height: 64,
+                          width: AppScale.size(64),
+                          height: AppScale.size(64),
                           decoration: BoxDecoration(
                             color: AppColors.accentSurface,
                             borderRadius: BorderRadius.circular(AppRadius.md),
                           ),
-                          child: const Icon(Icons.warning_amber_rounded,
-                              size: 32, color: AppColors.accent),
+                          child: Icon(Icons.warning_amber_rounded,
+                              size: AppScale.size(32), color: AppColors.accent),
                         ),
                         const SizedBox(height: AppSpacing.lg),
                         Text(
                           'No items detected from the receipt',
                           style: TextStyle(
                             color: AppColors.textSecondary,
-                            fontSize: 15,
+                            fontSize: AppScale.fontSize(15),
                           ),
                         ),
                         const SizedBox(height: AppSpacing.md),
@@ -339,17 +339,17 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                               ),
                               child: Container(
                                 padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
-                                child: const Row(
+                                    EdgeInsets.symmetric(vertical: AppScale.padding(14)),
+                                child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Icon(Icons.add_rounded,
-                                        size: 20, color: AppColors.primary),
+                                        size: AppScale.size(20), color: AppColors.primary),
                                     SizedBox(width: AppSpacing.sm),
                                     Text(
                                       'Add Item',
                                       style: TextStyle(
-                                        fontSize: 14,
+                                        fontSize: AppScale.fontSize(14),
                                         fontWeight: FontWeight.w500,
                                         color: AppColors.primary,
                                       ),
@@ -374,9 +374,9 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                                 BorderRadius.circular(AppRadius.md),
                           ),
                           alignment: Alignment.centerRight,
-                          padding: const EdgeInsets.only(right: 20),
-                          child: const Icon(Icons.delete_outline_rounded,
-                              color: AppColors.negative, size: 22),
+                          padding: EdgeInsets.only(right: AppScale.padding(20)),
+                          child: Icon(Icons.delete_outline_rounded,
+                              color: AppColors.negative, size: AppScale.size(22)),
                         ),
                         onDismissed: (_) {
                           setState(() => _items.removeAt(index));
@@ -415,7 +415,7 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                       Text('Total',
                           style: TextStyle(
                             fontWeight: FontWeight.w500,
-                            fontSize: 14,
+                            fontSize: AppScale.fontSize(14),
                             color: isDark
                                 ? AppColors.darkTextSecondary
                                 : AppColors.textSecondary,
@@ -423,7 +423,7 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                       Text('${_totalAmount.toStringAsFixed(2)} $currencySymbol',
                           style: TextStyle(
                             fontWeight: FontWeight.w700,
-                            fontSize: 17,
+                            fontSize: AppScale.fontSize(17),
                             color: isDark
                                 ? AppColors.darkTextPrimary
                                 : AppColors.textPrimary,
@@ -436,33 +436,33 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                         .where((m) => m.id == entry.key)
                         .firstOrNull;
                     return Padding(
-                      padding: const EdgeInsets.only(top: 6),
+                      padding: EdgeInsets.only(top: AppScale.padding(6)),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
                             '${member?.name ?? "Member"} owes',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: AppScale.fontSize(14),
                               color: isDark
                                   ? AppColors.darkTextSecondary
                                   : AppColors.textSecondary,
                             ),
                           ),
                           Text('${entry.value.toStringAsFixed(2)} $currencySymbol',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AppColors.primary,
                                 fontWeight: FontWeight.w700,
-                                fontSize: 16,
+                                fontSize: AppScale.fontSize(16),
                               )),
                         ],
                       ),
                     );
                   }),
-                  const SizedBox(height: 14),
+                  SizedBox(height: AppScale.size(14)),
                   SizedBox(
                     width: double.infinity,
-                    height: 50,
+                    height: AppScale.size(50),
                     child: FilledButton(
                       onPressed: _saveBill,
                       style: FilledButton.styleFrom(
@@ -472,9 +472,9 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                           borderRadius: BorderRadius.circular(AppRadius.lg),
                         ),
                       ),
-                      child: const Text('Save Bill',
+                      child: Text('Save Bill',
                           style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w600)),
+                              fontSize: AppScale.fontSize(16), fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ],

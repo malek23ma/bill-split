@@ -48,15 +48,15 @@ class _RecurringBillsScreenState extends State<RecurringBillsScreen> {
           style: TextStyle(
             color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
             fontWeight: FontWeight.w700,
-            fontSize: 20,
+            fontSize: AppScale.fontSize(20),
           ),
         ),
       ),
       body: bills.isEmpty
           ? _buildEmptyState(isDark)
           : ListView.builder(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 12),
+              padding: EdgeInsets.symmetric(
+                  horizontal: AppScale.padding(16), vertical: AppScale.padding(12)),
               itemCount: bills.length,
               itemBuilder: (context, index) {
                 final bill = bills[index];
@@ -74,8 +74,8 @@ class _RecurringBillsScreenState extends State<RecurringBillsScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 72,
-            height: 72,
+            width: AppScale.size(72),
+            height: AppScale.size(72),
             decoration: BoxDecoration(
               color: isDark
                   ? AppColors.darkSurfaceVariant
@@ -84,7 +84,7 @@ class _RecurringBillsScreenState extends State<RecurringBillsScreen> {
             ),
             child: Icon(
               Icons.repeat_rounded,
-              size: 36,
+              size: AppScale.size(36),
               color: isDark
                   ? AppColors.darkTextSecondary
                   : AppColors.textTertiary,
@@ -94,7 +94,7 @@ class _RecurringBillsScreenState extends State<RecurringBillsScreen> {
           Text(
             'No recurring bills',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: AppScale.fontSize(16),
               fontWeight: FontWeight.w600,
               color: isDark
                   ? AppColors.darkTextPrimary
@@ -105,7 +105,7 @@ class _RecurringBillsScreenState extends State<RecurringBillsScreen> {
           Text(
             'Create one from the bill type screen',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: AppScale.fontSize(13),
               color: isDark
                   ? AppColors.darkTextSecondary
                   : AppColors.textTertiary,
@@ -130,13 +130,13 @@ class _RecurringBillsScreenState extends State<RecurringBillsScreen> {
     final dateStr = DateFormat('dd/MM/yyyy').format(bill.nextDueDate);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.only(bottom: AppScale.padding(8)),
       child: Dismissible(
         key: ValueKey(bill.id),
         direction: DismissDirection.endToStart,
         background: Container(
           alignment: Alignment.centerRight,
-          padding: const EdgeInsets.only(right: 24),
+          padding: EdgeInsets.only(right: AppScale.padding(24)),
           decoration: BoxDecoration(
             color: AppColors.negative,
             borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -162,13 +162,13 @@ class _RecurringBillsScreenState extends State<RecurringBillsScreen> {
               borderRadius: BorderRadius.circular(AppRadius.lg),
               child: Padding(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    EdgeInsets.symmetric(horizontal: AppScale.padding(16), vertical: AppScale.padding(14)),
                 child: Row(
                   children: [
                     // Category icon
                     Container(
-                      width: 44,
-                      height: 44,
+                      width: AppScale.size(44),
+                      height: AppScale.size(44),
                       decoration: BoxDecoration(
                         color: category.color.withValues(alpha: 0.10),
                         borderRadius: BorderRadius.circular(AppRadius.md),
@@ -176,7 +176,7 @@ class _RecurringBillsScreenState extends State<RecurringBillsScreen> {
                       child: Icon(
                         category.icon,
                         color: category.color,
-                        size: 22,
+                        size: AppScale.size(22),
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -188,7 +188,7 @@ class _RecurringBillsScreenState extends State<RecurringBillsScreen> {
                           Text(
                             bill.title,
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: AppScale.fontSize(15),
                               fontWeight: FontWeight.w700,
                               color: isDark
                                   ? AppColors.darkTextPrimary
@@ -201,14 +201,14 @@ class _RecurringBillsScreenState extends State<RecurringBillsScreen> {
                               Text(
                                 '${bill.amount.toStringAsFixed(2)} $currencySymbol',
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: AppScale.fontSize(13),
                                   fontWeight: FontWeight.w600,
                                   color: isDark
                                       ? AppColors.darkTextSecondary
                                       : AppColors.textSecondary,
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              SizedBox(width: 8),
                               _FrequencyBadge(
                                   frequency: bill.frequency, isDark: isDark),
                             ],
@@ -217,7 +217,7 @@ class _RecurringBillsScreenState extends State<RecurringBillsScreen> {
                           Text(
                             'Next: $dateStr',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: AppScale.fontSize(12),
                               color: isDark
                                   ? AppColors.darkTextSecondary
                                   : AppColors.textTertiary,
@@ -266,7 +266,7 @@ class _RecurringBillsScreenState extends State<RecurringBillsScreen> {
         content: Text(
           'This recurring bill will be permanently deleted.',
           style: TextStyle(
-            fontSize: 14,
+            fontSize: AppScale.fontSize(14),
             color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
           ),
         ),
@@ -334,9 +334,9 @@ class _RecurringBillsScreenState extends State<RecurringBillsScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheetState) => Padding(
           padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 8,
+            left: AppScale.padding(24),
+            right: AppScale.padding(24),
+            top: AppScale.padding(8),
             bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
           ),
           child: SingleChildScrollView(
@@ -347,9 +347,9 @@ class _RecurringBillsScreenState extends State<RecurringBillsScreen> {
                 // Drag handle
                 Center(
                   child: Container(
-                    width: 40,
+                    width: AppScale.size(40),
                     height: 4,
-                    margin: const EdgeInsets.only(bottom: 20),
+                    margin: EdgeInsets.only(bottom: AppScale.padding(20)),
                     decoration: BoxDecoration(
                       color: isDark ? AppColors.darkDivider : AppColors.divider,
                       borderRadius: BorderRadius.circular(2),
@@ -360,7 +360,7 @@ class _RecurringBillsScreenState extends State<RecurringBillsScreen> {
                 Text(
                   'Edit Recurring Bill',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: AppScale.fontSize(18),
                     fontWeight: FontWeight.w800,
                     color: isDark
                         ? AppColors.darkTextPrimary
@@ -372,14 +372,14 @@ class _RecurringBillsScreenState extends State<RecurringBillsScreen> {
                 Text(
                   'Title',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: AppScale.fontSize(13),
                     fontWeight: FontWeight.w600,
                     color: isDark
                         ? AppColors.darkTextSecondary
                         : AppColors.textSecondary,
                   ),
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 TextFormField(
                   controller: titleController,
                   style: TextStyle(
@@ -413,14 +413,14 @@ class _RecurringBillsScreenState extends State<RecurringBillsScreen> {
                 Text(
                   'Amount',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: AppScale.fontSize(13),
                     fontWeight: FontWeight.w600,
                     color: isDark
                         ? AppColors.darkTextSecondary
                         : AppColors.textSecondary,
                   ),
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 TextFormField(
                   controller: amountController,
                   keyboardType:
@@ -459,14 +459,14 @@ class _RecurringBillsScreenState extends State<RecurringBillsScreen> {
                 Text(
                   'Frequency',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: AppScale.fontSize(13),
                     fontWeight: FontWeight.w600,
                     color: isDark
                         ? AppColors.darkTextSecondary
                         : AppColors.textSecondary,
                   ),
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 DropdownButtonFormField<String>(
                   initialValue: selectedFrequency,
                   dropdownColor:
@@ -514,14 +514,14 @@ class _RecurringBillsScreenState extends State<RecurringBillsScreen> {
                 Text(
                   'Category',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: AppScale.fontSize(13),
                     fontWeight: FontWeight.w600,
                     color: isDark
                         ? AppColors.darkTextSecondary
                         : AppColors.textSecondary,
                   ),
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -530,14 +530,14 @@ class _RecurringBillsScreenState extends State<RecurringBillsScreen> {
                     return FilterChip(
                       selected: isSelected,
                       label: Text(cat.label),
-                      avatar: Icon(cat.icon, size: 16, color: cat.color),
+                      avatar: Icon(cat.icon, size: AppScale.size(16), color: cat.color),
                       selectedColor: cat.color.withValues(alpha: 0.15),
                       checkmarkColor: cat.color,
                       backgroundColor: isDark
                           ? AppColors.darkSurfaceVariant
                           : AppColors.surfaceVariant,
                       labelStyle: TextStyle(
-                        fontSize: 12,
+                        fontSize: AppScale.fontSize(12),
                         fontWeight:
                             isSelected ? FontWeight.w600 : FontWeight.w500,
                         color: isSelected
@@ -566,14 +566,14 @@ class _RecurringBillsScreenState extends State<RecurringBillsScreen> {
                 Text(
                   'Paid by',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: AppScale.fontSize(13),
                     fontWeight: FontWeight.w600,
                     color: isDark
                         ? AppColors.darkTextSecondary
                         : AppColors.textSecondary,
                   ),
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 DropdownButtonFormField<int>(
                   initialValue: members.any((m) => m.id == selectedPaidBy)
                       ? selectedPaidBy
@@ -616,7 +616,7 @@ class _RecurringBillsScreenState extends State<RecurringBillsScreen> {
                     }
                   },
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: AppScale.size(24)),
                 // Save button
                 SizedBox(
                   width: double.infinity,
@@ -674,7 +674,7 @@ class _FrequencyBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: EdgeInsets.symmetric(horizontal: AppScale.padding(8), vertical: AppScale.padding(3)),
       decoration: BoxDecoration(
         color: isDark
             ? AppColors.primary.withAlpha(30)
@@ -683,8 +683,8 @@ class _FrequencyBadge extends StatelessWidget {
       ),
       child: Text(
         frequency[0].toUpperCase() + frequency.substring(1),
-        style: const TextStyle(
-          fontSize: 11,
+        style: TextStyle(
+          fontSize: AppScale.fontSize(11),
           fontWeight: FontWeight.w600,
           color: AppColors.primary,
         ),
