@@ -435,16 +435,9 @@ class BillProvider extends ChangeNotifier {
   /// Nets out all pairwise balances per member, then repeatedly matches
   /// the largest creditor with the largest debtor.
   List<OptimalSettlement> computeOptimalSettlements() {
-    // Net out balances per member: positive = is owed, negative = owes
-    final Map<int, double> net = {};
-    _pairwiseBalances.forEach((creditor, debtors) {
-      debtors.forEach((debtor, amount) {
-        if (amount != 0) {
-          net[creditor] = (net[creditor] ?? 0) + amount;
-          net[debtor] = (net[debtor] ?? 0) - amount;
-        }
-      });
-    });
+    // Use _memberBalances directly — they already contain correct net totals.
+    // (Previously iterated _pairwiseBalances which double-counts each pair.)
+    final Map<int, double> net = Map.of(_memberBalances);
 
     // Separate into creditors and debtors
     final List<MapEntry<int, double>> creditors = [];

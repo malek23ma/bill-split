@@ -18,7 +18,7 @@ class InsightsScreen extends StatefulWidget {
 class _InsightsScreenState extends State<InsightsScreen> {
   late int _year;
   late int _month;
-  int _trendMonths = 6;
+  int _trendMonths = 3;
 
   @override
   void initState() {
@@ -541,36 +541,53 @@ class _InsightsScreenState extends State<InsightsScreen> {
       ),
       child: Column(
         children: [
-          // Segmented button
-          SizedBox(
-            width: double.infinity,
-            child: SegmentedButton<int>(
-              segments: const [
-                ButtonSegment(value: 3, label: Text('3M')),
-                ButtonSegment(value: 6, label: Text('6M')),
-                ButtonSegment(value: 9, label: Text('9M')),
-                ButtonSegment(value: 12, label: Text('12M')),
+          // Time range toggle
+          Row(
+            children: [
+              for (final months in [3, 6, 9, 12]) ...[
+                if (months > 3) const SizedBox(width: 8),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _trendMonths = months),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: AppScale.padding(8)),
+                      decoration: BoxDecoration(
+                        color: _trendMonths == months
+                            ? AppColors.primary
+                            : (isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceMuted),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '${months}M',
+                        style: TextStyle(
+                          fontSize: AppScale.fontSize(13),
+                          fontWeight: FontWeight.w600,
+                          color: _trendMonths == months
+                              ? Colors.white
+                              : (isDark ? AppColors.darkTextSecondary : AppColors.textTertiary),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ],
-              selected: {_trendMonths},
-              onSelectionChanged: (val) {
-                setState(() => _trendMonths = val.first);
-              },
-              style: ButtonStyle(
-                visualDensity: VisualDensity.compact,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-            ),
+            ],
           ),
           SizedBox(height: AppScale.size(16)),
-          // Bar chart
+          // Bar chart — horizontally scrollable when bars exceed width
           SizedBox(
-            height: barAreaHeight + 40, // extra for labels
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                for (int i = 0; i < totals.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 4),
-                  Expanded(
+            height: barAreaHeight + 40,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final barWidth = 48.0;
+                final gap = 6.0;
+                final totalNeeded = totals.length * barWidth + (totals.length - 1) * gap;
+                final fitsInline = totalNeeded <= constraints.maxWidth;
+
+                Widget buildBar(int i) {
+                  return SizedBox(
+                    width: fitsInline ? null : barWidth,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
@@ -591,6 +608,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
                         ),
                         const SizedBox(height: 4),
                         Container(
+                          width: fitsInline ? 32 : 36,
                           height: maxTotal > 0
                               ? (totals[i] / maxTotal * barAreaHeight)
                                   .clamp(4.0, barAreaHeight)
@@ -617,9 +635,30 @@ class _InsightsScreenState extends State<InsightsScreen> {
                         ),
                       ],
                     ),
+                  );
+                }
+
+                final children = <Widget>[
+                  for (int i = 0; i < totals.length; i++) ...[
+                    if (i > 0) SizedBox(width: gap),
+                    if (fitsInline) Expanded(child: buildBar(i)) else buildBar(i),
+                  ],
+                ];
+
+                if (fitsInline) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: children,
+                  );
+                }
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: children,
                   ),
-                ],
-              ],
+                );
+              },
             ),
           ),
         ],

@@ -306,7 +306,12 @@ class _HomeScreenState extends State<HomeScreen> {
         if (billProvider.pairwiseBalances.values.any(
             (inner) => inner.values.any((v) => v.abs() > 0.01)))
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: AppScale.padding(16)),
+            padding: EdgeInsets.only(
+              left: AppScale.padding(16),
+              right: AppScale.padding(16),
+              top: AppScale.padding(2),
+              bottom: AppScale.padding(12),
+            ),
             child: SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(

@@ -474,15 +474,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   size: AppScale.size(18),
                                   color: hasPin ? AppColors.positive : AppColors.warning,
                                 ),
-                                const SizedBox(width: 10),
+                                const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
                                     hasPin ? 'PIN protected' : 'No PIN set',
                                     style: TextStyle(
-                                      fontSize: AppScale.fontSize(14),
+                                      fontSize: AppScale.fontSize(13),
                                       fontWeight: FontWeight.w600,
                                       color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                                     ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                                 if (hasPin)
@@ -490,6 +491,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     onPressed: () => _removePin(context, currentMember.id!),
                                     style: TextButton.styleFrom(
                                       foregroundColor: AppColors.negative,
+                                      padding: EdgeInsets.symmetric(horizontal: AppScale.padding(10), vertical: AppScale.padding(8)),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(AppRadius.md),
                                       ),
@@ -501,6 +503,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   onPressed: () => _setPinDialog(
                                       context, currentMember.id!, hasPin),
                                   style: FilledButton.styleFrom(
+                                    padding: EdgeInsets.symmetric(horizontal: AppScale.padding(14), vertical: AppScale.padding(8)),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(AppRadius.md),
                                     ),
