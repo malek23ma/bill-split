@@ -40,6 +40,7 @@ class _CameraScreenState extends State<CameraScreen>
 
   Future<void> _captureAndProcess(ImageSource source) async {
     final billType = ModalRoute.of(context)!.settings.arguments as String;
+    final apiKey = context.read<SettingsProvider>().apiKey;
 
     final image = await _picker.pickImage(
       source: source,
@@ -54,7 +55,6 @@ class _CameraScreenState extends State<CameraScreen>
 
     try {
       ParsedReceipt parsed;
-      final apiKey = context.read<SettingsProvider>().apiKey;
 
       if (apiKey.isNotEmpty) {
         final cloudScanner = CloudReceiptScanner(apiKey: apiKey);
@@ -102,30 +102,32 @@ class _CameraScreenState extends State<CameraScreen>
   @override
   Widget build(BuildContext context) {
     final hasApiKey = context.watch<SettingsProvider>().apiKey.isNotEmpty;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        title: const Text(
+        title: Text(
           'Scan Receipt',
           style: TextStyle(
-            color: AppColors.textPrimary,
+            color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
             fontWeight: FontWeight.w700,
             fontSize: 20,
           ),
         ),
-        iconTheme: const IconThemeData(color: AppColors.textSecondary),
+        iconTheme: IconThemeData(
+            color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary),
       ),
       body: _isProcessing
-          ? _buildProcessingState(hasApiKey)
-          : _buildIdleState(hasApiKey),
+          ? _buildProcessingState(hasApiKey, isDark)
+          : _buildIdleState(hasApiKey, isDark),
     );
   }
 
-  Widget _buildProcessingState(bool hasApiKey) {
+  Widget _buildProcessingState(bool hasApiKey, bool isDark) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -142,8 +144,8 @@ class _CameraScreenState extends State<CameraScreen>
                   child: Container(
                     width: 88,
                     height: 88,
-                    decoration: const BoxDecoration(
-                      color: AppColors.primarySurface,
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.primary.withAlpha(40) : AppColors.primarySurface,
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -168,18 +170,18 @@ class _CameraScreenState extends State<CameraScreen>
           const SizedBox(height: 20),
           Text(
             hasApiKey ? 'Reading receipt with AI...' : 'Reading receipt...',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+              color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 6),
-          const Text(
+          Text(
             'This may take a moment',
             style: TextStyle(
               fontSize: 14,
-              color: AppColors.textTertiary,
+              color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
             ),
           ),
         ],
@@ -187,7 +189,7 @@ class _CameraScreenState extends State<CameraScreen>
     );
   }
 
-  Widget _buildIdleState(bool hasApiKey) {
+  Widget _buildIdleState(bool hasApiKey, bool isDark) {
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -200,7 +202,7 @@ class _CameraScreenState extends State<CameraScreen>
             height: 200,
             child: CustomPaint(
               painter: _DashedBorderPainter(
-                color: AppColors.primaryLight,
+                color: isDark ? AppColors.primary : AppColors.primaryLight,
                 radius: AppRadius.xl,
               ),
               child: Center(
@@ -211,7 +213,7 @@ class _CameraScreenState extends State<CameraScreen>
                       width: 64,
                       height: 64,
                       decoration: BoxDecoration(
-                        color: AppColors.primarySurface,
+                        color: isDark ? AppColors.primary.withAlpha(40) : AppColors.primarySurface,
                         borderRadius: BorderRadius.circular(AppRadius.lg),
                       ),
                       child: const Icon(
@@ -221,12 +223,12 @@ class _CameraScreenState extends State<CameraScreen>
                       ),
                     ),
                     const SizedBox(height: 12),
-                    const Text(
+                    Text(
                       'Scan Receipt',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textTertiary,
+                        color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
                       ),
                     ),
                   ],
@@ -237,22 +239,22 @@ class _CameraScreenState extends State<CameraScreen>
 
           const SizedBox(height: 28),
 
-          const Text(
+          Text(
             'Take a photo of your receipt',
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
+              color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
             ),
             textAlign: TextAlign.center,
           ),
 
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Position the receipt clearly in the frame',
             style: TextStyle(
               fontSize: 14,
-              color: AppColors.textTertiary,
+              color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
             ),
             textAlign: TextAlign.center,
           ),
@@ -295,8 +297,9 @@ class _CameraScreenState extends State<CameraScreen>
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
               style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.textPrimary,
-                side: const BorderSide(color: AppColors.divider, width: 1.5),
+                foregroundColor: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                side: BorderSide(
+                    color: isDark ? AppColors.darkDivider : AppColors.divider, width: 1.5),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppRadius.lg),
                 ),
@@ -306,29 +309,29 @@ class _CameraScreenState extends State<CameraScreen>
 
           const SizedBox(height: 16),
 
-          // AI hint card — accentSurface background, no border
+          // AI hint card
           if (!hasApiKey)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppColors.accentSurface,
+                color: isDark ? AppColors.accent.withAlpha(25) : AppColors.accentSurface,
                 borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               child: Row(
-                children: const [
-                  Icon(
+                children: [
+                  const Icon(
                     Icons.auto_awesome_rounded,
                     size: 20,
                     color: AppColors.accent,
                   ),
-                  SizedBox(width: 10),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Set up AI scanning in Settings for better results',
                       style: TextStyle(
                         fontSize: 13,
-                        color: AppColors.textSecondary,
+                        color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                       ),
                     ),
                   ),

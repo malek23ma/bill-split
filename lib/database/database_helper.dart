@@ -23,7 +23,7 @@ class DatabaseHelper {
     final path = join(dbPath, fileName);
     return await openDatabase(
       path,
-      version: 5,
+      version: 9,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -45,6 +45,9 @@ class DatabaseHelper {
         household_id INTEGER NOT NULL,
         name TEXT NOT NULL,
         pin TEXT,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        is_admin INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT '',
         FOREIGN KEY (household_id) REFERENCES households(id)
       )
     ''');
@@ -199,6 +202,44 @@ class DatabaseHelper {
       // Add receiver_member_id for pair-based settlements
       await db.execute("ALTER TABLE bills ADD COLUMN receiver_member_id INTEGER");
     }
+    if (oldVersion < 6) {
+      await db.execute("ALTER TABLE members ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1");
+    }
+    if (oldVersion < 7) {
+      await db.execute("ALTER TABLE members ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0");
+      // Set the first (lowest ID) member per household as admin
+      await db.execute('''
+        UPDATE members SET is_admin = 1
+        WHERE id IN (
+          SELECT MIN(id) FROM members GROUP BY household_id
+        )
+      ''');
+    }
+    if (oldVersion < 8) {
+      await db.execute("ALTER TABLE members ADD COLUMN created_at TEXT NOT NULL DEFAULT ''");
+      // Backfill existing members with their household's created_at
+      await db.execute('''
+        UPDATE members SET created_at = (
+          SELECT h.created_at FROM households h WHERE h.id = members.household_id
+        )
+        WHERE created_at = ''
+      ''');
+    }
+    if (oldVersion < 9) {
+      // Fix v8 backfill: members who have never paid or shared any bill
+      // are likely recently-added and should get current timestamp instead
+      // of the household's creation date.
+      final now = DateTime.now().toIso8601String();
+      await db.execute('''
+        UPDATE members SET created_at = ?
+        WHERE id NOT IN (
+          SELECT DISTINCT paid_by_member_id FROM bills
+        )
+        AND id NOT IN (
+          SELECT DISTINCT bim.member_id FROM bill_item_members bim
+        )
+      ''', [now]);
+    }
   }
 
   Future<void> updateMemberPin(int memberId, String? pin) async {
@@ -209,6 +250,16 @@ class DatabaseHelper {
       where: 'id = ?',
       whereArgs: [memberId],
     );
+  }
+
+  Future<void> updateMemberName(int memberId, String name) async {
+    final db = await database;
+    await db.update('members', {'name': name}, where: 'id = ?', whereArgs: [memberId]);
+  }
+
+  Future<void> setMemberActive(int memberId, bool active) async {
+    final db = await database;
+    await db.update('members', {'is_active': active ? 1 : 0}, where: 'id = ?', whereArgs: [memberId]);
   }
 
   // --- Household CRUD ---
@@ -223,8 +274,12 @@ class DatabaseHelper {
     late int householdId;
     await db.transaction((txn) async {
       householdId = await txn.insert('households', Household(name: name).toMap());
-      for (final memberName in memberNames) {
-        await txn.insert('members', Member(householdId: householdId, name: memberName).toMap());
+      for (int i = 0; i < memberNames.length; i++) {
+        await txn.insert('members', Member(
+          householdId: householdId,
+          name: memberNames[i],
+          isAdmin: i == 0, // first member is admin
+        ).toMap());
       }
     });
     return householdId;
@@ -260,6 +315,16 @@ class DatabaseHelper {
   }
 
   Future<List<Member>> getMembersByHousehold(int householdId) async {
+    final db = await database;
+    final maps = await db.query(
+      'members',
+      where: 'household_id = ? AND is_active = 1',
+      whereArgs: [householdId],
+    );
+    return maps.map((map) => Member.fromMap(map)).toList();
+  }
+
+  Future<List<Member>> getAllMembersByHousehold(int householdId) async {
     final db = await database;
     final maps = await db.query(
       'members',
@@ -436,6 +501,45 @@ class DatabaseHelper {
       where: 'id = ?',
       whereArgs: [id],
     );
+  }
+
+  Future<void> reactivateRecurringBill(int id) async {
+    final db = await database;
+    await db.update('recurring_bills', {'active': 1}, where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> updateRecurringBill(RecurringBill bill) async {
+    final db = await database;
+    await db.update('recurring_bills', bill.toMap(), where: 'id = ?', whereArgs: [bill.id]);
+  }
+
+  Future<void> deleteRecurringBillPermanently(int id) async {
+    final db = await database;
+    await db.delete('recurring_bills', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // --- Member date fix ---
+
+  /// Fix created_at for members who have zero bill participation.
+  /// These members were added after all existing bills and should not
+  /// be included in historical quick bill splits.
+  Future<void> fixNewMemberDates(int householdId) async {
+    final db = await database;
+    final now = DateTime.now().toIso8601String();
+    await db.execute('''
+      UPDATE members SET created_at = ?
+      WHERE household_id = ?
+      AND id NOT IN (
+        SELECT DISTINCT paid_by_member_id FROM bills WHERE household_id = ?
+      )
+      AND id NOT IN (
+        SELECT DISTINCT bim.member_id
+        FROM bill_item_members bim
+        JOIN bill_items bi ON bim.bill_item_id = bi.id
+        JOIN bills b ON bi.bill_id = b.id
+        WHERE b.household_id = ?
+      )
+    ''', [now, householdId, householdId, householdId]);
   }
 
   // --- Household currency ---

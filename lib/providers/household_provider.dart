@@ -72,6 +72,29 @@ class HouseholdProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> renameMember(int memberId, String newName) async {
+    if (_currentHousehold == null) return;
+    final trimmed = newName.trim();
+    if (trimmed.isEmpty || trimmed.length > 50) return;
+    if (_members.any((m) => m.id != memberId && m.name.toLowerCase() == trimmed.toLowerCase())) return;
+    await _db.updateMemberName(memberId, trimmed);
+    _members = await _db.getMembersByHousehold(_currentHousehold!.id!);
+    notifyListeners();
+  }
+
+  Future<bool> softDeleteMember(int memberId) async {
+    if (_currentHousehold == null) return false;
+    final activeCount = _members.where((m) => m.isActive).length;
+    if (activeCount <= 1) return false;
+    await _db.setMemberActive(memberId, false);
+    if (_currentMember?.id == memberId) {
+      _currentMember = null;
+    }
+    _members = await _db.getMembersByHousehold(_currentHousehold!.id!);
+    notifyListeners();
+    return true;
+  }
+
   Future<void> deleteHousehold(int id) async {
     await _db.deleteHousehold(id);
     if (_currentHousehold?.id == id) {

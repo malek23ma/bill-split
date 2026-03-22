@@ -39,7 +39,8 @@ class MemberSelectScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppRadius.lg),
           ),
           title: null,
-          content: Column(
+          content: SingleChildScrollView(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
@@ -128,6 +129,7 @@ class MemberSelectScreen extends StatelessWidget {
                 },
               ),
             ],
+          ),
           ),
           actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
           actions: [
@@ -251,6 +253,7 @@ class MemberSelectScreen extends StatelessWidget {
 
                     return ScaleTap(
                       onTap: () => _onMemberTap(context, member),
+                      // Member management is admin-only, handled in settings
                       child: Container(
                         padding: const EdgeInsets.all(AppSpacing.xl),
                         decoration: BoxDecoration(

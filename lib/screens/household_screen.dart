@@ -173,7 +173,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                         Navigator.pushNamed(context, '/select-member');
                       }
                     },
-                    onLongPress: () => _showDeleteDialog(context, household),
+                    // Delete moved to settings — admin only
                     child: Container(
                       padding: const EdgeInsets.all(AppSpacing.lg),
                       decoration: BoxDecoration(
@@ -515,106 +515,4 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
     );
   }
 
-  void _showDeleteDialog(BuildContext context, household) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-        ),
-        icon: Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            color: AppColors.negativeSurface,
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-          child: const Icon(
-            Icons.delete_outline_rounded,
-            color: AppColors.negative,
-            size: 28,
-          ),
-        ),
-        title: Text(
-          'Delete Household?',
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
-          ),
-        ),
-        content: Text(
-          'This will delete "${household.name}" and all its bills. This cannot be undone.',
-          style: TextStyle(
-            color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
-            height: 1.4,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        actionsAlignment: MainAxisAlignment.center,
-        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-        actions: [
-          Row(
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: 48,
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(dialogContext),
-                    style: OutlinedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                      ),
-                      side: BorderSide(
-                        color: isDark
-                            ? AppColors.darkDivider
-                            : AppColors.divider,
-                      ),
-                    ),
-                    child: Text(
-                      'Cancel',
-                      style: TextStyle(
-                        color: isDark
-                            ? AppColors.darkTextSecondary
-                            : AppColors.textSecondary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: SizedBox(
-                  height: 48,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.negative,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                      ),
-                      elevation: 0,
-                    ),
-                    onPressed: () async {
-                      await context
-                          .read<HouseholdProvider>()
-                          .deleteHousehold(household.id!);
-                      if (dialogContext.mounted) Navigator.pop(dialogContext);
-                    },
-                    child: const Text(
-                      'Delete',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 }

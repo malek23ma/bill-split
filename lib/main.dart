@@ -16,6 +16,7 @@ import 'screens/item_review_screen.dart';
 import 'screens/quick_review_screen.dart';
 import 'screens/bill_detail_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/recurring_bills_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -90,7 +91,11 @@ class BillSplitApp extends StatelessWidget {
           elevation: 0,
           scrolledUnderElevation: 0,
           centerTitle: false,
-          systemOverlayStyle: SystemUiOverlayStyle.dark,
+          systemOverlayStyle: const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.dark,
+            statusBarBrightness: Brightness.light,
+          ),
           titleTextStyle: GoogleFonts.lexend(
             fontSize: 20,
             fontWeight: FontWeight.w700,
@@ -248,7 +253,11 @@ class BillSplitApp extends StatelessWidget {
           elevation: 0,
           scrolledUnderElevation: 0,
           centerTitle: false,
-          systemOverlayStyle: SystemUiOverlayStyle.light,
+          systemOverlayStyle: const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.light,
+            statusBarBrightness: Brightness.dark,
+          ),
           titleTextStyle: GoogleFonts.lexend(
             fontSize: 20,
             fontWeight: FontWeight.w700,
@@ -377,6 +386,7 @@ class BillSplitApp extends StatelessWidget {
         '/quick-review': (context) => const QuickReviewScreen(),
         '/bill-detail': (context) => const BillDetailScreen(),
         '/settings': (context) => const SettingsScreen(),
+        '/recurring-bills': (context) => const RecurringBillsScreen(),
       },
     );
   }

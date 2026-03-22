@@ -3,8 +3,9 @@ import '../constants.dart';
 
 class BalanceCard extends StatelessWidget {
   final int currentMemberId;
-  final Map<int, double> memberBalances; // memberId -> balance (positive = owed to them)
-  final Map<int, String> memberNames; // memberId -> name
+  final Map<int, double> memberBalances;
+  final Map<int, Map<int, double>> pairwiseBalances;
+  final Map<int, String> memberNames;
   final void Function(int memberId, double amount)? onSettleUp;
   final String currencySymbol;
 
@@ -12,6 +13,7 @@ class BalanceCard extends StatelessWidget {
     super.key,
     required this.currentMemberId,
     required this.memberBalances,
+    required this.pairwiseBalances,
     required this.memberNames,
     this.onSettleUp,
     this.currencySymbol = '\u20BA',
@@ -21,111 +23,106 @@ class BalanceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final myPairwise = pairwiseBalances[currentMemberId] ?? {};
     final otherEntries = <int, double>{};
-    for (final entry in memberBalances.entries) {
-      if (entry.key != currentMemberId) {
-        final otherBalance = entry.value;
-        if (otherBalance.abs() > 0.01) {
-          otherEntries[entry.key] = -otherBalance;
-        }
+    for (final entry in myPairwise.entries) {
+      if (entry.value.abs() > 0.01) {
+        otherEntries[entry.key] = entry.value;
       }
     }
 
     final allSettled = otherEntries.isEmpty;
 
-    final currentBalance = memberBalances[currentMemberId] ?? 0.0;
-    final isNetPositive = currentBalance > 0.01;
-    // Flat color-blocked backgrounds based on net position
-    final Color containerColor;
-    final Color iconColor;
-    final Color statusTextColor;
-    final Color amountColor;
-
     if (allSettled) {
-      containerColor =
-          isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceVariant;
-      iconColor = isDark ? AppColors.darkTextSecondary : AppColors.textTertiary;
-      statusTextColor =
-          isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
-      amountColor =
-          isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
-    } else if (isNetPositive) {
-      containerColor =
-          isDark ? AppColors.positive.withAlpha(20) : AppColors.positiveSurface;
-      iconColor = AppColors.positive;
-      statusTextColor = AppColors.positive;
-      amountColor = AppColors.positive;
-    } else {
-      containerColor =
-          isDark ? AppColors.negative.withAlpha(20) : AppColors.negativeSurface;
-      iconColor = AppColors.negative;
-      statusTextColor = AppColors.negative;
-      amountColor = AppColors.negative;
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceVariant,
+            borderRadius: BorderRadius.circular(AppRadius.xl),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: Column(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: (isDark ? AppColors.darkTextSecondary : AppColors.textTertiary)
+                      .withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Icon(
+                  Icons.handshake_rounded,
+                  color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'All settled up!',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
+
+    final entries = otherEntries.entries.toList();
+    final useGrid = entries.length >= 2;
+
+    if (!useGrid) {
+      // Single full-width row
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: _BalanceRow(
+          memberName: memberNames[entries.first.key] ?? 'Unknown',
+          amount: entries.first.value,
+          currencySymbol: currencySymbol,
+          isDark: isDark,
+          compact: false,
+          onSettleUp: onSettleUp != null
+              ? () => onSettleUp!(entries.first.key, entries.first.value.abs())
+              : null,
+        ),
+      );
+    }
+
+    // 2-column grid for 2+ balance rows
+    // Last item gets full width if odd count
+    final halfWidth = (MediaQuery.of(context).size.width - 42) / 2;
+    final isOdd = entries.length.isOdd;
 
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: containerColor,
-          borderRadius: BorderRadius.circular(AppRadius.xl),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-          child: allSettled
-              ? _buildSettledState(iconColor, statusTextColor)
-              : Column(
-                  children: [
-                    for (final entry in otherEntries.entries)
-                      _BalanceRow(
-                        memberName: memberNames[entry.key] ?? 'Unknown',
-                        amount: entry.value,
-                        currencySymbol: currencySymbol,
-                        iconColor: iconColor,
-                        statusTextColor: statusTextColor,
-                        amountColor: amountColor,
-                        statusIcon: entry.value > 0
-                            ? Icons.arrow_downward_rounded
-                            : Icons.arrow_upward_rounded,
-                        isDark: isDark,
-                        onSettleUp: onSettleUp != null
-                            ? () => onSettleUp!(entry.key, entry.value.abs())
-                            : null,
-                      ),
-                  ],
-                ),
-        ),
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        children: [
+          for (int i = 0; i < entries.length; i++)
+            SizedBox(
+              width: (isOdd && i == entries.length - 1)
+                  ? double.infinity
+                  : halfWidth,
+              child: _BalanceRow(
+                memberName: memberNames[entries[i].key] ?? 'Unknown',
+                amount: entries[i].value,
+                currencySymbol: currencySymbol,
+                isDark: isDark,
+                compact: true,
+                onSettleUp: onSettleUp != null
+                    ? () => onSettleUp!(entries[i].key, entries[i].value.abs())
+                    : null,
+              ),
+            ),
+        ],
       ),
-    );
-  }
-
-  Widget _buildSettledState(Color iconColor, Color textColor) {
-    return Column(
-      children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: iconColor.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-          child: Icon(
-            Icons.handshake_rounded,
-            color: iconColor,
-            size: 24,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          'All settled up!',
-          style: TextStyle(
-            fontSize: 16,
-            color: textColor,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
     );
   }
 }
@@ -134,57 +131,74 @@ class _BalanceRow extends StatelessWidget {
   final String memberName;
   final double amount; // positive = they owe you, negative = you owe them
   final String currencySymbol;
-  final Color iconColor;
-  final Color statusTextColor;
-  final Color amountColor;
-  final IconData statusIcon;
   final bool isDark;
+  final bool compact;
   final VoidCallback? onSettleUp;
 
   const _BalanceRow({
     required this.memberName,
     required this.amount,
     required this.currencySymbol,
-    required this.iconColor,
-    required this.statusTextColor,
-    required this.amountColor,
-    required this.statusIcon,
     required this.isDark,
+    this.compact = false,
     this.onSettleUp,
   });
 
   @override
   Widget build(BuildContext context) {
     final theyOweYou = amount > 0;
-    final message =
-        theyOweYou ? '$memberName owes you' : 'You owe $memberName';
     final absAmount = amount.abs();
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+    // Per-row colors: green when owed, red when owing
+    final Color rowColor = theyOweYou ? AppColors.positive : AppColors.negative;
+    final Color bgColor = theyOweYou
+        ? (isDark ? AppColors.positive.withAlpha(20) : AppColors.positiveSurface)
+        : (isDark ? AppColors.negative.withAlpha(20) : AppColors.negativeSurface);
+
+    // Arrows: down = money coming to you (owed), up = money leaving (you owe)
+    final IconData arrowIcon = theyOweYou
+        ? Icons.arrow_downward_rounded
+        : Icons.arrow_upward_rounded;
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+      ),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 12 : 24,
+        vertical: compact ? 14 : 20,
+      ),
       child: Column(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: compact ? 32 : 40,
+            height: compact ? 32 : 40,
             decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.10),
+              color: rowColor.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-            child: Icon(
-              statusIcon,
-              color: iconColor,
-              size: 20,
-            ),
+            child: Icon(arrowIcon, color: rowColor, size: compact ? 16 : 20),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
-            message,
+            memberName,
             style: TextStyle(
-              fontSize: 14,
-              color: statusTextColor,
+              fontSize: compact ? 13 : 15,
+              color: rowColor,
+              fontWeight: FontWeight.w700,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          Text(
+            theyOweYou ? 'owes you' : 'you owe',
+            style: TextStyle(
+              fontSize: compact ? 11 : 13,
+              color: rowColor.withValues(alpha: 0.7),
               fontWeight: FontWeight.w500,
             ),
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 4),
           TweenAnimationBuilder<double>(
@@ -195,22 +209,24 @@ class _BalanceRow extends StatelessWidget {
               return Text(
                 '${value.toStringAsFixed(2)} $currencySymbol',
                 style: TextStyle(
-                  fontSize: 32,
+                  fontSize: compact ? 20 : 32,
                   fontWeight: FontWeight.w800,
-                  color: amountColor,
+                  color: rowColor,
                   letterSpacing: -0.5,
                 ),
               );
             },
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           FilledButton.tonal(
             onPressed: onSettleUp,
             style: FilledButton.styleFrom(
-              backgroundColor: iconColor.withValues(alpha: 0.12),
-              foregroundColor: iconColor,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              backgroundColor: rowColor.withValues(alpha: 0.12),
+              foregroundColor: rowColor,
+              padding: EdgeInsets.symmetric(
+                horizontal: compact ? 12 : 20,
+                vertical: compact ? 8 : 10,
+              ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppRadius.full),
               ),
@@ -219,13 +235,14 @@ class _BalanceRow extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.handshake_rounded, size: 16, color: iconColor),
-                const SizedBox(width: 6),
+                Icon(Icons.handshake_rounded, size: compact ? 14 : 16, color: rowColor),
+                const SizedBox(width: 4),
                 Text(
                   'Settle Up',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    color: iconColor,
+                    color: rowColor,
+                    fontSize: compact ? 12 : 14,
                   ),
                 ),
               ],

@@ -250,7 +250,7 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 0),
                 itemCount: BillCategories.list.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 6),
+                separatorBuilder: (_, _) => const SizedBox(width: 6),
                 itemBuilder: (context, index) {
                   final cat = BillCategories.list[index];
                   final isSelected = _category == cat.id;

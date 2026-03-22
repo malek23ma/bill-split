@@ -202,7 +202,9 @@ class ReceiptParser {
       // Skip quantity/weight lines: "2 ad X 2.75", "0.69 kg X 10.50"
       if (RegExp(
         r'^\d+\.?\d*\s*(ad|AD|Ad|kg|KG|Kg|adet|ADET|lt|LT|gr|GR)\s',
-      ).hasMatch(line)) continue;
+      ).hasMatch(line)) {
+        continue;
+      }
 
       // Skip dashed separator lines
       if (RegExp(r'^[\-=_\.]{3,}$').hasMatch(line)) continue;

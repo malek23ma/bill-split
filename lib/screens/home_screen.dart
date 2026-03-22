@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/household_provider.dart';
 import '../providers/bill_provider.dart';
+import '../models/bill.dart';
+import '../models/bill_item.dart';
+import '../models/member.dart';
 import '../providers/recurring_bill_provider.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/bill_list_tile.dart';
+import '../widgets/filter_bottom_sheet.dart';
+import '../widgets/filtered_results_sheet.dart';
 import '../widgets/scale_tap.dart';
 import '../constants.dart';
 import 'insights_screen.dart';
@@ -45,7 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: _currentTab == 0
           ? AppBar(
               backgroundColor:
-                  isDark ? AppColors.darkSurface : AppColors.surface,
+                  isDark ? AppColors.darkBackground : AppColors.background,
               surfaceTintColor: Colors.transparent,
               elevation: 0,
               title: Text(
@@ -58,6 +63,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               actions: [
+                IconButton(
+                  icon: Icon(Icons.filter_list_rounded,
+                      color: isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary),
+                  onPressed: () => _showFilterSheet(context),
+                  tooltip: 'Filter',
+                ),
                 IconButton(
                   icon: Icon(Icons.settings_outlined,
                       color: isDark
@@ -125,7 +138,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final memberNames = {
       for (final m in members) m.id!: m.name,
     };
-    final summary = billProvider.monthlySummary;
     final currencySymbol =
         AppCurrency.getByCode(householdProvider.currency).symbol;
 
@@ -276,6 +288,7 @@ class _HomeScreenState extends State<HomeScreen> {
         BalanceCard(
           currentMemberId: currentMember?.id ?? 0,
           memberBalances: billProvider.memberBalances,
+          pairwiseBalances: billProvider.pairwiseBalances,
           memberNames: memberNames,
           currencySymbol: currencySymbol,
           onSettleUp: (otherMemberId, amount) => _confirmSettleUp(
@@ -288,198 +301,197 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
 
-        // Monthly summary
-        if (summary != null)
+        // Quick stats row
+        if (billProvider.bills.isNotEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Container(
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.darkSurface : AppColors.surface,
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-              ),
-              child: summary.billCount > 0
-                  ? Theme(
-                      data: Theme.of(context).copyWith(
-                        dividerColor: Colors.transparent,
-                      ),
-                      child: ExpansionTile(
-                        tilePadding:
-                            const EdgeInsets.symmetric(horizontal: 16),
-                        childrenPadding: EdgeInsets.zero,
-                        shape: const Border(),
-                        collapsedShape: const Border(),
-                        leading: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color:
-                                AppColors.primary.withValues(alpha: 0.10),
-                            borderRadius:
-                                BorderRadius.circular(AppRadius.md),
-                          ),
-                          child: const Icon(
-                            Icons.calendar_month_rounded,
-                            size: 18,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        title: Text(
-                          summary.monthLabel,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: isDark
-                                ? AppColors.darkTextPrimary
-                                : AppColors.textPrimary,
-                          ),
-                        ),
-                        subtitle: Text(
-                          '${summary.billCount} bills \u2022 ${summary.memberSpend.values.fold(0.0, (a, b) => a + b).toStringAsFixed(2)} $currencySymbol total',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isDark
-                                ? AppColors.darkTextSecondary
-                                : AppColors.textTertiary,
-                          ),
-                        ),
-                        initiallyExpanded: false,
-                        children: [
-                          Padding(
-                            padding:
-                                const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                            child: Column(
-                              children: [
-                                Divider(
-                                  color: isDark
-                                      ? AppColors.darkDivider
-                                      : AppColors.divider,
-                                  height: 1,
-                                ),
-                                const SizedBox(height: 12),
-                                ...members.asMap().entries.map((entry) {
-                                  final idx = entry.key;
-                                  final m = entry.value;
-                                  final spent =
-                                      summary.memberSpend[m.id] ?? 0.0;
-                                  final totalSpend = summary
-                                      .memberSpend.values
-                                      .fold(0.0, (a, b) => a + b);
-                                  final proportion = totalSpend > 0
-                                      ? (spent / totalSpend)
-                                      : 0.0;
-                                  final barColor =
-                                      AppColors.memberColor(idx);
+            child: Builder(
+              builder: (context) {
+                final now = DateTime.now();
+                final thisMonthBills = billProvider.bills.where((b) =>
+                    b.billDate.year == now.year &&
+                    b.billDate.month == now.month &&
+                    b.billType != 'settlement').toList();
+                final thisMonthTotal = thisMonthBills.fold(0.0, (sum, b) => sum + b.totalAmount);
+                final lastBill = billProvider.bills.first;
+                final daysSince = DateTime.now().difference(lastBill.billDate).inDays;
+                final lastBillText = daysSince == 0
+                    ? 'Today'
+                    : daysSince == 1
+                        ? 'Yesterday'
+                        : '$daysSince days ago';
 
-                                  return Padding(
-                                    padding:
-                                        const EdgeInsets.only(bottom: 10),
-                                    child: Column(
-                                      children: [
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment
-                                                  .spaceBetween,
-                                          children: [
-                                            Text(
-                                              m.name,
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w500,
-                                                color: isDark
-                                                    ? AppColors
-                                                        .darkTextSecondary
-                                                    : AppColors
-                                                        .textSecondary,
-                                              ),
-                                            ),
-                                            Text(
-                                              '${spent.toStringAsFixed(2)} $currencySymbol',
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w600,
-                                                color: isDark
-                                                    ? AppColors
-                                                        .darkTextPrimary
-                                                    : AppColors.textPrimary,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 6),
-                                        ClipRRect(
-                                          borderRadius:
-                                              BorderRadius.circular(
-                                                  AppRadius.xs),
-                                          child: LinearProgressIndicator(
-                                            value: proportion,
-                                            minHeight: 6,
-                                            backgroundColor: isDark
-                                                ? AppColors
-                                                    .darkSurfaceVariant
-                                                : AppColors.surfaceVariant,
-                                            valueColor:
-                                                AlwaysStoppedAnimation<
-                                                    Color>(barColor),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: AppColors.primary
-                                  .withValues(alpha: 0.10),
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.md),
-                            ),
-                            child: const Icon(
-                              Icons.calendar_month_rounded,
-                              size: 18,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                summary.monthLabel,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: isDark
-                                      ? AppColors.darkTextPrimary
-                                      : AppColors.textPrimary,
-                                ),
+                return IntrinsicHeight(
+                  child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // This month total
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.darkSurface : AppColors.surface,
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'This month',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'No bills this month yet',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: isDark
-                                      ? AppColors.darkTextSecondary
-                                      : AppColors.textTertiary,
-                                ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${thisMonthTotal.toStringAsFixed(2)} $currencySymbol',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                               ),
-                            ],
-                          ),
-                        ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 10),
+                    // Bill count
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.darkSurface : AppColors.surface,
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Bills',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${thisMonthBills.length}',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    // Last bill
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.darkSurface : AppColors.surface,
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Last bill',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              lastBillText,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                );
+              },
+            ),
+          ),
+
+        // Spending pulse
+        if (billProvider.bills.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+            child: Builder(
+              builder: (context) {
+                final now = DateTime.now();
+                final thisMonthBills = billProvider.bills.where((b) =>
+                    b.billDate.year == now.year &&
+                    b.billDate.month == now.month &&
+                    b.billType != 'settlement').toList();
+                final thisMonthTotal = thisMonthBills.fold(0.0, (sum, b) => sum + b.totalAmount);
+
+                final lastMonth = now.month == 1
+                    ? DateTime(now.year - 1, 12)
+                    : DateTime(now.year, now.month - 1);
+                final lastMonthBills = billProvider.bills.where((b) =>
+                    b.billDate.year == lastMonth.year &&
+                    b.billDate.month == lastMonth.month &&
+                    b.billType != 'settlement').toList();
+                final lastMonthTotal = lastMonthBills.fold(0.0, (sum, b) => sum + b.totalAmount);
+
+                if (lastMonthTotal < 0.01) return const SizedBox.shrink();
+
+                final diff = thisMonthTotal - lastMonthTotal;
+                final pct = (diff / lastMonthTotal * 100).abs();
+                final isUp = diff > 0;
+                final months = [
+                  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+                ];
+                final lastMonthName = months[lastMonth.month - 1];
+
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? (isUp ? AppColors.negative.withAlpha(15) : AppColors.positive.withAlpha(15))
+                        : (isUp ? AppColors.negativeSurface : AppColors.positiveSurface),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isUp ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+                        size: 18,
+                        color: isUp ? AppColors.negative : AppColors.positive,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${isUp ? '↑' : '↓'} ${pct.toStringAsFixed(0)}% vs $lastMonthName',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: isUp ? AppColors.negative : AppColors.positive,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
 
@@ -596,6 +608,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               confirmDismiss: (_) async => true,
               onDismissed: (_) async {
+                final messenger = ScaffoldMessenger.of(context);
                 final deletedBill = bill;
                 final deletedItems = bill.billType == 'full'
                     ? await billProvider.getBillItems(bill.id!)
@@ -604,9 +617,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 await billProvider.deleteBill(
                     bill.id!, bill.householdId);
 
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).clearSnackBars();
-                ScaffoldMessenger.of(context).showSnackBar(
+                messenger.clearSnackBars();
+                messenger.showSnackBar(
                   SnackBar(
                     content: const Text('Bill deleted'),
                     duration: const Duration(seconds: 4),
@@ -626,12 +638,30 @@ class _HomeScreenState extends State<HomeScreen> {
                 bill: bill,
                 paidByName: paidBy?.name ?? 'Unknown',
                 currencySymbol: currencySymbol,
-                onTap: () {
-                  Navigator.pushNamed(
+                onTap: () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  final result = await Navigator.pushNamed(
                     context,
                     '/bill-detail',
                     arguments: bill.id,
                   );
+                  if (result is Map && result['deleted'] == true) {
+                    final deletedBill = result['bill'] as Bill;
+                    final deletedItems = result['items'] as List<BillItem>;
+                    messenger.clearSnackBars();
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: const Text('Bill deleted'),
+                        duration: const Duration(seconds: 4),
+                        action: SnackBarAction(
+                          label: 'UNDO',
+                          onPressed: () {
+                            billProvider.reinsertBill(deletedBill, deletedItems);
+                          },
+                        ),
+                      ),
+                    );
+                  }
                 },
               ),
             );
@@ -644,6 +674,77 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  void _showFilterSheet(BuildContext context) {
+    final billProvider = context.read<BillProvider>();
+    final householdProvider = context.read<HouseholdProvider>();
+    final members = householdProvider.members;
+    final currencySymbol = AppCurrency.getByCode(householdProvider.currency).symbol;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => FilterBottomSheet(
+        currentFilter: billProvider.activeFilter,
+        members: members,
+        onApply: (filter) async {
+          if (filter == null || !filter.hasActiveFilters) {
+            billProvider.clearFilter();
+            return;
+          }
+          await billProvider.setFilter(filter);
+          if (!context.mounted) return;
+          // Show filtered results sheet
+          _showFilteredResults(context, billProvider, members, currencySymbol);
+        },
+      ),
+    );
+  }
+
+  void _showFilteredResults(BuildContext context, BillProvider billProvider,
+      List<Member> members, String currencySymbol) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        builder: (_, scrollCtrl) => FilteredResultsSheet(
+          scrollController: scrollCtrl,
+          filteredBills: billProvider.filteredBills,
+          filter: billProvider.activeFilter!,
+          members: members,
+          currencySymbol: currencySymbol,
+          onBillTap: (bill) async {
+            final result = await Navigator.pushNamed(context, '/bill-detail', arguments: bill);
+            if (result is Map && result['deleted'] == true && context.mounted) {
+              final deletedBill = result['bill'] as Bill;
+              final deletedItems = result['items'] as List<BillItem>;
+              ScaffoldMessenger.of(context).clearSnackBars();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('Bill deleted'),
+                  duration: const Duration(seconds: 4),
+                  action: SnackBarAction(
+                    label: 'UNDO',
+                    onPressed: () {
+                      billProvider.reinsertBill(deletedBill, deletedItems);
+                    },
+                  ),
+                ),
+              );
+            }
+          },
+          onClearFilters: () => billProvider.clearFilter(),
+        ),
+      ),
+    ).then((_) {
+      // Clear filters when sheet is dismissed
+      billProvider.clearFilter();
+    });
   }
 
   void _confirmSettleUp(

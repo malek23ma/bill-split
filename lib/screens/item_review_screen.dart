@@ -128,105 +128,114 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
       ),
       body: Column(
         children: [
-          // Date and payer row
+          // Date label
           Padding(
             padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.sm),
+                AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
             child: Row(
               children: [
                 Expanded(
-                  child: GestureDetector(
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: _billDate,
-                        firstDate: DateTime(2020),
-                        lastDate:
-                            DateTime.now().add(const Duration(days: 1)),
-                      );
-                      if (picked != null) {
-                        setState(() => _billDate = picked);
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? AppColors.darkSurfaceVariant
-                            : AppColors.surfaceVariant,
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withAlpha(26),
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.md),
-                            ),
-                            child: const Icon(Icons.calendar_today_rounded,
-                                size: 16, color: AppColors.primary),
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          Text(
-                            DateFormat('dd/MM/yyyy').format(_billDate),
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                              color: isDark
-                                  ? AppColors.darkTextPrimary
-                                  : AppColors.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  child: Text('Bill Date', style: TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w500,
+                    color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
+                  )),
                 ),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
-                  child: DropdownButtonFormField<int>(
-                    initialValue: _paidByMemberId,
-                    decoration: InputDecoration(
-                      labelText: 'Paid by',
-                      labelStyle: const TextStyle(
-                        color: AppColors.textTertiary,
-                        fontSize: 13,
-                      ),
-                      filled: true,
-                      fillColor: isDark
-                          ? AppColors.darkSurfaceVariant
-                          : AppColors.surfaceVariant,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                        borderSide: BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                        borderSide: BorderSide.none,
-                      ),
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
-                    ),
-                    items: members
-                        .map((m) => DropdownMenuItem(
-                              value: m.id,
-                              child: Text(m.name,
-                                  style: const TextStyle(fontSize: 14)),
-                            ))
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _paidByMemberId = value);
-                      }
-                    },
-                  ),
+                  child: Text('Paid by', style: TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w500,
+                    color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
+                  )),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          // Date and payer fields
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.sm),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: _billDate,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now().add(const Duration(days: 1)),
+                        );
+                        if (picked != null) {
+                          setState(() => _billDate = picked);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? AppColors.darkSurfaceVariant
+                              : AppColors.surfaceVariant,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.calendar_today_rounded,
+                                size: 16, color: AppColors.primary),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                DateFormat('dd/MM/yyyy').format(_billDate),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                  color: isDark
+                                      ? AppColors.darkTextPrimary
+                                      : AppColors.textPrimary,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: DropdownButtonFormField<int>(
+                      initialValue: _paidByMemberId,
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: isDark
+                            ? AppColors.darkSurfaceVariant
+                            : AppColors.surfaceVariant,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          borderSide: BorderSide.none,
+                        ),
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 14),
+                      ),
+                      items: members
+                          .map((m) => DropdownMenuItem(
+                                value: m.id,
+                                child: Text(m.name,
+                                    style: const TextStyle(fontSize: 14)),
+                              ))
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => _paidByMemberId = value);
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
 
@@ -237,7 +246,7 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               itemCount: BillCategories.list.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              separatorBuilder: (_, _) => const SizedBox(width: 6),
               itemBuilder: (context, index) {
                 final cat = BillCategories.list[index];
                 final isSelected = _category == cat.id;
