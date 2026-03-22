@@ -20,6 +20,9 @@ import 'screens/recurring_bills_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final view = WidgetsBinding.instance.platformDispatcher.views.first;
+  final screenWidth = view.physicalSize.width / view.devicePixelRatio;
+  AppScale.init(screenWidth);
   final settingsProvider = SettingsProvider();
   await settingsProvider.loadSettings();
 

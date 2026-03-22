@@ -132,3 +132,25 @@ class BillCategories {
   static BillCategory getById(String id) =>
       list.firstWhere((c) => c.id == id, orElse: () => list.last);
 }
+
+// ─── Responsive Scaling ───────────────────────────────────
+
+class AppScale {
+  static double _scale = 1.0;
+  static bool _initialized = false;
+
+  /// Initialize with screen width. Call once from app root.
+  static void init(double screenWidth) {
+    _scale = (screenWidth / 375).clamp(0.85, 1.3);
+    _initialized = true;
+  }
+
+  /// Scale a font size value
+  static double fontSize(double base) => _initialized ? (base * _scale) : base;
+
+  /// Scale a dimension (width, height, icon size)
+  static double size(double base) => _initialized ? (base * _scale) : base;
+
+  /// Scale a padding/margin value
+  static double padding(double base) => _initialized ? (base * _scale) : base;
+}
