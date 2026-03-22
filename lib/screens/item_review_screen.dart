@@ -150,7 +150,9 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      GestureDetector(
+                      SizedBox(
+                        height: 48,
+                        child: GestureDetector(
                         onTap: () async {
                           final picked = await showDatePicker(
                             context: context,
@@ -175,7 +177,7 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                             ),
                             isDense: true,
                             contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 10),
+                                horizontal: 12, vertical: 14),
                           ),
                           child: Row(
                             children: [
@@ -199,6 +201,7 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                           ),
                         ),
                       ),
+                      ),
                     ],
                   ),
                 ),
@@ -218,7 +221,9 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      DropdownButtonFormField<int>(
+                      SizedBox(
+                        height: 48,
+                        child: DropdownButtonFormField<int>(
                         initialValue: _paidByMemberId,
                         decoration: InputDecoration(
                           filled: true,
@@ -245,6 +250,7 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                             setState(() => _paidByMemberId = value);
                           }
                         },
+                      ),
                       ),
                     ],
                   ),
