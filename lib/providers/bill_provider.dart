@@ -40,6 +40,18 @@ class MonthlyInsights {
   });
 }
 
+class OptimalSettlement {
+  final int fromMemberId;
+  final int toMemberId;
+  final double amount;
+
+  OptimalSettlement({
+    required this.fromMemberId,
+    required this.toMemberId,
+    required this.amount,
+  });
+}
+
 class BillProvider extends ChangeNotifier {
   final _db = DatabaseHelper.instance;
 
@@ -417,5 +429,84 @@ class BillProvider extends ChangeNotifier {
     return _bills
         .map((b) => b.billDate)
         .reduce((a, b) => a.isBefore(b) ? a : b);
+  }
+
+  /// Greedy minimum-transfers settlement algorithm.
+  /// Nets out all pairwise balances per member, then repeatedly matches
+  /// the largest creditor with the largest debtor.
+  List<OptimalSettlement> computeOptimalSettlements() {
+    // Use _memberBalances directly — they already contain correct net totals.
+    // (Previously iterated _pairwiseBalances which double-counts each pair.)
+    final Map<int, double> net = Map.of(_memberBalances);
+
+    // Separate into creditors and debtors
+    final List<MapEntry<int, double>> creditors = [];
+    final List<MapEntry<int, double>> debtors = [];
+    net.forEach((id, balance) {
+      if (balance > 0.01) {
+        creditors.add(MapEntry(id, balance));
+      } else if (balance < -0.01) {
+        debtors.add(MapEntry(id, -balance)); // store as positive amount
+      }
+    });
+
+    // Sort descending by amount
+    creditors.sort((a, b) => b.value.compareTo(a.value));
+    debtors.sort((a, b) => b.value.compareTo(a.value));
+
+    final List<OptimalSettlement> settlements = [];
+    int ci = 0, di = 0;
+    final cAmounts = creditors.map((e) => e.value).toList();
+    final dAmounts = debtors.map((e) => e.value).toList();
+
+    while (ci < creditors.length && di < debtors.length) {
+      final transfer = cAmounts[ci] < dAmounts[di] ? cAmounts[ci] : dAmounts[di];
+      if (transfer > 0.01) {
+        settlements.add(OptimalSettlement(
+          fromMemberId: debtors[di].key,
+          toMemberId: creditors[ci].key,
+          amount: double.parse(transfer.toStringAsFixed(2)),
+        ));
+      }
+      cAmounts[ci] -= transfer;
+      dAmounts[di] -= transfer;
+      if (cAmounts[ci] < 0.01) ci++;
+      if (dAmounts[di] < 0.01) di++;
+    }
+
+    return settlements;
+  }
+
+  /// Returns all non-zero pairwise debts as a flat list of OptimalSettlement.
+  List<OptimalSettlement> getRawPairwiseDebts() {
+    final List<OptimalSettlement> debts = [];
+    final Set<String> seen = {};
+
+    _pairwiseBalances.forEach((a, inner) {
+      inner.forEach((b, amount) {
+        if (amount == 0) return;
+        final key = a < b ? '$a-$b' : '$b-$a';
+        if (seen.contains(key)) return;
+        seen.add(key);
+
+        if (amount > 0) {
+          // b owes a
+          debts.add(OptimalSettlement(
+            fromMemberId: b,
+            toMemberId: a,
+            amount: double.parse(amount.toStringAsFixed(2)),
+          ));
+        } else {
+          // a owes b
+          debts.add(OptimalSettlement(
+            fromMemberId: a,
+            toMemberId: b,
+            amount: double.parse((-amount).toStringAsFixed(2)),
+          ));
+        }
+      });
+    });
+
+    return debts;
   }
 }

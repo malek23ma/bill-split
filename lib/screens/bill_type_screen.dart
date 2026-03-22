@@ -20,7 +20,7 @@ class BillTypeScreen extends StatelessWidget {
           style: TextStyle(
             color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
             fontWeight: FontWeight.w700,
-            fontSize: 20,
+            fontSize: AppScale.fontSize(20),
           ),
         ),
         iconTheme: IconThemeData(
@@ -28,7 +28,7 @@ class BillTypeScreen extends StatelessWidget {
         ),
       ),
       body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: EdgeInsets.symmetric(horizontal: AppScale.padding(24)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -36,7 +36,7 @@ class BillTypeScreen extends StatelessWidget {
             Text(
               'How would you like\nto split?',
               style: TextStyle(
-                fontSize: 28,
+                fontSize: AppScale.fontSize(28),
                 fontWeight: FontWeight.w800,
                 color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                 height: 1.2,
@@ -46,18 +46,18 @@ class BillTypeScreen extends StatelessWidget {
             Text(
               'Choose how to handle the bill items and splitting.',
               style: TextStyle(
-                fontSize: 15,
+                fontSize: AppScale.fontSize(15),
                 color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
               ),
             ),
-            const SizedBox(height: 32),
+            SizedBox(height: AppScale.size(32)),
             ScaleTap(
               onTap: () {
                 Navigator.pushNamed(context, '/camera', arguments: 'full');
               },
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.all(AppScale.padding(20)),
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.darkSurface : AppColors.surface,
                   borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -65,18 +65,18 @@ class BillTypeScreen extends StatelessWidget {
                 child: Row(
                   children: [
                     Container(
-                      width: 56,
-                      height: 56,
+                      width: AppScale.size(56),
+                      height: AppScale.size(56),
                       decoration: BoxDecoration(
                         color: isDark
                             ? AppColors.primary.withAlpha(26)
                             : AppColors.primarySurface,
                         borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.receipt_long_rounded,
                         color: AppColors.primary,
-                        size: 28,
+                        size: AppScale.size(28),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -87,7 +87,7 @@ class BillTypeScreen extends StatelessWidget {
                           Text(
                             'Full Bill',
                             style: TextStyle(
-                              fontSize: 17,
+                              fontSize: AppScale.fontSize(17),
                               fontWeight: FontWeight.w700,
                               color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                             ),
@@ -96,7 +96,7 @@ class BillTypeScreen extends StatelessWidget {
                           Text(
                             'Review each item and choose what to split',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: AppScale.fontSize(14),
                               color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                             ),
                           ),
@@ -106,21 +106,21 @@ class BillTypeScreen extends StatelessWidget {
                     const SizedBox(width: 8),
                     Icon(
                       Icons.arrow_forward_ios_rounded,
-                      size: 16,
+                      size: AppScale.size(16),
                       color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: AppScale.size(16)),
             ScaleTap(
               onTap: () {
                 Navigator.pushNamed(context, '/camera', arguments: 'quick');
               },
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.all(AppScale.padding(20)),
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.darkSurface : AppColors.surface,
                   borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -128,18 +128,18 @@ class BillTypeScreen extends StatelessWidget {
                 child: Row(
                   children: [
                     Container(
-                      width: 56,
-                      height: 56,
+                      width: AppScale.size(56),
+                      height: AppScale.size(56),
                       decoration: BoxDecoration(
                         color: isDark
                             ? AppColors.accent.withAlpha(26)
                             : AppColors.accentSurface,
                         borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.flash_on_rounded,
                         color: AppColors.accent,
-                        size: 28,
+                        size: AppScale.size(28),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -150,7 +150,7 @@ class BillTypeScreen extends StatelessWidget {
                           Text(
                             'Quick Bill',
                             style: TextStyle(
-                              fontSize: 17,
+                              fontSize: AppScale.fontSize(17),
                               fontWeight: FontWeight.w700,
                               color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                             ),
@@ -159,7 +159,7 @@ class BillTypeScreen extends StatelessWidget {
                           Text(
                             'Auto-split the total equally',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: AppScale.fontSize(14),
                               color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                             ),
                           ),
@@ -169,7 +169,7 @@ class BillTypeScreen extends StatelessWidget {
                     const SizedBox(width: 8),
                     Icon(
                       Icons.arrow_forward_ios_rounded,
-                      size: 16,
+                      size: AppScale.size(16),
                       color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
                     ),
                   ],

@@ -59,15 +59,15 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
           children: [
             // Solid color icon container — no gradient
             Container(
-              width: 120,
-              height: 120,
+              width: AppScale.size(120),
+              height: AppScale.size(120),
               decoration: BoxDecoration(
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(AppRadius.xxl),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.home_rounded,
-                size: 56,
+                size: AppScale.size(56),
                 color: Colors.white,
               ),
             ),
@@ -75,7 +75,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
             Text(
               'Welcome to Bill Split',
               style: TextStyle(
-                fontSize: 28,
+                fontSize: AppScale.fontSize(28),
                 fontWeight: FontWeight.w700,
                 color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
               ),
@@ -85,23 +85,23 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
             Text(
               'Create a household to start tracking\nand splitting bills with others.',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: AppScale.fontSize(16),
                 fontWeight: FontWeight.w400,
                 color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                 height: 1.5,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 40),
+            SizedBox(height: AppScale.size(40)),
             SizedBox(
               width: double.infinity,
-              height: 56,
+              height: AppScale.size(56),
               child: FilledButton.icon(
                 onPressed: () => _showCreateSheet(context),
                 icon: const Icon(Icons.add_rounded),
-                label: const Text(
+                label: Text(
                   'Create Household',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: AppScale.fontSize(16), fontWeight: FontWeight.w600),
                 ),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
@@ -134,7 +134,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                 Text(
                   'Your Households',
                   style: TextStyle(
-                    fontSize: 28,
+                    fontSize: AppScale.fontSize(28),
                     fontWeight: FontWeight.w700,
                     color: isDark
                         ? AppColors.darkTextPrimary
@@ -145,7 +145,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                 Text(
                   '${provider.households.length} household${provider.households.length != 1 ? 's' : ''}',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: AppScale.fontSize(14),
                     fontWeight: FontWeight.w500,
                     color: isDark
                         ? AppColors.darkTextSecondary
@@ -186,17 +186,17 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                         children: [
                           // Icon container — rounded rect, 10% opacity bg
                           Container(
-                            width: 48,
-                            height: 48,
+                            width: AppScale.size(48),
+                            height: AppScale.size(48),
                             decoration: BoxDecoration(
                               color: AppColors.primary.withAlpha(25),
                               borderRadius:
                                   BorderRadius.circular(AppRadius.md),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.home_rounded,
                               color: AppColors.primary,
-                              size: 24,
+                              size: AppScale.size(24),
                             ),
                           ),
                           const SizedBox(width: AppSpacing.lg),
@@ -208,7 +208,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                                 Text(
                                   household.name,
                                   style: TextStyle(
-                                    fontSize: 16,
+                                    fontSize: AppScale.fontSize(16),
                                     fontWeight: FontWeight.w600,
                                     color: isDark
                                         ? AppColors.darkTextPrimary
@@ -219,7 +219,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                                 Text(
                                   'Tap to enter',
                                   style: TextStyle(
-                                    fontSize: 13,
+                                    fontSize: AppScale.fontSize(13),
                                     fontWeight: FontWeight.w400,
                                     color: isDark
                                         ? AppColors.darkTextSecondary
@@ -284,7 +284,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                     // Drag handle
                     Center(
                       child: Container(
-                        width: 40,
+                        width: AppScale.size(40),
                         height: 4,
                         margin: const EdgeInsets.only(bottom: AppSpacing.xxl),
                         decoration: BoxDecoration(
@@ -298,7 +298,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                     Text(
                       'Create Household',
                       style: TextStyle(
-                        fontSize: 22,
+                        fontSize: AppScale.fontSize(22),
                         fontWeight: FontWeight.w700,
                         color: isDark
                             ? AppColors.darkTextPrimary
@@ -309,7 +309,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                     Text(
                       'Set up a new household and add members.',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: AppScale.fontSize(14),
                         fontWeight: FontWeight.w400,
                         color: isDark
                             ? AppColors.darkTextSecondary
@@ -358,8 +358,8 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                           prefixIcon: const Icon(Icons.person_rounded),
                           suffixIcon: i >= 2
                               ? IconButton(
-                                  icon: const Icon(Icons.close_rounded,
-                                      size: 20),
+                                  icon: Icon(Icons.close_rounded,
+                                      size: AppScale.size(20)),
                                   onPressed: () {
                                     setSheetState(() {
                                       memberControllers[i].dispose();
@@ -398,7 +398,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                             memberControllers.add(TextEditingController());
                           });
                         },
-                        icon: const Icon(Icons.person_add_rounded, size: 18),
+                        icon: Icon(Icons.person_add_rounded, size: AppScale.size(18)),
                         label: const Text('Add Member'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.primary,
@@ -420,7 +420,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                       children: [
                         Expanded(
                           child: SizedBox(
-                            height: 52,
+                            height: AppScale.size(52),
                             child: OutlinedButton(
                               onPressed: () => Navigator.pop(sheetContext),
                               style: OutlinedButton.styleFrom(
@@ -450,7 +450,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                         Expanded(
                           flex: 2,
                           child: SizedBox(
-                            height: 52,
+                            height: AppScale.size(52),
                             child: FilledButton(
                               onPressed: () async {
                                 final name = nameController.text.trim();
@@ -495,10 +495,10 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                                 ),
                                 elevation: 0,
                               ),
-                              child: const Text(
+                              child: Text(
                                 'Create',
                                 style: TextStyle(
-                                    fontSize: 16, fontWeight: FontWeight.w600),
+                                    fontSize: AppScale.fontSize(16), fontWeight: FontWeight.w600),
                               ),
                             ),
                           ),

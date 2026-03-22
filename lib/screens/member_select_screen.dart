@@ -44,16 +44,16 @@ class MemberSelectScreen extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 56,
-                height: 56,
+                width: AppScale.size(56),
+                height: AppScale.size(56),
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.primary.withAlpha(30) : AppColors.primarySurface,
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.lock_rounded,
                   color: AppColors.primary,
-                  size: 28,
+                  size: AppScale.size(28),
                 ),
               ),
               const SizedBox(height: 16),
@@ -61,7 +61,7 @@ class MemberSelectScreen extends StatelessWidget {
                 'Enter PIN for ${member.name}',
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
-                  fontSize: 20,
+                  fontSize: AppScale.fontSize(20),
                   color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                 ),
                 textAlign: TextAlign.center,
@@ -73,7 +73,7 @@ class MemberSelectScreen extends StatelessWidget {
                   color: isDark
                       ? AppColors.darkTextSecondary
                       : AppColors.textSecondary,
-                  fontSize: 14,
+                  fontSize: AppScale.fontSize(14),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -85,7 +85,7 @@ class MemberSelectScreen extends StatelessWidget {
                 keyboardType: TextInputType.number,
                 maxLength: 4,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 28, letterSpacing: 12),
+                style: TextStyle(fontSize: AppScale.fontSize(28), letterSpacing: 12),
                 decoration: InputDecoration(
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppRadius.md),
@@ -131,11 +131,11 @@ class MemberSelectScreen extends StatelessWidget {
             ],
           ),
           ),
-          actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+          actionsPadding: EdgeInsets.fromLTRB(AppScale.padding(24), 0, AppScale.padding(24), AppScale.padding(20)),
           actions: [
             SizedBox(
               width: double.infinity,
-              height: 48,
+              height: AppScale.size(48),
               child: FilledButton(
                 onPressed: () {
                   if (PinHelper.verifyPin(controller.text, member.pin!)) {
@@ -163,7 +163,7 @@ class MemberSelectScreen extends StatelessWidget {
             const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
-              height: 48,
+              height: AppScale.size(48),
               child: OutlinedButton(
                 onPressed: () => Navigator.pop(ctx),
                 style: OutlinedButton.styleFrom(
@@ -217,7 +217,7 @@ class MemberSelectScreen extends StatelessWidget {
               Text(
                 "Who's this?",
                 style: TextStyle(
-                  fontSize: 28,
+                  fontSize: AppScale.fontSize(28),
                   fontWeight: FontWeight.w700,
                   color: isDark
                       ? AppColors.darkTextPrimary
@@ -228,7 +228,7 @@ class MemberSelectScreen extends StatelessWidget {
               Text(
                 'Select your profile',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: AppScale.fontSize(16),
                   fontWeight: FontWeight.w400,
                   color: isDark
                       ? AppColors.darkTextSecondary
@@ -266,8 +266,8 @@ class MemberSelectScreen extends StatelessWidget {
                           children: [
                             // Avatar — rounded rect (md radius), not circle
                             Container(
-                              width: 56,
-                              height: 56,
+                              width: AppScale.size(56),
+                              height: AppScale.size(56),
                               decoration: BoxDecoration(
                                 color: avatarColor.withAlpha(25),
                                 borderRadius:
@@ -277,7 +277,7 @@ class MemberSelectScreen extends StatelessWidget {
                                 child: Text(
                                   initial,
                                   style: TextStyle(
-                                    fontSize: 24,
+                                    fontSize: AppScale.fontSize(24),
                                     fontWeight: FontWeight.w700,
                                     color: avatarColor,
                                   ),
@@ -293,7 +293,7 @@ class MemberSelectScreen extends StatelessWidget {
                                   Text(
                                     member.name,
                                     style: TextStyle(
-                                      fontSize: 16,
+                                      fontSize: AppScale.fontSize(16),
                                       fontWeight: FontWeight.w600,
                                       color: isDark
                                           ? AppColors.darkTextPrimary
@@ -304,7 +304,7 @@ class MemberSelectScreen extends StatelessWidget {
                                   Text(
                                     hasPin ? 'PIN protected' : 'Tap to enter',
                                     style: TextStyle(
-                                      fontSize: 13,
+                                      fontSize: AppScale.fontSize(13),
                                       fontWeight: FontWeight.w400,
                                       color: isDark
                                           ? AppColors.darkTextSecondary
@@ -318,7 +318,7 @@ class MemberSelectScreen extends StatelessWidget {
                             if (hasPin)
                               Icon(
                                 Icons.lock_rounded,
-                                size: 20,
+                                size: AppScale.size(20),
                                 color: isDark
                                     ? AppColors.darkTextSecondary
                                     : AppColors.textTertiary,

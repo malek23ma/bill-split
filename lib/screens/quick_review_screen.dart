@@ -136,15 +136,15 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
                       child: Row(
                         children: [
                           Container(
-                            width: 36,
-                            height: 36,
+                            width: AppScale.size(36),
+                            height: AppScale.size(36),
                             decoration: BoxDecoration(
                               color: AppColors.primary.withAlpha(26),
                               borderRadius:
                                   BorderRadius.circular(AppRadius.md),
                             ),
-                            child: const Icon(Icons.calendar_today_rounded,
-                                size: 18, color: AppColors.primary),
+                            child: Icon(Icons.calendar_today_rounded,
+                                size: AppScale.size(18), color: AppColors.primary),
                           ),
                           const SizedBox(width: AppSpacing.md),
                           Column(
@@ -152,7 +152,7 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
                             children: [
                               Text('Date',
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: AppScale.fontSize(12),
                                     color: isDark
                                         ? AppColors.darkTextSecondary
                                         : AppColors.textTertiary,
@@ -161,7 +161,7 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
                               Text(
                                 DateFormat('dd MMM yyyy').format(_billDate),
                                 style: TextStyle(
-                                  fontSize: 15,
+                                  fontSize: AppScale.fontSize(15),
                                   fontWeight: FontWeight.w600,
                                   color: isDark
                                       ? AppColors.darkTextPrimary
@@ -175,7 +175,7 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
                               color: isDark
                                   ? AppColors.darkTextSecondary
                                   : AppColors.textTertiary,
-                              size: 20),
+                              size: AppScale.size(20)),
                         ],
                       ),
                     ),
@@ -183,7 +183,7 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
 
                   Divider(
                     color: isDark ? AppColors.darkDivider : AppColors.divider,
-                    height: 20,
+                    height: AppScale.size(20),
                   ),
 
                   // Payer dropdown
@@ -191,21 +191,21 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
                     initialValue: _paidByMemberId,
                     decoration: InputDecoration(
                       labelText: 'Paid by',
-                      labelStyle: const TextStyle(
+                      labelStyle: TextStyle(
                         color: AppColors.textTertiary,
-                        fontSize: 13,
+                        fontSize: AppScale.fontSize(13),
                       ),
                       prefixIcon: Container(
-                        margin: const EdgeInsets.all(8),
-                        width: 36,
-                        height: 36,
+                        margin: EdgeInsets.all(AppScale.padding(8)),
+                        width: AppScale.size(36),
+                        height: AppScale.size(36),
                         decoration: BoxDecoration(
                           color: AppColors.primary.withAlpha(26),
                           borderRadius:
                               BorderRadius.circular(AppRadius.md),
                         ),
-                        child: const Icon(Icons.person_rounded,
-                            size: 18, color: AppColors.primary),
+                        child: Icon(Icons.person_rounded,
+                            size: AppScale.size(18), color: AppColors.primary),
                       ),
                       filled: true,
                       fillColor: isDark
@@ -221,14 +221,14 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
                             BorderRadius.circular(AppRadius.md),
                         borderSide: BorderSide.none,
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 12),
+                      contentPadding: EdgeInsets.symmetric(
+                          horizontal: AppScale.padding(12), vertical: AppScale.padding(12)),
                     ),
                     items: members
                         .map((m) => DropdownMenuItem(
                               value: m.id,
                               child: Text(m.name,
-                                  style: const TextStyle(fontSize: 14)),
+                                  style: TextStyle(fontSize: AppScale.fontSize(14))),
                             ))
                         .toList(),
                     onChanged: (value) {
@@ -245,12 +245,12 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
 
             // Category selector
             SizedBox(
-              height: 42,
+              height: AppScale.size(42),
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 0),
+                padding: EdgeInsets.symmetric(horizontal: 0),
                 itemCount: BillCategories.list.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 6),
+                separatorBuilder: (_, _) => SizedBox(width: 6),
                 itemBuilder: (context, index) {
                   final cat = BillCategories.list[index];
                   final isSelected = _category == cat.id;
@@ -258,7 +258,7 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
                     label: Text(
                       cat.label,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: AppScale.fontSize(12),
                         fontWeight: isSelected
                             ? FontWeight.w600
                             : FontWeight.w400,
@@ -267,7 +267,7 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
                             : AppColors.textSecondary,
                       ),
                     ),
-                    avatar: Icon(cat.icon, size: 16, color: cat.color),
+                    avatar: Icon(cat.icon, size: AppScale.size(16), color: cat.color),
                     selected: isSelected,
                     selectedColor: cat.color.withAlpha(30),
                     backgroundColor: isDark
@@ -301,7 +301,7 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
                   Text(
                     'Total Amount',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: AppScale.fontSize(13),
                       fontWeight: FontWeight.w500,
                       color: isDark
                           ? AppColors.darkTextSecondary
@@ -313,8 +313,8 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 10),
+                        padding: EdgeInsets.symmetric(
+                            horizontal: AppScale.padding(12), vertical: AppScale.padding(10)),
                         decoration: BoxDecoration(
                           color: AppColors.primarySurface,
                           borderRadius:
@@ -322,8 +322,8 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
                         ),
                         child: Text(
                           currencySymbol,
-                          style: const TextStyle(
-                            fontSize: 20,
+                          style: TextStyle(
+                            fontSize: AppScale.fontSize(20),
                             fontWeight: FontWeight.w700,
                             color: AppColors.primary,
                           ),
@@ -354,12 +354,12 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
                               borderSide: const BorderSide(
                                   color: AppColors.primary, width: 2),
                             ),
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 14),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: AppScale.padding(16), vertical: AppScale.padding(14)),
                             hintText: '0.00',
                             hintStyle: TextStyle(
                               color: AppColors.textTertiary.withAlpha(120),
-                              fontSize: 28,
+                              fontSize: AppScale.fontSize(28),
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -367,7 +367,7 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
                               const TextInputType.numberWithOptions(
                                   decimal: true),
                           style: TextStyle(
-                            fontSize: 28,
+                            fontSize: AppScale.fontSize(28),
                             fontWeight: FontWeight.w700,
                             color: isDark
                                 ? AppColors.darkTextPrimary
@@ -396,21 +396,21 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
                   Row(
                     children: [
                       Container(
-                        width: 32,
-                        height: 32,
+                        width: AppScale.size(32),
+                        height: AppScale.size(32),
                         decoration: BoxDecoration(
                           color: AppColors.primary.withAlpha(26),
                           borderRadius:
                               BorderRadius.circular(AppRadius.md),
                         ),
-                        child: const Icon(Icons.call_split_rounded,
-                            size: 18, color: AppColors.primary),
+                        child: Icon(Icons.call_split_rounded,
+                            size: AppScale.size(18), color: AppColors.primary),
                       ),
                       const SizedBox(width: AppSpacing.sm + 2),
                       Text(
                         'Split equally (${members.length} ways)',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: AppScale.fontSize(16),
                           fontWeight: FontWeight.w600,
                           color: isDark
                               ? AppColors.darkTextPrimary
@@ -459,7 +459,7 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
                           child: Text(
                             members[i].name,
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: AppScale.fontSize(14),
                               color: isDark
                                   ? AppColors.darkTextSecondary
                                   : AppColors.textSecondary,
@@ -470,7 +470,7 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
                           '${perMemberShare.toStringAsFixed(2)} $currencySymbol',
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
-                            fontSize: 15,
+                            fontSize: AppScale.fontSize(15),
                             color: isDark
                                 ? AppColors.darkTextPrimary
                                 : AppColors.textPrimary,
@@ -499,13 +499,13 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
                 child: Column(
                   children: otherMembers
                       .map((m) => Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            padding: EdgeInsets.symmetric(vertical: AppScale.padding(2)),
                             child: Text(
                               '${m.name} owes ${perMemberShare.toStringAsFixed(2)} $currencySymbol',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AppColors.primary,
                                 fontWeight: FontWeight.w600,
-                                fontSize: 15,
+                                fontSize: AppScale.fontSize(15),
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -518,7 +518,7 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
 
             // Save button - full width
             SizedBox(
-              height: 54,
+              height: AppScale.size(54),
               child: FilledButton(
                 onPressed: _saveBill,
                 style: FilledButton.styleFrom(
@@ -528,9 +528,9 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
                     borderRadius: BorderRadius.circular(AppRadius.lg),
                   ),
                 ),
-                child: const Text('Save Bill',
+                child: Text('Save Bill',
                     style: TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w600)),
+                        fontSize: AppScale.fontSize(16), fontWeight: FontWeight.w600)),
               ),
             ),
 

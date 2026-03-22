@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../database/database_helper.dart';
+import '../models/bill_filter.dart';
 import '../providers/bill_provider.dart';
 import '../providers/household_provider.dart';
+import '../widgets/filtered_results_sheet.dart';
 import '../constants.dart';
 
 class InsightsScreen extends StatefulWidget {
@@ -16,6 +18,7 @@ class InsightsScreen extends StatefulWidget {
 class _InsightsScreenState extends State<InsightsScreen> {
   late int _year;
   late int _month;
+  int _trendMonths = 3;
 
   @override
   void initState() {
@@ -84,7 +87,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
           style: TextStyle(
             color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
             fontWeight: FontWeight.w700,
-            fontSize: 20,
+            fontSize: AppScale.fontSize(20),
           ),
         ),
         actions: [
@@ -106,25 +109,31 @@ class _InsightsScreenState extends State<InsightsScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(AppScale.padding(16)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Month selector
             _buildMonthSelector(oldestDate, isDark),
-            const SizedBox(height: 20),
+            SizedBox(height: AppScale.size(20)),
 
             // Total spent card
             _buildTotalSpentCard(insights, householdProvider, isDark),
-            const SizedBox(height: 24),
+            SizedBox(height: AppScale.size(24)),
 
             // By Category section
             if (insights.categorySpend.isNotEmpty) ...[
               _buildSectionTitle('By Category', isDark),
               const SizedBox(height: 12),
               _buildCategoryBreakdown(insights, householdProvider, isDark),
-              const SizedBox(height: 24),
+              SizedBox(height: AppScale.size(24)),
             ],
+
+            // Spending Trends section
+            _buildSectionTitle('Spending Trends', isDark),
+            const SizedBox(height: 12),
+            _buildSpendingTrends(billProvider, householdProvider, isDark),
+            SizedBox(height: AppScale.size(24)),
 
             // By Member section
             if (insights.memberSpend.isNotEmpty) ...[
@@ -133,7 +142,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
               _buildMemberBreakdown(insights, memberNames, householdProvider, isDark),
             ],
 
-            const SizedBox(height: 32),
+            SizedBox(height: AppScale.size(32)),
           ],
         ),
       ),
@@ -149,7 +158,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
     ];
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: AppScale.padding(8), vertical: AppScale.padding(8)),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceVariant,
         borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -177,7 +186,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
           Text(
             '${months[_month - 1]} $_year',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: AppScale.fontSize(18),
               fontWeight: FontWeight.w700,
               color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
             ),
@@ -208,7 +217,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
       MonthlyInsights insights, HouseholdProvider householdProvider, bool isDark) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(AppScale.padding(24)),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -216,15 +225,15 @@ class _InsightsScreenState extends State<InsightsScreen> {
       child: Column(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: AppScale.size(40),
+            height: AppScale.size(40),
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.receipt_long_rounded,
-              size: 20,
+              size: AppScale.size(20),
               color: AppColors.primary,
             ),
           ),
@@ -232,7 +241,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
           Text(
             'Total Spent',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: AppScale.fontSize(14),
               fontWeight: FontWeight.w500,
               color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
             ),
@@ -241,7 +250,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
           Text(
             householdProvider.formatAmount(insights.totalSpent),
             style: TextStyle(
-              fontSize: 32,
+              fontSize: AppScale.fontSize(32),
               fontWeight: FontWeight.w700,
               color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
             ),
@@ -250,7 +259,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
           Text(
             '${insights.billCount} bill${insights.billCount == 1 ? '' : 's'}',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: AppScale.fontSize(14),
               color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
             ),
           ),
@@ -263,9 +272,45 @@ class _InsightsScreenState extends State<InsightsScreen> {
     return Text(
       title,
       style: TextStyle(
-        fontSize: 16,
+        fontSize: AppScale.fontSize(16),
         fontWeight: FontWeight.w700,
         color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+      ),
+    );
+  }
+
+  void _showCategoryDrillDown(String categoryId) {
+    final billProvider = context.read<BillProvider>();
+    final householdProvider = context.read<HouseholdProvider>();
+    final members = householdProvider.members;
+    final currencySymbol = AppCurrency.getByCode(householdProvider.currency).symbol;
+
+    final filteredBills = billProvider.bills.where((b) =>
+        b.category == categoryId &&
+        b.billDate.year == _year &&
+        b.billDate.month == _month &&
+        b.billType != 'settlement').toList();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        builder: (_, scrollCtrl) => FilteredResultsSheet(
+          scrollController: scrollCtrl,
+          filteredBills: filteredBills,
+          filter: BillFilter(category: categoryId),
+          members: members,
+          currencySymbol: currencySymbol,
+          onBillTap: (bill) {
+            Navigator.pop(context);
+            Navigator.pushNamed(context, '/bill-detail', arguments: bill);
+          },
+          onClearFilters: () {},
+        ),
       ),
     );
   }
@@ -293,7 +338,10 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 indent: 16,
                 endIndent: 16,
               ),
-            _buildCategoryRow(sorted[i], maxAmount, insights.totalSpent, householdProvider, isDark),
+            GestureDetector(
+              onTap: () => _showCategoryDrillDown(sorted[i].key),
+              child: _buildCategoryRow(sorted[i], maxAmount, insights.totalSpent, householdProvider, isDark),
+            ),
           ],
         ],
       ),
@@ -308,26 +356,26 @@ class _InsightsScreenState extends State<InsightsScreen> {
     final barFraction = maxAmount > 0 ? entry.value / maxAmount : 0.0;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: EdgeInsets.symmetric(horizontal: AppScale.padding(16), vertical: AppScale.padding(14)),
       child: Column(
         children: [
           Row(
             children: [
               Container(
-                width: 36,
-                height: 36,
+                width: AppScale.size(36),
+                height: AppScale.size(36),
                 decoration: BoxDecoration(
                   color: category.color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
-                child: Icon(category.icon, size: 18, color: category.color),
+                child: Icon(category.icon, size: AppScale.size(18), color: category.color),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   category.label,
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: AppScale.fontSize(15),
                     fontWeight: FontWeight.w600,
                     color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                   ),
@@ -336,7 +384,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
               Text(
                 '${percentage.toStringAsFixed(0)}%',
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: AppScale.fontSize(13),
                   fontWeight: FontWeight.w500,
                   color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
                 ),
@@ -345,14 +393,14 @@ class _InsightsScreenState extends State<InsightsScreen> {
               Text(
                 householdProvider.formatAmount(entry.value),
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: AppScale.fontSize(15),
                   fontWeight: FontWeight.w600,
                   color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.full),
             child: LinearProgressIndicator(
@@ -379,7 +427,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
         color: isDark ? AppColors.darkSurface : AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
       ),
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(AppScale.padding(16)),
       child: Column(
         children: [
           // Stacked bar showing proportional spend
@@ -409,10 +457,10 @@ class _InsightsScreenState extends State<InsightsScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: AppScale.size(16)),
           // Member legend with amounts and percentages
           for (int i = 0; i < sorted.length; i++) ...[
-            if (i > 0) const SizedBox(height: 10),
+            if (i > 0) SizedBox(height: 10),
             Row(
               children: [
                 Container(
@@ -428,7 +476,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
                   child: Text(
                     memberNames[sorted[i].key] ?? 'Unknown',
                     style: TextStyle(
-                      fontSize: 15,
+                      fontSize: AppScale.fontSize(15),
                       fontWeight: FontWeight.w600,
                       color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                     ),
@@ -437,7 +485,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 Text(
                   '${(sorted[i].value / totalSpent * 100).toStringAsFixed(0)}%',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: AppScale.fontSize(13),
                     fontWeight: FontWeight.w500,
                     color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
                   ),
@@ -446,7 +494,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 Text(
                   householdProvider.formatAmount(sorted[i].value),
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: AppScale.fontSize(15),
                     fontWeight: FontWeight.w600,
                     color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                   ),
@@ -454,6 +502,165 @@ class _InsightsScreenState extends State<InsightsScreen> {
               ],
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSpendingTrends(
+      BillProvider billProvider, HouseholdProvider householdProvider, bool isDark) {
+    const monthAbbr = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+
+    // Collect totals for each month going backward
+    final totals = <double>[];
+    final labels = <String>[];
+    int y = _year;
+    int m = _month;
+    for (int i = 0; i < _trendMonths; i++) {
+      final insights = billProvider.getInsightsForMonth(y, m);
+      totals.insert(0, insights.totalSpent);
+      labels.insert(0, monthAbbr[m - 1]);
+      m--;
+      if (m < 1) {
+        m = 12;
+        y--;
+      }
+    }
+
+    final maxTotal = totals.fold<double>(0, (a, b) => a > b ? a : b);
+    const barAreaHeight = 200.0;
+
+    return Container(
+      padding: EdgeInsets.all(AppScale.padding(16)),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      child: Column(
+        children: [
+          // Time range toggle
+          Row(
+            children: [
+              for (final months in [3, 6, 9, 12]) ...[
+                if (months > 3) const SizedBox(width: 8),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _trendMonths = months),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: AppScale.padding(8)),
+                      decoration: BoxDecoration(
+                        color: _trendMonths == months
+                            ? AppColors.primary
+                            : (isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceMuted),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '${months}M',
+                        style: TextStyle(
+                          fontSize: AppScale.fontSize(13),
+                          fontWeight: FontWeight.w600,
+                          color: _trendMonths == months
+                              ? Colors.white
+                              : (isDark ? AppColors.darkTextSecondary : AppColors.textTertiary),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          SizedBox(height: AppScale.size(16)),
+          // Bar chart — horizontally scrollable when bars exceed width
+          SizedBox(
+            height: barAreaHeight + 40,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final barWidth = 48.0;
+                final gap = 6.0;
+                final totalNeeded = totals.length * barWidth + (totals.length - 1) * gap;
+                final fitsInline = totalNeeded <= constraints.maxWidth;
+
+                Widget buildBar(int i) {
+                  return SizedBox(
+                    width: fitsInline ? null : barWidth,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Text(
+                          totals[i] > 0
+                              ? householdProvider.formatAmount(totals[i])
+                              : '',
+                          style: TextStyle(
+                            fontSize: AppScale.fontSize(10),
+                            fontWeight: FontWeight.w500,
+                            color: isDark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.textTertiary,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          width: fitsInline ? 32 : 36,
+                          height: maxTotal > 0
+                              ? (totals[i] / maxTotal * barAreaHeight)
+                                  .clamp(4.0, barAreaHeight)
+                              : 4.0,
+                          decoration: BoxDecoration(
+                            color: i == totals.length - 1
+                                ? AppColors.primary
+                                : (isDark
+                                    ? AppColors.darkSurfaceVariant
+                                    : AppColors.surfaceMuted),
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          labels[i],
+                          style: TextStyle(
+                            fontSize: AppScale.fontSize(11),
+                            fontWeight: FontWeight.w500,
+                            color: isDark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.textTertiary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                final children = <Widget>[
+                  for (int i = 0; i < totals.length; i++) ...[
+                    if (i > 0) SizedBox(width: gap),
+                    if (fitsInline) Expanded(child: buildBar(i)) else buildBar(i),
+                  ],
+                ];
+
+                if (fitsInline) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: children,
+                  );
+                }
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: children,
+                  ),
+                );
+              },
+            ),
+          ),
         ],
       ),
     );

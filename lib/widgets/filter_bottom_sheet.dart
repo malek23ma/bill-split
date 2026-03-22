@@ -138,7 +138,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
             // Drag handle
             Center(
               child: Container(
-                width: 40,
+                width: AppScale.size(40),
                 height: 4,
                 margin: const EdgeInsets.only(bottom: AppSpacing.lg),
                 decoration: BoxDecoration(
@@ -152,7 +152,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
             Text(
               'Filters',
               style: TextStyle(
-                fontSize: 20,
+                fontSize: AppScale.fontSize(20),
                 fontWeight: FontWeight.w700,
                 color: textColor,
               ),
@@ -178,7 +178,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                 ),
               ),
               dropdownColor: isDark ? AppColors.darkSurface : AppColors.surface,
-              style: TextStyle(color: textColor, fontSize: 14),
+              style: TextStyle(color: textColor, fontSize: AppScale.fontSize(14)),
               items: [
                 DropdownMenuItem<String?>(
                   value: null,
@@ -189,7 +189,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                       value: cat.id,
                       child: Row(
                         children: [
-                          Icon(cat.icon, size: 18, color: cat.color),
+                          Icon(cat.icon, size: AppScale.size(18), color: cat.color),
                           const SizedBox(width: 10),
                           Text(cat.label),
                         ],
@@ -220,7 +220,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                 ),
               ),
               dropdownColor: isDark ? AppColors.darkSurface : AppColors.surface,
-              style: TextStyle(color: textColor, fontSize: 14),
+              style: TextStyle(color: textColor, fontSize: AppScale.fontSize(14)),
               items: [
                 DropdownMenuItem<int?>(
                   value: null,
@@ -289,7 +289,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                           ? Colors.white
                           : textColor,
                       fontWeight: FontWeight.w500,
-                      fontSize: 13,
+                      fontSize: AppScale.fontSize(13),
                     ),
                     backgroundColor: isDark
                         ? AppColors.darkSurfaceVariant
@@ -319,7 +319,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                   ),
                 OutlinedButton.icon(
                   onPressed: _pickCustomRange,
-                  icon: const Icon(Icons.date_range_rounded, size: 18),
+                  icon: Icon(Icons.date_range_rounded, size: AppScale.size(18)),
                   label: Text(
                     _datePresetLabel == null && _dateFrom != null
                         ? '${_fmtDate(_dateFrom!)} - ${_fmtDate(_dateTo!)}'
@@ -409,7 +409,7 @@ class _SectionLabel extends StatelessWidget {
     return Text(
       label,
       style: TextStyle(
-        fontSize: 14,
+        fontSize: AppScale.fontSize(14),
         fontWeight: FontWeight.w600,
         color: color,
       ),

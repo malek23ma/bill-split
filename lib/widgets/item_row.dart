@@ -40,8 +40,8 @@ class ItemRow extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.lg, vertical: 3),
+      padding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg, vertical: AppScale.padding(3)),
       child: Container(
         decoration: BoxDecoration(
           color: isDark ? AppColors.darkSurface : AppColors.surface,
@@ -60,7 +60,7 @@ class ItemRow extends StatelessWidget {
                     child: Text(
                       name,
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: AppScale.fontSize(15),
                         fontWeight: FontWeight.w600,
                         color: isDark
                             ? AppColors.darkTextPrimary
@@ -72,7 +72,7 @@ class ItemRow extends StatelessWidget {
                     '${price.toStringAsFixed(2)} $currencySymbol',
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
-                      fontSize: 16,
+                      fontSize: AppScale.fontSize(16),
                       color: isDark
                           ? AppColors.darkTextPrimary
                           : AppColors.textPrimary,
@@ -140,7 +140,7 @@ class _MemberChip extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeInOut,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: EdgeInsets.symmetric(horizontal: AppScale.padding(10), vertical: AppScale.padding(6)),
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(AppRadius.full),
@@ -153,8 +153,8 @@ class _MemberChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 24,
-              height: 24,
+              width: AppScale.size(24),
+              height: AppScale.size(24),
               decoration: BoxDecoration(
                 color: isSelected
                     ? color
@@ -165,7 +165,7 @@ class _MemberChip extends StatelessWidget {
                 child: Text(
                   letter,
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: AppScale.fontSize(11),
                     fontWeight: FontWeight.w700,
                     color: isSelected ? Colors.white : textColor,
                   ),
@@ -176,7 +176,7 @@ class _MemberChip extends StatelessWidget {
             Text(
               member.name,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: AppScale.fontSize(13),
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                 color: textColor,
               ),

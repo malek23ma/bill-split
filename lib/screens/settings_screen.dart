@@ -50,7 +50,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 keyboardType: TextInputType.number,
                 maxLength: 4,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 24, letterSpacing: 12),
+                style: TextStyle(fontSize: AppScale.fontSize(24), letterSpacing: 12),
                 decoration: const InputDecoration(
                   labelText: 'Enter 4-digit PIN',
                   border: OutlineInputBorder(),
@@ -65,7 +65,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 keyboardType: TextInputType.number,
                 maxLength: 4,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 24, letterSpacing: 12),
+                style: TextStyle(fontSize: AppScale.fontSize(24), letterSpacing: 12),
                 decoration: InputDecoration(
                   labelText: 'Confirm PIN',
                   border: const OutlineInputBorder(),
@@ -143,7 +143,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 36,
+                width: AppScale.size(36),
                 height: 4,
                 margin: const EdgeInsets.only(bottom: AppSpacing.md),
                 decoration: BoxDecoration(
@@ -294,7 +294,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           'They will be hidden from new bills. Existing bills and balances are preserved.',
           style: TextStyle(
             color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
-            fontSize: 14,
+            fontSize: AppScale.fontSize(14),
           ),
         ),
         actions: [
@@ -355,7 +355,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           style: TextStyle(
             color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
             fontWeight: FontWeight.w700,
-            fontSize: 20,
+            fontSize: AppScale.fontSize(20),
           ),
         ),
       ),
@@ -371,7 +371,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             final hasPin = currentMember?.pin != null && currentMember!.pin!.isNotEmpty;
 
             return ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              padding: EdgeInsets.symmetric(horizontal: AppScale.padding(16), vertical: AppScale.padding(16)),
               children: [
                 // ── 1. YOUR PROFILE ──
                 _SectionHeader('Your Profile'),
@@ -385,14 +385,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         borderRadius: BorderRadius.circular(AppRadius.lg),
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.all(16),
+                        padding: EdgeInsets.all(AppScale.padding(16)),
                         child: Column(
                           children: [
                             Row(
                               children: [
                                 Container(
-                                  width: 56,
-                                  height: 56,
+                                  width: AppScale.size(56),
+                                  height: AppScale.size(56),
                                   decoration: BoxDecoration(
                                     color: AppColors.memberColor(selfIndex >= 0 ? selfIndex : 0).withAlpha(25),
                                     borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -403,7 +403,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           ? currentMember.name[0].toUpperCase()
                                           : '?',
                                       style: TextStyle(
-                                        fontSize: 24,
+                                        fontSize: AppScale.fontSize(24),
                                         fontWeight: FontWeight.w700,
                                         color: AppColors.memberColor(selfIndex >= 0 ? selfIndex : 0),
                                       ),
@@ -421,7 +421,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                             child: Text(
                                               currentMember.name,
                                               style: TextStyle(
-                                                fontSize: 18,
+                                                fontSize: AppScale.fontSize(18),
                                                 fontWeight: FontWeight.w700,
                                                 color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                                               ),
@@ -429,17 +429,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                             ),
                                           ),
                                           if (isAdmin) ...[
-                                            const SizedBox(width: 8),
+                                            SizedBox(width: 8),
                                             Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                              padding: EdgeInsets.symmetric(horizontal: AppScale.padding(8), vertical: AppScale.padding(3)),
                                               decoration: BoxDecoration(
                                                 color: AppColors.accent.withValues(alpha: 0.1),
                                                 borderRadius: BorderRadius.circular(AppRadius.sm),
                                               ),
-                                              child: const Text(
+                                              child: Text(
                                                 'Admin',
                                                 style: TextStyle(
-                                                  fontSize: 11,
+                                                  fontSize: AppScale.fontSize(11),
                                                   fontWeight: FontWeight.w600,
                                                   color: AppColors.accent,
                                                 ),
@@ -452,7 +452,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       Text(
                                         'Tap to change name',
                                         style: TextStyle(
-                                          fontSize: 13,
+                                          fontSize: AppScale.fontSize(13),
                                           color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
                                         ),
                                       ),
@@ -461,7 +461,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: AppScale.size(16)),
                             Divider(
                               height: 1,
                               color: isDark ? AppColors.darkDivider : AppColors.divider,
@@ -471,18 +471,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               children: [
                                 Icon(
                                   hasPin ? Icons.lock : Icons.lock_open,
-                                  size: 18,
+                                  size: AppScale.size(18),
                                   color: hasPin ? AppColors.positive : AppColors.warning,
                                 ),
-                                const SizedBox(width: 10),
+                                const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
                                     hasPin ? 'PIN protected' : 'No PIN set',
                                     style: TextStyle(
-                                      fontSize: 14,
+                                      fontSize: AppScale.fontSize(13),
                                       fontWeight: FontWeight.w600,
                                       color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                                     ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                                 if (hasPin)
@@ -490,6 +491,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     onPressed: () => _removePin(context, currentMember.id!),
                                     style: TextButton.styleFrom(
                                       foregroundColor: AppColors.negative,
+                                      padding: EdgeInsets.symmetric(horizontal: AppScale.padding(10), vertical: AppScale.padding(8)),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(AppRadius.md),
                                       ),
@@ -501,6 +503,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   onPressed: () => _setPinDialog(
                                       context, currentMember.id!, hasPin),
                                   style: FilledButton.styleFrom(
+                                    padding: EdgeInsets.symmetric(horizontal: AppScale.padding(14), vertical: AppScale.padding(8)),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(AppRadius.md),
                                     ),
@@ -514,7 +517,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ),
-                const SizedBox(height: 24),
+                SizedBox(height: AppScale.size(24)),
 
                 // ── 2. HOUSEHOLD ──
                 _SectionHeader('Household'),
@@ -525,7 +528,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     borderRadius: BorderRadius.circular(AppRadius.lg),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(AppScale.padding(16)),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -533,27 +536,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Row(
                           children: [
                             Container(
-                              width: 36,
-                              height: 36,
+                              width: AppScale.size(36),
+                              height: AppScale.size(36),
                               decoration: BoxDecoration(
                                 color: AppColors.primary.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(AppRadius.md),
                               ),
-                              child: const Icon(Icons.language_rounded,
-                                  size: 18, color: AppColors.primary),
+                              child: Icon(Icons.language_rounded,
+                                  size: AppScale.size(18), color: AppColors.primary),
                             ),
                             const SizedBox(width: 12),
                             Text(
                               'Currency',
                               style: TextStyle(
-                                fontSize: 15,
+                                fontSize: AppScale.fontSize(15),
                                 fontWeight: FontWeight.w600,
                                 color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 10),
+                        SizedBox(height: 10),
                         Builder(
                           builder: (context) {
                             final currentCurrency = AppCurrency.getByCode(household.currency);
@@ -567,11 +570,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   borderRadius: BorderRadius.circular(AppRadius.md),
                                   borderSide: BorderSide.none,
                                 ),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                contentPadding: EdgeInsets.symmetric(horizontal: AppScale.padding(14), vertical: AppScale.padding(12)),
                               ),
                               dropdownColor: isDark ? AppColors.darkSurface : AppColors.surface,
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: AppScale.fontSize(14),
                                 color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                               ),
                               items: AppCurrency.list.map((c) {
@@ -588,7 +591,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             );
                           },
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: AppScale.size(16)),
                         Divider(
                           height: 1,
                           color: isDark ? AppColors.darkDivider : AppColors.divider,
@@ -607,12 +610,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ? () => _showMemberOptions(context, members[i], household)
                                 : null,
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              padding: EdgeInsets.symmetric(vertical: AppScale.padding(10)),
                               child: Row(
                                 children: [
                                   Container(
-                                    width: 36,
-                                    height: 36,
+                                    width: AppScale.size(36),
+                                    height: AppScale.size(36),
                                     decoration: BoxDecoration(
                                       color: AppColors.memberColor(i).withAlpha(25),
                                       borderRadius: BorderRadius.circular(AppRadius.md),
@@ -623,7 +626,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                             ? members[i].name[0].toUpperCase()
                                             : '?',
                                         style: TextStyle(
-                                          fontSize: 16,
+                                          fontSize: AppScale.fontSize(16),
                                           fontWeight: FontWeight.w700,
                                           color: AppColors.memberColor(i),
                                         ),
@@ -635,7 +638,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     child: Text(
                                       members[i].name,
                                       style: TextStyle(
-                                        fontSize: 15,
+                                        fontSize: AppScale.fontSize(15),
                                         fontWeight: FontWeight.w600,
                                         color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                                       ),
@@ -643,16 +646,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ),
                                   if (members[i].isAdmin)
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                      margin: const EdgeInsets.only(right: 6),
+                                      padding: EdgeInsets.symmetric(horizontal: AppScale.padding(8), vertical: AppScale.padding(3)),
+                                      margin: EdgeInsets.only(right: AppScale.padding(6)),
                                       decoration: BoxDecoration(
                                         color: AppColors.accent.withValues(alpha: 0.1),
                                         borderRadius: BorderRadius.circular(AppRadius.sm),
                                       ),
-                                      child: const Text(
+                                      child: Text(
                                         'Admin',
                                         style: TextStyle(
-                                          fontSize: 11,
+                                          fontSize: AppScale.fontSize(11),
                                           fontWeight: FontWeight.w600,
                                           color: AppColors.accent,
                                         ),
@@ -660,15 +663,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
                                   if (currentMember?.id == members[i].id)
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      padding: EdgeInsets.symmetric(horizontal: AppScale.padding(8), vertical: AppScale.padding(3)),
                                       decoration: BoxDecoration(
                                         color: AppColors.primary.withValues(alpha: 0.1),
                                         borderRadius: BorderRadius.circular(AppRadius.sm),
                                       ),
-                                      child: const Text(
+                                      child: Text(
                                         'You',
                                         style: TextStyle(
-                                          fontSize: 11,
+                                          fontSize: AppScale.fontSize(11),
                                           fontWeight: FontWeight.w600,
                                           color: AppColors.primary,
                                         ),
@@ -685,7 +688,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             width: double.infinity,
                             child: OutlinedButton.icon(
                               onPressed: () => _showAddMemberDialog(context, household),
-                              icon: const Icon(Icons.person_add_rounded, size: 18),
+                              icon: Icon(Icons.person_add_rounded, size: AppScale.size(18)),
                               label: const Text('Add Member'),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: AppColors.primary,
@@ -695,7 +698,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(AppRadius.md),
                                 ),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: EdgeInsets.symmetric(vertical: AppScale.padding(12)),
                               ),
                             ),
                           ),
@@ -710,19 +713,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ListTile(
                           contentPadding: EdgeInsets.zero,
                           leading: Container(
-                            width: 36,
-                            height: 36,
+                            width: AppScale.size(36),
+                            height: AppScale.size(36),
                             decoration: BoxDecoration(
                               color: AppColors.accent.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(AppRadius.md),
                             ),
-                            child: const Icon(Icons.repeat_rounded,
-                                size: 18, color: AppColors.accent),
+                            child: Icon(Icons.repeat_rounded,
+                                size: AppScale.size(18), color: AppColors.accent),
                           ),
                           title: Text(
                             'Manage Recurring Bills',
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: AppScale.fontSize(15),
                               fontWeight: FontWeight.w600,
                               color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                             ),
@@ -735,7 +738,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: AppScale.size(24)),
 
                 // ── 3. APPEARANCE ──
                 _SectionHeader('Appearance'),
@@ -746,21 +749,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     borderRadius: BorderRadius.circular(AppRadius.lg),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(AppScale.padding(16)),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
                             Container(
-                              width: 36,
-                              height: 36,
+                              width: AppScale.size(36),
+                              height: AppScale.size(36),
                               decoration: BoxDecoration(
                                 color: AppColors.accent.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(AppRadius.md),
                               ),
-                              child: const Icon(Icons.palette_outlined,
-                                  size: 18, color: AppColors.accent),
+                              child: Icon(Icons.palette_outlined,
+                                  size: AppScale.size(18), color: AppColors.accent),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -770,7 +773,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   Text(
                                     'Dark Mode',
                                     style: TextStyle(
-                                      fontSize: 15,
+                                      fontSize: AppScale.fontSize(15),
                                       fontWeight: FontWeight.w600,
                                       color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                                     ),
@@ -783,7 +786,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       ThemeMode.system => 'System default',
                                     },
                                     style: TextStyle(
-                                      fontSize: 13,
+                                      fontSize: AppScale.fontSize(13),
                                       color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
                                     ),
                                   ),
@@ -796,18 +799,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: SegmentedButton<ThemeMode>(
-                            segments: const [
+                            segments: [
                               ButtonSegment(
                                 value: ThemeMode.light,
-                                icon: Icon(Icons.light_mode, size: 18),
+                                icon: Icon(Icons.light_mode, size: AppScale.size(18)),
                               ),
                               ButtonSegment(
                                 value: ThemeMode.system,
-                                icon: Icon(Icons.phone_android, size: 18),
+                                icon: Icon(Icons.phone_android, size: AppScale.size(18)),
                               ),
                               ButtonSegment(
                                 value: ThemeMode.dark,
-                                icon: Icon(Icons.dark_mode, size: 18),
+                                icon: Icon(Icons.dark_mode, size: AppScale.size(18)),
                               ),
                             ],
                             selected: {settings.themeMode},
@@ -835,7 +838,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: AppScale.size(24)),
 
                 // ── 4. RECEIPT SCANNING ──
                 _SectionHeader('Receipt Scanning'),
@@ -846,21 +849,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     borderRadius: BorderRadius.circular(AppRadius.lg),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(AppScale.padding(16)),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
                             Container(
-                              width: 36,
-                              height: 36,
+                              width: AppScale.size(36),
+                              height: AppScale.size(36),
                               decoration: BoxDecoration(
                                 color: AppColors.primaryLight.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(AppRadius.md),
                               ),
-                              child: const Icon(Icons.auto_awesome_outlined,
-                                  size: 18, color: AppColors.primaryLight),
+                              child: Icon(Icons.auto_awesome_outlined,
+                                  size: AppScale.size(18), color: AppColors.primaryLight),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -870,7 +873,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   Text(
                                     'Groq API Key',
                                     style: TextStyle(
-                                      fontSize: 15,
+                                      fontSize: AppScale.fontSize(15),
                                       fontWeight: FontWeight.w600,
                                       color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                                     ),
@@ -879,7 +882,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   Text(
                                     'Free at console.groq.com',
                                     style: TextStyle(
-                                      fontSize: 13,
+                                      fontSize: AppScale.fontSize(13),
                                       color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
                                     ),
                                   ),
@@ -899,7 +902,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: AppScale.size(16)),
                         Row(
                           children: [
                             Expanded(
@@ -925,11 +928,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     borderSide: const BorderSide(color: AppColors.primary, width: 2),
                                   ),
                                   isDense: true,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 14, vertical: 12),
+                                  contentPadding: EdgeInsets.symmetric(
+                                      horizontal: AppScale.padding(14), vertical: AppScale.padding(12)),
                                 ),
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: AppScale.fontSize(13),
                                   fontFamily: 'monospace',
                                   color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                                 ),
@@ -951,7 +954,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(AppRadius.md),
                                 ),
-                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                padding: EdgeInsets.symmetric(horizontal: AppScale.padding(20), vertical: AppScale.padding(12)),
                               ),
                               child: const Text('Save'),
                             ),
@@ -959,7 +962,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const SizedBox(height: 12),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: EdgeInsets.symmetric(horizontal: AppScale.padding(12), vertical: AppScale.padding(8)),
                           decoration: BoxDecoration(
                             color: settings.apiKey.isNotEmpty
                                 ? AppColors.positiveSurface
@@ -973,7 +976,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 settings.apiKey.isNotEmpty
                                     ? Icons.check_circle
                                     : Icons.info_outline,
-                                size: 14,
+                                size: AppScale.size(14),
                                 color: settings.apiKey.isNotEmpty
                                     ? AppColors.positive
                                     : AppColors.warning,
@@ -984,7 +987,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ? 'AI scanning active'
                                     : 'Using basic on-device OCR',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: AppScale.fontSize(12),
                                   fontWeight: FontWeight.w600,
                                   color: settings.apiKey.isNotEmpty
                                       ? AppColors.positive
@@ -998,7 +1001,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: AppScale.size(24)),
 
                 // ── 5. ABOUT ──
                 _SectionHeader('About'),
@@ -1009,19 +1012,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     borderRadius: BorderRadius.circular(AppRadius.lg),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(AppScale.padding(16)),
                     child: Row(
                       children: [
                         Container(
-                          width: 44,
-                          height: 44,
+                          width: AppScale.size(44),
+                          height: AppScale.size(44),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(AppRadius.md),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.receipt_long_rounded,
-                            size: 22,
+                            size: AppScale.size(22),
                             color: AppColors.primary,
                           ),
                         ),
@@ -1033,7 +1036,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               Text(
                                 'Bill Split',
                                 style: TextStyle(
-                                  fontSize: 16,
+                                  fontSize: AppScale.fontSize(16),
                                   fontWeight: FontWeight.w700,
                                   color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                                 ),
@@ -1042,7 +1045,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               Text(
                                 'Version 1.0.0',
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: AppScale.fontSize(13),
                                   color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
                                 ),
                               ),
@@ -1056,7 +1059,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 // ── 6. DANGER ZONE (admin only) ──
                 if (isAdmin) ...[
-                  const SizedBox(height: 24),
+                  SizedBox(height: AppScale.size(24)),
                   _SectionHeader('Danger Zone'),
                   const SizedBox(height: 12),
                   Container(
@@ -1072,19 +1075,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         borderRadius: BorderRadius.circular(AppRadius.lg),
                       ),
                       leading: Container(
-                        width: 36,
-                        height: 36,
+                        width: AppScale.size(36),
+                        height: AppScale.size(36),
                         decoration: BoxDecoration(
                           color: AppColors.negative.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(AppRadius.md),
                         ),
-                        child: const Icon(Icons.delete_forever_rounded,
-                            size: 18, color: AppColors.negative),
+                        child: Icon(Icons.delete_forever_rounded,
+                            size: AppScale.size(18), color: AppColors.negative),
                       ),
-                      title: const Text(
+                      title: Text(
                         'Delete Household',
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: AppScale.fontSize(15),
                           fontWeight: FontWeight.w600,
                           color: AppColors.negative,
                         ),
@@ -1092,7 +1095,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       subtitle: Text(
                         'Permanently delete this household and all its data',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: AppScale.fontSize(12),
                           color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
                         ),
                       ),
@@ -1100,7 +1103,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                 ],
-                const SizedBox(height: 24),
+                SizedBox(height: AppScale.size(24)),
               ],
             );
           },
@@ -1151,12 +1154,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             }
           },
         ),
-        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+        actionsPadding: EdgeInsets.fromLTRB(AppScale.padding(24), 0, AppScale.padding(24), AppScale.padding(20)),
         actionsAlignment: MainAxisAlignment.center,
         actions: [
           SizedBox(
             width: double.infinity,
-            height: 48,
+            height: AppScale.size(48),
             child: FilledButton(
               onPressed: () async {
                 if (controller.text.trim().isNotEmpty) {
@@ -1177,7 +1180,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
-            height: 48,
+            height: AppScale.size(48),
             child: OutlinedButton(
               onPressed: () => Navigator.pop(ctx),
               style: OutlinedButton.styleFrom(
@@ -1267,7 +1270,7 @@ class _SectionHeader extends StatelessWidget {
     return Text(
       title.toUpperCase(),
       style: TextStyle(
-        fontSize: 12,
+        fontSize: AppScale.fontSize(12),
         fontWeight: FontWeight.w700,
         color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
         letterSpacing: 1.2,
