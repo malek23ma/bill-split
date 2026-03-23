@@ -1,5 +1,6 @@
 -- Enable RLS on all tables
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+-- profiles RLS disabled — trigger/app needs unrestricted insert access
+-- ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE households ENABLE ROW LEVEL SECURITY;
 ALTER TABLE members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bills ENABLE ROW LEVEL SECURITY;
