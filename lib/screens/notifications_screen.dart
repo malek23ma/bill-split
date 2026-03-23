@@ -27,7 +27,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   void initState() {
     super.initState();
-    context.read<NotificationService>().loadNotifications();
+    // Reload notifications fresh each time this screen opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final svc = context.read<NotificationService>();
+      svc.loadNotifications();
+      svc.subscribeToRealtime();
+    });
   }
 
   IconData _iconForType(String type) {
