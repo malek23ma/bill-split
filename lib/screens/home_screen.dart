@@ -1189,11 +1189,20 @@ class _HomeScreenState extends State<HomeScreen> {
         amount: amount,
       );
 
-      // Send notification to the receiver
-      await notificationService.sendNotification(
-        householdId: householdRemoteId,
-        recipientUserId: receiverRemoteId,
-        type: 'settlement_request',
+      // Look up receiver's auth user_id from the members table
+      final receiverData = await supabaseClient
+          .from('members')
+          .select('user_id')
+          .eq('id', receiverRemoteId)
+          .maybeSingle();
+      final receiverUserId = receiverData?['user_id'] as String?;
+
+      // Send notification only if receiver has a linked auth account
+      if (receiverUserId != null) {
+        await notificationService.sendNotification(
+          householdId: householdRemoteId,
+          recipientUserId: receiverUserId,
+          type: 'settlement_request',
         title: 'Settlement Request',
         body:
             '${payerMember?.name ?? 'Someone'} wants to settle ${amount.toStringAsFixed(2)} with you',
@@ -1201,7 +1210,8 @@ class _HomeScreenState extends State<HomeScreen> {
           'settlement_id': settlement['id'],
           'amount': amount,
         },
-      );
+        );
+      }
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
