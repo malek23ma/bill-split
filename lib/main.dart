@@ -25,9 +25,13 @@ import 'screens/settings_screen.dart';
 import 'screens/recurring_bills_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/auth_screen.dart';
+import 'screens/invite_screen.dart';
+import 'screens/join_household_screen.dart';
 import 'services/auth_service.dart';
 import 'services/connectivity_service.dart';
+import 'services/notification_service.dart';
 import 'services/sync_service.dart';
+import 'screens/notifications_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -66,6 +70,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => RecurringBillProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider(authService)),
         Provider.value(value: connectivityService),
+        ChangeNotifierProvider(create: (_) => NotificationService(Supabase.instance.client)),
         ChangeNotifierProvider.value(value: syncService),
         Provider.value(value: supabaseRepo),
       ],
@@ -429,6 +434,9 @@ class BillSplitApp extends StatelessWidget {
         '/recurring-bills': (context) => const RecurringBillsScreen(),
         '/onboarding': (context) => const OnboardingScreen(),
         '/auth': (context) => const AuthScreen(),
+        '/notifications': (context) => const NotificationsScreen(),
+        '/invite': (context) => const InviteScreen(),
+        '/join-household': (context) => const JoinHouseholdScreen(),
       },
     );
   }
