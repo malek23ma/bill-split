@@ -6,6 +6,8 @@ import '../providers/auth_provider.dart';
 import '../models/member.dart';
 import '../database/database_helper.dart';
 import '../services/pin_helper.dart';
+import '../services/push_notification_service.dart';
+import '../services/notification_service.dart';
 import '../constants.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -1140,7 +1142,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       width: double.infinity,
                       child: OutlinedButton.icon(
                         onPressed: () async {
-                          await context.read<AuthProvider>().signOut();
+                          final pushSvc = context.read<PushNotificationService>();
+                          final notifSvc = context.read<NotificationService>();
+                          final authProv = context.read<AuthProvider>();
+                          await pushSvc.removeToken();
+                          notifSvc.unsubscribe();
+                          await authProv.signOut();
                           if (context.mounted) {
                             Navigator.of(context).pushNamedAndRemoveUntil('/onboarding', (route) => false);
                           }
