@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../database/database_helper.dart';
 import '../providers/household_provider.dart';
 import '../providers/bill_provider.dart';
 import '../providers/auth_provider.dart';
@@ -683,6 +684,7 @@ class _HomeScreenState extends State<HomeScreen> {
               confirmDismiss: (_) async => true,
               onDismissed: (_) async {
                 final messenger = ScaffoldMessenger.of(context);
+                final authProvider = context.read<AuthProvider>();
                 final deletedBill = bill;
                 final deletedItems = bill.billType == 'full'
                     ? await billProvider.getBillItems(bill.id!)
@@ -690,6 +692,51 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 await billProvider.deleteBill(
                     bill.id!, bill.householdId);
+
+                // Send notification if admin deleted another member's bill
+                if (authProvider.isAuthenticated &&
+                    currentMember != null &&
+                    currentMember.isAdmin &&
+                    bill.paidByMemberId != currentMember.id) {
+                  try {
+                    final supabase = Supabase.instance.client;
+                    final notificationService = NotificationService(supabase);
+                    final db = await DatabaseHelper.instance.database;
+                    final payerRows = await db.query('members',
+                        where: 'id = ?',
+                        whereArgs: [bill.paidByMemberId]);
+                    final payerRemoteId =
+                        payerRows.firstOrNull?['remote_id'] as String?;
+                    if (payerRemoteId != null) {
+                      final memberData = await supabase
+                          .from('members')
+                          .select('user_id')
+                          .eq('id', payerRemoteId)
+                          .maybeSingle();
+                      if (memberData != null &&
+                          memberData['user_id'] != null) {
+                        final cat =
+                            BillCategories.getById(bill.category);
+                        await notificationService.sendNotification(
+                          householdId: bill.householdId.toString(),
+                          recipientUserId:
+                              memberData['user_id'] as String,
+                          type: 'admin_bill_delete',
+                          title: 'Bill Deleted',
+                          body:
+                              'Admin deleted your bill: ${cat.label} (${bill.totalAmount.toStringAsFixed(2)})',
+                          data: {
+                            'bill_category': bill.category,
+                            'bill_amount': bill.totalAmount,
+                          },
+                        );
+                      }
+                    }
+                  } catch (e) {
+                    debugPrint(
+                        'Failed to send admin delete notification: $e');
+                  }
+                }
 
                 messenger.clearSnackBars();
                 messenger.showSnackBar(
