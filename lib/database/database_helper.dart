@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/household.dart';
@@ -5,12 +7,32 @@ import '../models/member.dart';
 import '../models/bill.dart';
 import '../models/bill_item.dart';
 import '../models/recurring_bill.dart';
+import 'data_repository.dart';
+import 'sync_queue_helper.dart';
 
-class DatabaseHelper {
+class DatabaseHelper implements DataRepository {
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
 
+  SyncQueueHelper? _syncQueue;
+
+  void setSyncQueue(SyncQueueHelper queue) {
+    _syncQueue = queue;
+  }
+
   DatabaseHelper._init();
+
+  Future<void> _enqueueSync(String tableName, int rowId, String operation,
+      Map<String, dynamic> payload) async {
+    if (_syncQueue == null) return;
+    await _syncQueue!.enqueue(SyncQueueEntry(
+      tableName: tableName,
+      rowId: rowId,
+      operation: operation,
+      payload: jsonEncode(payload),
+      createdAt: DateTime.now().toIso8601String(),
+    ));
+  }
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -23,7 +45,7 @@ class DatabaseHelper {
     final path = join(dbPath, fileName);
     return await openDatabase(
       path,
-      version: 9,
+      version: 10,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -35,7 +57,9 @@ class DatabaseHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         currency TEXT NOT NULL DEFAULT 'TRY',
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        remote_id TEXT,
+        updated_at TEXT
       )
     ''');
 
@@ -48,6 +72,8 @@ class DatabaseHelper {
         is_active INTEGER NOT NULL DEFAULT 1,
         is_admin INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL DEFAULT '',
+        remote_id TEXT,
+        updated_at TEXT,
         FOREIGN KEY (household_id) REFERENCES households(id)
       )
     ''');
@@ -66,6 +92,10 @@ class DatabaseHelper {
         category TEXT NOT NULL DEFAULT 'other',
         recurring_bill_id INTEGER,
         receiver_member_id INTEGER,
+        remote_id TEXT,
+        updated_at TEXT,
+        photo_url TEXT,
+        deleted_by_member_id INTEGER,
         FOREIGN KEY (household_id) REFERENCES households(id),
         FOREIGN KEY (entered_by_member_id) REFERENCES members(id),
         FOREIGN KEY (paid_by_member_id) REFERENCES members(id),
@@ -82,6 +112,8 @@ class DatabaseHelper {
         price REAL NOT NULL,
         is_included INTEGER NOT NULL DEFAULT 1,
         split_percent INTEGER NOT NULL DEFAULT 50,
+        remote_id TEXT,
+        updated_at TEXT,
         FOREIGN KEY (bill_id) REFERENCES bills(id)
       )
     ''');
@@ -91,6 +123,7 @@ class DatabaseHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         bill_item_id INTEGER NOT NULL,
         member_id INTEGER NOT NULL,
+        remote_id TEXT,
         FOREIGN KEY (bill_item_id) REFERENCES bill_items(id),
         FOREIGN KEY (member_id) REFERENCES members(id)
       )
@@ -107,8 +140,21 @@ class DatabaseHelper {
         frequency TEXT NOT NULL,
         next_due_date TEXT NOT NULL,
         active INTEGER NOT NULL DEFAULT 1,
+        remote_id TEXT,
+        updated_at TEXT,
         FOREIGN KEY (household_id) REFERENCES households(id),
         FOREIGN KEY (paid_by_member_id) REFERENCES members(id)
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE sync_queue (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        table_name TEXT NOT NULL,
+        row_id INTEGER NOT NULL,
+        operation TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        created_at TEXT NOT NULL
       )
     ''');
   }
@@ -240,8 +286,39 @@ class DatabaseHelper {
         )
       ''', [now]);
     }
+    if (oldVersion < 10) {
+      // Add remote_id (UUID) to all synced tables
+      await db.execute("ALTER TABLE households ADD COLUMN remote_id TEXT");
+      await db.execute("ALTER TABLE members ADD COLUMN remote_id TEXT");
+      await db.execute("ALTER TABLE bills ADD COLUMN remote_id TEXT");
+      await db.execute("ALTER TABLE bills ADD COLUMN photo_url TEXT");
+      await db.execute("ALTER TABLE bill_items ADD COLUMN remote_id TEXT");
+      await db.execute("ALTER TABLE bill_item_members ADD COLUMN remote_id TEXT");
+      await db.execute("ALTER TABLE recurring_bills ADD COLUMN remote_id TEXT");
+      await db.execute("ALTER TABLE bills ADD COLUMN deleted_by_member_id INTEGER");
+
+      // Add updated_at to all synced tables for conflict resolution
+      await db.execute("ALTER TABLE households ADD COLUMN updated_at TEXT");
+      await db.execute("ALTER TABLE members ADD COLUMN updated_at TEXT");
+      await db.execute("ALTER TABLE bills ADD COLUMN updated_at TEXT");
+      await db.execute("ALTER TABLE bill_items ADD COLUMN updated_at TEXT");
+      await db.execute("ALTER TABLE recurring_bills ADD COLUMN updated_at TEXT");
+
+      // Sync queue table
+      await db.execute('''
+        CREATE TABLE sync_queue (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          table_name TEXT NOT NULL,
+          row_id INTEGER NOT NULL,
+          operation TEXT NOT NULL,
+          payload TEXT NOT NULL,
+          created_at TEXT NOT NULL
+        )
+      ''');
+    }
   }
 
+  @override
   Future<void> updateMemberPin(int memberId, String? pin) async {
     final db = await database;
     await db.update(
@@ -250,49 +327,74 @@ class DatabaseHelper {
       where: 'id = ?',
       whereArgs: [memberId],
     );
+    await _enqueueSync('members', memberId, 'update', {'pin': pin});
   }
 
+  @override
   Future<void> updateMemberName(int memberId, String name) async {
     final db = await database;
     await db.update('members', {'name': name}, where: 'id = ?', whereArgs: [memberId]);
+    await _enqueueSync('members', memberId, 'update', {'name': name});
   }
 
+  @override
   Future<void> setMemberActive(int memberId, bool active) async {
     final db = await database;
     await db.update('members', {'is_active': active ? 1 : 0}, where: 'id = ?', whereArgs: [memberId]);
+    await _enqueueSync('members', memberId, 'update', {'is_active': active ? 1 : 0});
   }
 
   // --- Household CRUD ---
 
+  @override
   Future<int> insertHousehold(Household household) async {
     final db = await database;
-    return await db.insert('households', household.toMap());
+    final id = await db.insert('households', household.toMap());
+    await _enqueueSync('households', id, 'insert', household.toMap());
+    return id;
   }
 
+  @override
   Future<int> createHouseholdWithMembers(String name, List<String> memberNames) async {
     final db = await database;
     late int householdId;
+    final memberIds = <int>[];
     await db.transaction((txn) async {
       householdId = await txn.insert('households', Household(name: name).toMap());
       for (int i = 0; i < memberNames.length; i++) {
-        await txn.insert('members', Member(
+        final member = Member(
           householdId: householdId,
           name: memberNames[i],
           isAdmin: i == 0, // first member is admin
-        ).toMap());
+        );
+        final memberId = await txn.insert('members', member.toMap());
+        memberIds.add(memberId);
       }
     });
+    await _enqueueSync('households', householdId, 'insert', Household(name: name).toMap());
+    for (int i = 0; i < memberNames.length; i++) {
+      final member = Member(
+        householdId: householdId,
+        name: memberNames[i],
+        isAdmin: i == 0,
+      );
+      await _enqueueSync('members', memberIds[i], 'insert', member.toMap());
+    }
     return householdId;
   }
 
+  @override
   Future<List<Household>> getHouseholds() async {
     final db = await database;
     final maps = await db.query('households', orderBy: 'created_at DESC');
     return maps.map((map) => Household.fromMap(map)).toList();
   }
 
+  @override
   Future<void> deleteHousehold(int id) async {
     final db = await database;
+    // Capture remote_id before deleting
+    final household = await db.query('households', where: 'id = ?', whereArgs: [id]);
     await db.transaction((txn) async {
       await txn.delete('bill_item_members',
           where: 'bill_item_id IN (SELECT bi.id FROM bill_items bi JOIN bills b ON bi.bill_id = b.id WHERE b.household_id = ?)',
@@ -305,15 +407,22 @@ class DatabaseHelper {
       await txn.delete('members', where: 'household_id = ?', whereArgs: [id]);
       await txn.delete('households', where: 'id = ?', whereArgs: [id]);
     });
+    await _enqueueSync('households', id, 'delete', {
+      'remote_id': household.isNotEmpty ? household.first['remote_id'] : null,
+    });
   }
 
   // --- Member CRUD ---
 
+  @override
   Future<int> insertMember(Member member) async {
     final db = await database;
-    return await db.insert('members', member.toMap());
+    final id = await db.insert('members', member.toMap());
+    await _enqueueSync('members', id, 'insert', member.toMap());
+    return id;
   }
 
+  @override
   Future<List<Member>> getMembersByHousehold(int householdId) async {
     final db = await database;
     final maps = await db.query(
@@ -324,6 +433,7 @@ class DatabaseHelper {
     return maps.map((map) => Member.fromMap(map)).toList();
   }
 
+  @override
   Future<List<Member>> getAllMembersByHousehold(int householdId) async {
     final db = await database;
     final maps = await db.query(
@@ -336,11 +446,15 @@ class DatabaseHelper {
 
   // --- Bill CRUD ---
 
+  @override
   Future<int> insertBill(Bill bill) async {
     final db = await database;
-    return await db.insert('bills', bill.toMap());
+    final id = await db.insert('bills', bill.toMap());
+    await _enqueueSync('bills', id, 'insert', bill.toMap());
+    return id;
   }
 
+  @override
   Future<List<Bill>> getBillsByHousehold(int householdId) async {
     final db = await database;
     final maps = await db.query(
@@ -352,6 +466,7 @@ class DatabaseHelper {
     return maps.map((map) => Bill.fromMap(map)).toList();
   }
 
+  @override
   Future<Bill?> getBill(int id) async {
     final db = await database;
     final maps = await db.query('bills', where: 'id = ?', whereArgs: [id]);
@@ -359,8 +474,11 @@ class DatabaseHelper {
     return Bill.fromMap(maps.first);
   }
 
+  @override
   Future<void> deleteBill(int id) async {
     final db = await database;
+    // Capture remote_id before deleting
+    final bill = await db.query('bills', where: 'id = ?', whereArgs: [id]);
     await db.transaction((txn) async {
       await txn.delete('bill_item_members',
           where: 'bill_item_id IN (SELECT id FROM bill_items WHERE bill_id = ?)',
@@ -368,15 +486,21 @@ class DatabaseHelper {
       await txn.delete('bill_items', where: 'bill_id = ?', whereArgs: [id]);
       await txn.delete('bills', where: 'id = ?', whereArgs: [id]);
     });
+    await _enqueueSync('bills', id, 'delete', {
+      'remote_id': bill.isNotEmpty ? bill.first['remote_id'] : null,
+    });
   }
 
   // --- BillItem CRUD ---
 
+  @override
   Future<void> insertBillItems(List<BillItem> items) async {
     final db = await database;
+    final insertedIds = <int>[];
     await db.transaction((txn) async {
       for (final item in items) {
         final itemId = await txn.insert('bill_items', item.toMap());
+        insertedIds.add(itemId);
         if (item.sharedByMemberIds.isNotEmpty) {
           final batch = txn.batch();
           for (final memberId in item.sharedByMemberIds) {
@@ -389,8 +513,14 @@ class DatabaseHelper {
         }
       }
     });
+    for (int i = 0; i < items.length; i++) {
+      final payload = items[i].toMap();
+      payload['shared_by_member_ids'] = items[i].sharedByMemberIds;
+      await _enqueueSync('bill_items', insertedIds[i], 'insert', payload);
+    }
   }
 
+  @override
   Future<List<BillItem>> getBillItems(int billId) async {
     final db = await database;
     final maps = await db.query(
@@ -424,6 +554,7 @@ class DatabaseHelper {
 
   // --- BillItemMembers (junction table) ---
 
+  @override
   Future<void> insertBillItemMembers(int billItemId, List<int> memberIds) async {
     final db = await database;
     final batch = db.batch();
@@ -434,8 +565,13 @@ class DatabaseHelper {
       });
     }
     await batch.commit(noResult: true);
+    await _enqueueSync('bill_item_members', billItemId, 'insert', {
+      'bill_item_id': billItemId,
+      'member_ids': memberIds,
+    });
   }
 
+  @override
   Future<List<int>> getBillItemMemberIds(int billItemId) async {
     final db = await database;
     final maps = await db.query(
@@ -447,19 +583,27 @@ class DatabaseHelper {
     return maps.map((m) => m['member_id'] as int).toList();
   }
 
+  @override
   Future<void> deleteBillItemMembers(int billItemId) async {
     final db = await database;
     await db.delete('bill_item_members',
         where: 'bill_item_id = ?', whereArgs: [billItemId]);
+    await _enqueueSync('bill_item_members', billItemId, 'delete', {
+      'bill_item_id': billItemId,
+    });
   }
 
   // --- RecurringBill CRUD ---
 
+  @override
   Future<int> insertRecurringBill(RecurringBill recurringBill) async {
     final db = await database;
-    return await db.insert('recurring_bills', recurringBill.toMap());
+    final id = await db.insert('recurring_bills', recurringBill.toMap());
+    await _enqueueSync('recurring_bills', id, 'insert', recurringBill.toMap());
+    return id;
   }
 
+  @override
   Future<List<RecurringBill>> getRecurringBillsByHousehold(int householdId) async {
     final db = await database;
     final maps = await db.query(
@@ -471,6 +615,7 @@ class DatabaseHelper {
     return maps.map((map) => RecurringBill.fromMap(map)).toList();
   }
 
+  @override
   Future<List<RecurringBill>> getDueRecurringBills(int householdId) async {
     final db = await database;
     final now = DateTime.now().toIso8601String();
@@ -483,6 +628,7 @@ class DatabaseHelper {
     return maps.map((map) => RecurringBill.fromMap(map)).toList();
   }
 
+  @override
   Future<void> updateRecurringBillNextDate(int id, DateTime nextDate) async {
     final db = await database;
     await db.update(
@@ -491,8 +637,12 @@ class DatabaseHelper {
       where: 'id = ?',
       whereArgs: [id],
     );
+    await _enqueueSync('recurring_bills', id, 'update', {
+      'next_due_date': nextDate.toIso8601String(),
+    });
   }
 
+  @override
   Future<void> deactivateRecurringBill(int id) async {
     final db = await database;
     await db.update(
@@ -501,21 +651,32 @@ class DatabaseHelper {
       where: 'id = ?',
       whereArgs: [id],
     );
+    await _enqueueSync('recurring_bills', id, 'update', {'active': 0});
   }
 
+  @override
   Future<void> reactivateRecurringBill(int id) async {
     final db = await database;
     await db.update('recurring_bills', {'active': 1}, where: 'id = ?', whereArgs: [id]);
+    await _enqueueSync('recurring_bills', id, 'update', {'active': 1});
   }
 
+  @override
   Future<void> updateRecurringBill(RecurringBill bill) async {
     final db = await database;
     await db.update('recurring_bills', bill.toMap(), where: 'id = ?', whereArgs: [bill.id]);
+    await _enqueueSync('recurring_bills', bill.id!, 'update', bill.toMap());
   }
 
+  @override
   Future<void> deleteRecurringBillPermanently(int id) async {
     final db = await database;
+    // Capture remote_id before deleting
+    final rb = await db.query('recurring_bills', where: 'id = ?', whereArgs: [id]);
     await db.delete('recurring_bills', where: 'id = ?', whereArgs: [id]);
+    await _enqueueSync('recurring_bills', id, 'delete', {
+      'remote_id': rb.isNotEmpty ? rb.first['remote_id'] : null,
+    });
   }
 
   // --- Member date fix ---
@@ -523,6 +684,7 @@ class DatabaseHelper {
   /// Fix created_at for members who have zero bill participation.
   /// These members were added after all existing bills and should not
   /// be included in historical quick bill splits.
+  @override
   Future<void> fixNewMemberDates(int householdId) async {
     final db = await database;
     final now = DateTime.now().toIso8601String();
@@ -544,6 +706,7 @@ class DatabaseHelper {
 
   // --- Household currency ---
 
+  @override
   Future<void> updateHouseholdCurrency(int id, String currency) async {
     final db = await database;
     await db.update(
@@ -552,5 +715,6 @@ class DatabaseHelper {
       where: 'id = ?',
       whereArgs: [id],
     );
+    await _enqueueSync('households', id, 'update', {'currency': currency});
   }
 }

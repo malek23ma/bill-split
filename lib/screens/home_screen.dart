@@ -12,6 +12,7 @@ import '../widgets/filter_bottom_sheet.dart';
 import '../widgets/filtered_results_sheet.dart';
 import '../widgets/scale_tap.dart';
 import '../constants.dart';
+import '../services/sync_service.dart';
 import '../widgets/settle_all_sheet.dart';
 import 'insights_screen.dart';
 
@@ -64,6 +65,22 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               actions: [
+                Builder(
+                  builder: (context) {
+                    final syncService = context.watch<SyncService>();
+                    if (syncService.syncing) {
+                      return Padding(
+                        padding: EdgeInsets.symmetric(horizontal: AppScale.padding(8)),
+                        child: SizedBox(
+                          width: AppScale.size(18),
+                          height: AppScale.size(18),
+                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
                 IconButton(
                   icon: Icon(Icons.filter_list_rounded,
                       color: isDark
@@ -623,10 +640,14 @@ class _HomeScreenState extends State<HomeScreen> {
             final paidBy = members
                 .where((m) => m.id == bill.paidByMemberId)
                 .firstOrNull;
+            final canDelete = currentMember != null &&
+                (bill.paidByMemberId == currentMember.id || currentMember.isAdmin);
 
             return Dismissible(
               key: ValueKey(bill.id),
-              direction: DismissDirection.endToStart,
+              direction: canDelete
+                  ? DismissDirection.endToStart
+                  : DismissDirection.none,
               background: Container(
                 alignment: Alignment.centerRight,
                 padding: EdgeInsets.only(right: AppScale.padding(24)),

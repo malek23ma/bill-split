@@ -73,6 +73,9 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
     final dateStr = DateFormat('dd/MM/yyyy').format(bill.billDate);
     final isSettlement = bill.billType == 'settlement';
     final category = BillCategories.getById(bill.category);
+    final currentMember = householdProvider.currentMember;
+    final canDelete = currentMember != null &&
+        (bill.paidByMemberId == currentMember.id || currentMember.isAdmin);
 
     return Scaffold(
       appBar: AppBar(
@@ -85,12 +88,13 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
               tooltip: 'Make Recurring',
               color: AppColors.primary,
             ),
-          IconButton(
-            onPressed: () => _confirmDelete(context, bill),
-            icon: Icon(Icons.delete_outline_rounded, size: AppScale.size(20)),
-            tooltip: 'Delete',
-            color: AppColors.negative,
-          ),
+          if (canDelete)
+            IconButton(
+              onPressed: () => _confirmDelete(context, bill),
+              icon: Icon(Icons.delete_outline_rounded, size: AppScale.size(20)),
+              tooltip: 'Delete',
+              color: AppColors.negative,
+            ),
         ],
       ),
       body: SingleChildScrollView(

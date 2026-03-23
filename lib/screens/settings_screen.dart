@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/household_provider.dart';
+import '../providers/auth_provider.dart';
 import '../models/member.dart';
 import '../database/database_helper.dart';
 import '../services/pin_helper.dart';
@@ -1103,6 +1104,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                 ],
+                // ── 7. SIGN OUT ──
+                if (context.watch<AuthProvider>().isAuthenticated) ...[
+                  SizedBox(height: AppScale.size(24)),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: AppScale.padding(16)),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          await context.read<AuthProvider>().signOut();
+                          if (context.mounted) {
+                            Navigator.of(context).pushNamedAndRemoveUntil('/onboarding', (route) => false);
+                          }
+                        },
+                        icon: Icon(Icons.logout_rounded, color: AppColors.negative, size: AppScale.size(18)),
+                        label: Text('Sign Out', style: TextStyle(color: AppColors.negative, fontWeight: FontWeight.w600)),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: AppColors.negative.withValues(alpha: 0.3)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+                          padding: EdgeInsets.symmetric(vertical: AppScale.padding(14)),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
                 SizedBox(height: AppScale.size(24)),
               ],
             );
@@ -1248,7 +1274,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Navigator.pop(ctx); // close dialog
                 await provider.deleteHousehold(householdId);
                 if (context.mounted) {
-                  Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                  Navigator.pushNamedAndRemoveUntil(context, '/households', (route) => false);
                 }
               }
             },

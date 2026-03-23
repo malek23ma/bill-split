@@ -5,6 +5,8 @@ class BillItem {
   final double price;
   final bool isIncluded; // checkbox: true = split between members
   final List<int> sharedByMemberIds; // member IDs sharing this item
+  final String? remoteId;
+  final String? updatedAt;
 
   BillItem({
     this.id,
@@ -13,6 +15,8 @@ class BillItem {
     required this.price,
     this.isIncluded = true,
     this.sharedByMemberIds = const [],
+    this.remoteId,
+    this.updatedAt,
     @Deprecated('Use sharedByMemberIds instead') int? splitPercent,
   });
 
@@ -33,6 +37,8 @@ class BillItem {
       'name': name,
       'price': price,
       'is_included': isIncluded ? 1 : 0,
+      'remote_id': remoteId,
+      'updated_at': updatedAt,
     };
   }
 
@@ -44,6 +50,8 @@ class BillItem {
       price: (map['price'] as num).toDouble(),
       isIncluded: (map['is_included'] as int) == 1,
       sharedByMemberIds: memberIds,
+      remoteId: map['remote_id'] as String?,
+      updatedAt: map['updated_at'] as String?,
     );
   }
 
@@ -54,6 +62,8 @@ class BillItem {
     double? price,
     bool? isIncluded,
     List<int>? sharedByMemberIds,
+    String? remoteId,
+    String? updatedAt,
   }) {
     return BillItem(
       id: id ?? this.id,
@@ -62,6 +72,8 @@ class BillItem {
       price: price ?? this.price,
       isIncluded: isIncluded ?? this.isIncluded,
       sharedByMemberIds: sharedByMemberIds ?? this.sharedByMemberIds,
+      remoteId: remoteId ?? this.remoteId,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 

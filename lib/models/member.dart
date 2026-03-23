@@ -6,6 +6,8 @@ class Member {
   final bool isActive;
   final bool isAdmin;
   final DateTime createdAt;
+  final String? remoteId;
+  final String? updatedAt;
 
   Member({
     this.id,
@@ -15,6 +17,8 @@ class Member {
     this.isActive = true,
     this.isAdmin = false,
     DateTime? createdAt,
+    this.remoteId,
+    this.updatedAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
   Map<String, dynamic> toMap() {
@@ -26,6 +30,8 @@ class Member {
       'is_active': isActive ? 1 : 0,
       'is_admin': isAdmin ? 1 : 0,
       'created_at': createdAt.toIso8601String(),
+      'remote_id': remoteId,
+      'updated_at': updatedAt,
     };
   }
 
@@ -40,6 +46,8 @@ class Member {
       createdAt: map['created_at'] != null
           ? DateTime.parse(map['created_at'] as String)
           : DateTime(2020), // fallback for pre-v8 rows
+      remoteId: map['remote_id'] as String?,
+      updatedAt: map['updated_at'] as String?,
     );
   }
 

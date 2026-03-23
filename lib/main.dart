@@ -2,7 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'config/supabase_config.dart';
 import 'constants.dart';
+import 'database/database_helper.dart';
+import 'database/sync_queue_helper.dart';
+import 'database/supabase_repository.dart';
+import 'providers/auth_provider.dart';
 import 'providers/household_provider.dart';
 import 'providers/bill_provider.dart';
 import 'providers/settings_provider.dart';
@@ -17,12 +23,37 @@ import 'screens/quick_review_screen.dart';
 import 'screens/bill_detail_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/recurring_bills_screen.dart';
+import 'screens/onboarding_screen.dart';
+import 'screens/auth_screen.dart';
+import 'services/auth_service.dart';
+import 'services/connectivity_service.dart';
+import 'services/sync_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final view = WidgetsBinding.instance.platformDispatcher.views.first;
   final screenWidth = view.physicalSize.width / view.devicePixelRatio;
   AppScale.init(screenWidth);
+  await Supabase.initialize(
+    url: SupabaseConfig.url,
+    anonKey: SupabaseConfig.anonKey,
+  );
+
+  final connectivityService = ConnectivityService();
+  await connectivityService.init();
+
+  final syncQueueHelper = SyncQueueHelper(DatabaseHelper.instance);
+  DatabaseHelper.instance.setSyncQueue(syncQueueHelper);
+
+  final supabaseRepo = SupabaseRepository(Supabase.instance.client);
+  final authService = AuthService(Supabase.instance.client);
+  final syncService = SyncService(
+    DatabaseHelper.instance,
+    supabaseRepo,
+    syncQueueHelper,
+    connectivityService,
+  );
+
   final settingsProvider = SettingsProvider();
   await settingsProvider.loadSettings();
 
@@ -33,6 +64,10 @@ void main() async {
         ChangeNotifierProvider(create: (_) => BillProvider()),
         ChangeNotifierProvider.value(value: settingsProvider),
         ChangeNotifierProvider(create: (_) => RecurringBillProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider(authService)),
+        Provider.value(value: connectivityService),
+        ChangeNotifierProvider.value(value: syncService),
+        Provider.value(value: supabaseRepo),
       ],
       child: const BillSplitApp(),
     ),
@@ -378,9 +413,11 @@ class BillSplitApp extends StatelessWidget {
         ),
       ),
 
-      initialRoute: '/',
+      home: Supabase.instance.client.auth.currentUser != null
+          ? const HouseholdScreen()
+          : const OnboardingScreen(),
       routes: {
-        '/': (context) => const HouseholdScreen(),
+        '/households': (context) => const HouseholdScreen(),
         '/select-member': (context) => const MemberSelectScreen(),
         '/home': (context) => const HomeScreen(),
         '/bill-type': (context) => const BillTypeScreen(),
@@ -390,6 +427,8 @@ class BillSplitApp extends StatelessWidget {
         '/bill-detail': (context) => const BillDetailScreen(),
         '/settings': (context) => const SettingsScreen(),
         '/recurring-bills': (context) => const RecurringBillsScreen(),
+        '/onboarding': (context) => const OnboardingScreen(),
+        '/auth': (context) => const AuthScreen(),
       },
     );
   }

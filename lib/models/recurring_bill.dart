@@ -8,6 +8,8 @@ class RecurringBill {
   final String frequency; // 'weekly', 'monthly', 'yearly'
   final DateTime nextDueDate;
   final bool active;
+  final String? remoteId;
+  final String? updatedAt;
 
   RecurringBill({
     this.id,
@@ -19,6 +21,8 @@ class RecurringBill {
     required this.frequency,
     required this.nextDueDate,
     this.active = true,
+    this.remoteId,
+    this.updatedAt,
   });
 
   Map<String, dynamic> toMap() {
@@ -32,6 +36,8 @@ class RecurringBill {
       'frequency': frequency,
       'next_due_date': nextDueDate.toIso8601String(),
       'active': active ? 1 : 0,
+      'remote_id': remoteId,
+      'updated_at': updatedAt,
     };
   }
 
@@ -46,6 +52,8 @@ class RecurringBill {
       frequency: map['frequency'] as String,
       nextDueDate: DateTime.parse(map['next_due_date'] as String),
       active: (map['active'] as int) == 1,
+      remoteId: map['remote_id'] as String?,
+      updatedAt: map['updated_at'] as String?,
     );
   }
 
