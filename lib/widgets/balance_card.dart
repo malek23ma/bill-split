@@ -8,6 +8,7 @@ class BalanceCard extends StatelessWidget {
   final Map<int, String> memberNames;
   final void Function(int memberId, double amount)? onSettleUp;
   final String currencySymbol;
+  final bool isAuthenticated;
 
   const BalanceCard({
     super.key,
@@ -17,6 +18,7 @@ class BalanceCard extends StatelessWidget {
     required this.memberNames,
     this.onSettleUp,
     this.currencySymbol = '\u20BA',
+    this.isAuthenticated = false,
   });
 
   @override
@@ -87,6 +89,7 @@ class BalanceCard extends StatelessWidget {
           currencySymbol: currencySymbol,
           isDark: isDark,
           compact: false,
+          isAuthenticated: isAuthenticated,
           onSettleUp: onSettleUp != null
               ? () => onSettleUp!(entries.first.key, entries.first.value.abs())
               : null,
@@ -116,6 +119,7 @@ class BalanceCard extends StatelessWidget {
                 currencySymbol: currencySymbol,
                 isDark: isDark,
                 compact: true,
+                isAuthenticated: isAuthenticated,
                 onSettleUp: onSettleUp != null
                     ? () => onSettleUp!(entries[i].key, entries[i].value.abs())
                     : null,
@@ -133,6 +137,7 @@ class _BalanceRow extends StatelessWidget {
   final String currencySymbol;
   final bool isDark;
   final bool compact;
+  final bool isAuthenticated;
   final VoidCallback? onSettleUp;
 
   const _BalanceRow({
@@ -141,6 +146,7 @@ class _BalanceRow extends StatelessWidget {
     required this.currencySymbol,
     required this.isDark,
     this.compact = false,
+    this.isAuthenticated = false,
     this.onSettleUp,
   });
 
@@ -235,10 +241,16 @@ class _BalanceRow extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.handshake_rounded, size: compact ? 14 : 16, color: rowColor),
+                Icon(
+                  isAuthenticated && theyOweYou
+                      ? Icons.request_page_rounded
+                      : Icons.handshake_rounded,
+                  size: compact ? 14 : 16,
+                  color: rowColor,
+                ),
                 const SizedBox(width: 4),
                 Text(
-                  'Settle Up',
+                  isAuthenticated && theyOweYou ? 'Request Payment' : 'Settle Up',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     color: rowColor,

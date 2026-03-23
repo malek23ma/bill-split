@@ -335,6 +335,7 @@ class _HomeScreenState extends State<HomeScreen> {
           pairwiseBalances: billProvider.pairwiseBalances,
           memberNames: memberNames,
           currencySymbol: currencySymbol,
+          isAuthenticated: context.read<AuthProvider>().isAuthenticated,
           onSettleUp: (otherMemberId, amount) => _confirmSettleUp(
             context,
             householdProvider,
@@ -996,7 +997,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                isAuthenticated ? 'Send Settlement Request?' : 'Settle Up?',
+                isAuthenticated
+                    ? (payerId == currentMemberId ? 'Send Settlement Request?' : 'Request Payment?')
+                    : 'Settle Up?',
                 style: TextStyle(
                   fontSize: AppScale.fontSize(20),
                   fontWeight: FontWeight.w800,
@@ -1008,7 +1011,9 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 8),
               Text(
                 isAuthenticated
-                    ? 'Send settlement request of ${amount.toStringAsFixed(2)} $currSymbol from $payerName to $receiverName?'
+                    ? (payerId == currentMemberId
+                        ? 'Send settlement of ${amount.toStringAsFixed(2)} $currSymbol to $receiverName?'
+                        : 'Request ${amount.toStringAsFixed(2)} $currSymbol from $payerName?')
                     : '$whoOwes owes ${amount.toStringAsFixed(2)} $currSymbol',
                 style: TextStyle(
                   fontSize: AppScale.fontSize(15),
@@ -1193,27 +1198,39 @@ class _HomeScreenState extends State<HomeScreen> {
         amount: amount,
       );
 
-      // Look up receiver's auth user_id from the members table
-      final receiverData = await supabaseClient
+      // Determine who to notify — the OTHER person (not the current user)
+      final currentMemberId = householdProvider.currentMember?.id;
+      final isCurrentUserPayer = currentMemberId == payerMember?.id;
+
+      // Notify the other party
+      final otherMemberRemoteId = isCurrentUserPayer ? receiverRemoteId : payerRemoteId;
+      final otherData = await supabaseClient
           .from('members')
           .select('user_id')
-          .eq('id', receiverRemoteId)
+          .eq('id', otherMemberRemoteId)
           .maybeSingle();
-      final receiverUserId = receiverData?['user_id'] as String?;
+      final otherUserId = otherData?['user_id'] as String?;
 
-      // Send notification only if receiver has a linked auth account
-      if (receiverUserId != null) {
+      if (otherUserId != null) {
+        final String notifTitle;
+        final String notifBody;
+        if (isCurrentUserPayer) {
+          notifTitle = 'Settlement Request';
+          notifBody = '${payerMember?.name ?? 'Someone'} wants to settle ${amount.toStringAsFixed(2)} with you';
+        } else {
+          notifTitle = 'Payment Request';
+          notifBody = '${receiverMember?.name ?? 'Someone'} is requesting ${amount.toStringAsFixed(2)} from you';
+        }
         await notificationService.sendNotification(
           householdId: householdRemoteId,
-          recipientUserId: receiverUserId,
+          recipientUserId: otherUserId,
           type: 'settlement_request',
-        title: 'Settlement Request',
-        body:
-            '${payerMember?.name ?? 'Someone'} wants to settle ${amount.toStringAsFixed(2)} with you',
-        data: {
-          'settlement_id': settlement['id'],
-          'amount': amount,
-        },
+          title: notifTitle,
+          body: notifBody,
+          data: {
+            'settlement_id': settlement['id'],
+            'amount': amount,
+          },
         );
       }
 
