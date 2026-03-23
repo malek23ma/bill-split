@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 import '../database/database_helper.dart';
 import '../providers/household_provider.dart';
 import '../providers/bill_provider.dart';
@@ -1118,18 +1119,63 @@ class _HomeScreenState extends State<HomeScreen> {
     final settlementService = SettlementService(supabaseClient);
     final notificationService = NotificationService(supabaseClient);
 
-    final householdRemoteId = householdProvider.currentHousehold?.remoteId;
-    final payerRemoteId = payerMember?.remoteId;
-    final receiverRemoteId = receiverMember?.remoteId;
+    var householdRemoteId = householdProvider.currentHousehold?.remoteId;
+    var payerRemoteId = payerMember?.remoteId;
+    var receiverRemoteId = receiverMember?.remoteId;
 
-    if (householdRemoteId == null ||
-        payerRemoteId == null ||
-        receiverRemoteId == null) {
+    // Auto-sync household and members to cloud if not yet synced
+    if (householdRemoteId == null || payerRemoteId == null || receiverRemoteId == null) {
+      try {
+        final db = await DatabaseHelper.instance.database;
+        final uuid = const Uuid();
+
+        // Sync household
+        if (householdRemoteId == null && householdProvider.currentHousehold != null) {
+          final hId = uuid.v4();
+          await supabaseClient.from('households').upsert({
+            'id': hId,
+            'name': householdProvider.currentHousehold!.name,
+            'currency': householdProvider.currency,
+          });
+          await db.update('households', {'remote_id': hId},
+              where: 'id = ?', whereArgs: [householdProvider.currentHousehold!.id]);
+          householdRemoteId = hId;
+        }
+
+        // Sync all members in this household
+        for (final m in householdProvider.members) {
+          if (m.remoteId == null && householdRemoteId != null) {
+            final mId = uuid.v4();
+            await supabaseClient.from('members').upsert({
+              'id': mId,
+              'household_id': householdRemoteId,
+              'name': m.name,
+              'is_active': m.isActive,
+              'is_admin': m.isAdmin,
+            });
+            await db.update('members', {'remote_id': mId},
+                where: 'id = ?', whereArgs: [m.id]);
+            if (m.id == payerMember?.id) payerRemoteId = mId;
+            if (m.id == receiverMember?.id) receiverRemoteId = mId;
+          }
+        }
+
+        // Reload members to pick up remote_ids
+        await householdProvider.setCurrentHousehold(householdProvider.currentHousehold!);
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to sync data to cloud: $e')),
+          );
+        }
+        return;
+      }
+    }
+
+    if (householdRemoteId == null || payerRemoteId == null || receiverRemoteId == null) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content:
-                  Text('Members must be synced to send settlement requests')),
+          const SnackBar(content: Text('Failed to sync members to cloud')),
         );
       }
       return;
