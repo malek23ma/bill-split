@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../constants.dart';
+import '../database/database_helper.dart';
+import '../providers/bill_provider.dart';
 import '../services/notification_service.dart';
 import '../services/settlement_service.dart';
 
@@ -77,9 +80,46 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     setState(() => _processingIds.add(notification['id']));
     try {
+      // Mark settlement as confirmed in cloud
       await context.read<SettlementService>().confirmSettlement(settlementId);
+
+      // Fetch the settlement details to get amount and member IDs
+      final settlement = await Supabase.instance.client
+          .from('settlements')
+          .select()
+          .eq('id', settlementId)
+          .single();
+
+      final amount = (settlement['amount'] as num).toDouble();
+      final fromMemberRemoteId = settlement['from_member_id'] as String;
+      final toMemberRemoteId = settlement['to_member_id'] as String;
+
+      // Look up local member IDs from remote IDs
+      final db = await DatabaseHelper.instance.database;
+      final fromRows = await db.query('members',
+          where: 'remote_id = ?', whereArgs: [fromMemberRemoteId]);
+      final toRows = await db.query('members',
+          where: 'remote_id = ?', whereArgs: [toMemberRemoteId]);
+
+      if (fromRows.isNotEmpty && toRows.isNotEmpty) {
+        final fromLocalId = fromRows.first['id'] as int;
+        final toLocalId = toRows.first['id'] as int;
+        final householdId = fromRows.first['household_id'] as int;
+
+        // Create the actual settlement bill locally — this updates balances
+        if (!mounted) return;
+        final billProvider = context.read<BillProvider>();
+        await billProvider.settleUp(
+          householdId: householdId,
+          payerMemberId: fromLocalId,
+          receiverMemberId: toLocalId,
+          amount: amount,
+        );
+      }
+
       await notificationService.markAsRead(notification['id']);
 
+      // Send confirmation notification back to the requester
       final senderUserId = notification['sender_user_id'] as String?;
       if (senderUserId != null) {
         await notificationService.sendNotification(
@@ -87,14 +127,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           recipientUserId: senderUserId,
           type: 'settlement_confirmed',
           title: 'Settlement Confirmed',
-          body: 'Your settlement request has been confirmed.',
-          data: {'settlement_id': settlementId},
+          body: 'Your settlement of ${amount.toStringAsFixed(2)} has been confirmed.',
+          data: {'settlement_id': settlementId, 'amount': amount},
         );
       }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Settlement confirmed')),
+          const SnackBar(content: Text('Settlement confirmed — balances updated')),
         );
       }
     } catch (e) {
