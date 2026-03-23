@@ -773,12 +773,29 @@ class _HomeScreenState extends State<HomeScreen> {
           currencySymbol: currencySymbol,
           onSettle: (fromId, toId, amount) async {
             Navigator.pop(context);
-            await billProvider.settleUp(
-              householdId: householdProvider.currentHousehold!.id!,
-              payerMemberId: fromId,
-              receiverMemberId: toId,
-              amount: amount,
-            );
+            final isAuthenticated =
+                context.read<AuthProvider>().isAuthenticated;
+            if (isAuthenticated) {
+              final members = householdProvider.members;
+              final payerMember =
+                  members.where((m) => m.id == fromId).firstOrNull;
+              final receiverMember =
+                  members.where((m) => m.id == toId).firstOrNull;
+              await _createPendingSettlement(
+                context,
+                householdProvider,
+                payerMember,
+                receiverMember,
+                amount,
+              );
+            } else {
+              await billProvider.settleUp(
+                householdId: householdProvider.currentHousehold!.id!,
+                payerMemberId: fromId,
+                receiverMemberId: toId,
+                amount: amount,
+              );
+            }
           },
         ),
       ),
@@ -864,6 +881,7 @@ class _HomeScreenState extends State<HomeScreen> {
     double amount,
     String otherName,
   ) {
+    final isAuthenticated = context.read<AuthProvider>().isAuthenticated;
     final currentMemberId = householdProvider.currentMember!.id!;
     final currSymbol =
         AppCurrency.getByCode(householdProvider.currency).symbol;
@@ -876,6 +894,16 @@ class _HomeScreenState extends State<HomeScreen> {
     final whoOwes = otherOwes ? otherName : 'You';
     final payerId = otherOwes ? otherMemberId : currentMemberId;
     final receiverId = otherOwes ? currentMemberId : otherMemberId;
+
+    // Resolve member objects for remote IDs (needed for authenticated flow)
+    final members = householdProvider.members;
+    final payerMember = members.where((m) => m.id == payerId).firstOrNull;
+    final receiverMember =
+        members.where((m) => m.id == receiverId).firstOrNull;
+    final payerName =
+        payerMember?.name ?? (otherOwes ? otherName : 'You');
+    final receiverName =
+        receiverMember?.name ?? (otherOwes ? 'You' : otherName);
 
     showModalBottomSheet(
       context: context,
@@ -916,7 +944,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Settle Up?',
+                isAuthenticated ? 'Send Settlement Request?' : 'Settle Up?',
                 style: TextStyle(
                   fontSize: AppScale.fontSize(20),
                   fontWeight: FontWeight.w800,
@@ -927,13 +955,16 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                '$whoOwes owes ${amount.toStringAsFixed(2)} $currSymbol',
+                isAuthenticated
+                    ? 'Send settlement request of ${amount.toStringAsFixed(2)} $currSymbol from $payerName to $receiverName?'
+                    : '$whoOwes owes ${amount.toStringAsFixed(2)} $currSymbol',
                 style: TextStyle(
                   fontSize: AppScale.fontSize(15),
                   color: isDark
                       ? AppColors.darkTextSecondary
                       : AppColors.textSecondary,
                 ),
+                textAlign: TextAlign.center,
               ),
               SizedBox(height: AppScale.size(24)),
               // Actions
@@ -976,13 +1007,23 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: FilledButton(
                       onPressed: () async {
                         Navigator.pop(ctx);
-                        await billProvider.settleUp(
-                          householdId:
-                              householdProvider.currentHousehold!.id!,
-                          payerMemberId: payerId,
-                          receiverMemberId: receiverId,
-                          amount: amount,
-                        );
+                        if (isAuthenticated) {
+                          await _createPendingSettlement(
+                            context,
+                            householdProvider,
+                            payerMember,
+                            receiverMember,
+                            amount,
+                          );
+                        } else {
+                          await billProvider.settleUp(
+                            householdId:
+                                householdProvider.currentHousehold!.id!,
+                            payerMemberId: payerId,
+                            receiverMemberId: receiverId,
+                            amount: amount,
+                          );
+                        }
                       },
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
@@ -993,9 +1034,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         elevation: 0,
                       ),
-                      child: const Text(
-                        'Settle All',
-                        style: TextStyle(fontWeight: FontWeight.w600),
+                      child: Text(
+                        isAuthenticated ? 'Send Request' : 'Settle All',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),
                   ),
@@ -1017,6 +1058,70 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _createPendingSettlement(
+    BuildContext context,
+    HouseholdProvider householdProvider,
+    Member? payerMember,
+    Member? receiverMember,
+    double amount,
+  ) async {
+    final supabaseClient = Supabase.instance.client;
+    final settlementService = SettlementService(supabaseClient);
+    final notificationService = NotificationService(supabaseClient);
+
+    final householdRemoteId = householdProvider.currentHousehold?.remoteId;
+    final payerRemoteId = payerMember?.remoteId;
+    final receiverRemoteId = receiverMember?.remoteId;
+
+    if (householdRemoteId == null ||
+        payerRemoteId == null ||
+        receiverRemoteId == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content:
+                  Text('Members must be synced to send settlement requests')),
+        );
+      }
+      return;
+    }
+
+    try {
+      final settlement = await settlementService.createSettlement(
+        householdId: householdRemoteId,
+        fromMemberId: payerRemoteId,
+        toMemberId: receiverRemoteId,
+        amount: amount,
+      );
+
+      // Send notification to the receiver
+      await notificationService.sendNotification(
+        householdId: householdRemoteId,
+        recipientUserId: receiverRemoteId,
+        type: 'settlement_request',
+        title: 'Settlement Request',
+        body:
+            '${payerMember?.name ?? 'Someone'} wants to settle ${amount.toStringAsFixed(2)} with you',
+        data: {
+          'settlement_id': settlement['id'],
+          'amount': amount,
+        },
+      );
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Settlement request sent')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to send settlement request: $e')),
+        );
+      }
+    }
   }
 
   void _showPartialSettleDialog(
@@ -1116,12 +1221,29 @@ class _HomeScreenState extends State<HomeScreen> {
                 return;
               }
               Navigator.pop(ctx);
-              await billProvider.settleUp(
-                householdId: householdProvider.currentHousehold!.id!,
-                payerMemberId: payerId,
-                receiverMemberId: receiverId,
-                amount: partial,
-              );
+              final isAuthenticated =
+                  context.read<AuthProvider>().isAuthenticated;
+              if (isAuthenticated) {
+                final members = householdProvider.members;
+                final payerMember =
+                    members.where((m) => m.id == payerId).firstOrNull;
+                final receiverMember =
+                    members.where((m) => m.id == receiverId).firstOrNull;
+                await _createPendingSettlement(
+                  context,
+                  householdProvider,
+                  payerMember,
+                  receiverMember,
+                  partial,
+                );
+              } else {
+                await billProvider.settleUp(
+                  householdId: householdProvider.currentHousehold!.id!,
+                  payerMemberId: payerId,
+                  receiverMemberId: receiverId,
+                  amount: partial,
+                );
+              }
             },
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.primary,
