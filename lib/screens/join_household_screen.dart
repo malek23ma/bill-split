@@ -134,7 +134,7 @@ class _JoinHouseholdScreenState extends State<JoinHouseholdScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final householdName = _invite != null
-        ? (_invite!['households'] as Map<String, dynamic>?)?['name'] as String?
+        ? ((_invite!['households'] as Map<String, dynamic>?)?['name'] as String?)
         : null;
     final memberIdAssigned = _invite?['member_id'] as String?;
 

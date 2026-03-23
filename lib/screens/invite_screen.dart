@@ -245,7 +245,7 @@ class _InviteScreenState extends State<InviteScreen> {
         vertical: AppScale.padding(8),
       ),
       child: DropdownButtonFormField<String?>(
-        value: _selectedMemberId,
+        initialValue: _selectedMemberId,
         decoration: InputDecoration(
           labelText: 'Assign to member (optional)',
           labelStyle: TextStyle(
@@ -611,11 +611,11 @@ class _InviteScreenState extends State<InviteScreen> {
                     version: QrVersions.auto,
                     size: AppScale.size(200),
                     eyeStyle: const QrEyeStyle(
-                      eyeShape: QrEyeShape.roundedRect,
+                      eyeShape: QrEyeShape.square,
                       color: AppColors.primary,
                     ),
                     dataModuleStyle: const QrDataModuleStyle(
-                      dataModuleShape: QrDataModuleShape.roundedRect,
+                      dataModuleShape: QrDataModuleShape.square,
                       color: AppColors.primary,
                     ),
                     backgroundColor: Colors.white,
@@ -704,7 +704,7 @@ class _InviteScreenState extends State<InviteScreen> {
                     ),
                     shrinkWrap: true,
                     itemCount: _invites.length,
-                    separatorBuilder: (_, __) =>
+                    separatorBuilder: (_, _) =>
                         Divider(height: 1, color: isDark ? AppColors.darkDivider : AppColors.divider),
                     itemBuilder: (context, index) {
                       final invite = _invites[index];
