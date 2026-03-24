@@ -68,22 +68,6 @@ class OnboardingScreen extends StatelessWidget {
                   child: const Text('Get Started'),
                 ),
               ),
-              SizedBox(height: AppScale.padding(AppSpacing.md)),
-
-              // ── Continue without account ──
-              SizedBox(
-                width: double.infinity,
-                child: TextButton(
-                  onPressed: () => Navigator.pushReplacementNamed(
-                    context,
-                    '/households',
-                  ),
-                  child: Text(
-                    'Continue without account',
-                    style: TextStyle(color: subtitleColor),
-                  ),
-                ),
-              ),
               SizedBox(height: AppScale.padding(AppSpacing.xxxl)),
             ],
           ),
