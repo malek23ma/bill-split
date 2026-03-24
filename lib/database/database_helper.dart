@@ -43,12 +43,21 @@ class DatabaseHelper implements DataRepository {
   Future<Database> _initDB(String fileName) async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, fileName);
-    return await openDatabase(
+    final db = await openDatabase(
       path,
       version: 10,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
+    // Clean up invalid remote_ids (local integers stored as strings from early sync bugs)
+    for (final table in ['households', 'members', 'bills', 'bill_items', 'recurring_bills']) {
+      try {
+        await db.execute(
+          "UPDATE $table SET remote_id = NULL WHERE remote_id IS NOT NULL AND length(remote_id) < 10"
+        );
+      } catch (_) {}
+    }
+    return db;
   }
 
   Future<void> _onCreate(Database db, int version) async {

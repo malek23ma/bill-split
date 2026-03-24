@@ -721,8 +721,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     final payerRows = await db.query('members',
                         where: 'id = ?',
                         whereArgs: [bill.paidByMemberId]);
-                    final payerRemoteId =
+                    final rawPayerRemoteId =
                         payerRows.firstOrNull?['remote_id'] as String?;
+                    final payerRemoteId =
+                        (rawPayerRemoteId != null && rawPayerRemoteId.length > 8) ? rawPayerRemoteId : null;
                     if (payerRemoteId != null) {
                       final memberData = await supabase
                           .from('members')
