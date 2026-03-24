@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../database/database_helper.dart';
 import '../constants.dart';
 import '../models/household.dart';
@@ -103,5 +104,51 @@ class HouseholdProvider extends ChangeNotifier {
       _members = [];
     }
     await loadHouseholds();
+  }
+
+  /// Auto-set currentMember by matching auth user_id to a member in the household
+  Future<Member?> resolveCurrentMember(String authUserId) async {
+    if (_currentHousehold == null) return null;
+    try {
+      final supabase = Supabase.instance.client;
+      final remoteHouseholdId = _currentHousehold!.remoteId;
+      if (remoteHouseholdId == null) return null;
+
+      final remoteMember = await supabase
+          .from('members')
+          .select('id')
+          .eq('household_id', remoteHouseholdId)
+          .eq('user_id', authUserId)
+          .maybeSingle();
+      if (remoteMember != null) {
+        final remoteId = remoteMember['id'] as String;
+        final match = _members.where((m) => m.remoteId == remoteId).firstOrNull;
+        if (match != null) {
+          _currentMember = match;
+          notifyListeners();
+          return match;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Get only households where the current auth user is a member
+  Future<List<Household>> getHouseholdsForUser(String authUserId) async {
+    try {
+      final supabase = Supabase.instance.client;
+      final memberRows = await supabase
+          .from('members')
+          .select('household_id')
+          .eq('user_id', authUserId);
+      final remoteHouseholdIds = memberRows
+          .map((r) => r['household_id'] as String)
+          .toSet();
+      return _households
+          .where((h) => h.remoteId != null && remoteHouseholdIds.contains(h.remoteId))
+          .toList();
+    } catch (_) {
+      return _households;
+    }
   }
 }
