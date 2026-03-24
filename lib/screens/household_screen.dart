@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/household_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/bill_provider.dart';
+import '../models/household.dart';
 import '../constants.dart';
 import '../widgets/scale_tap.dart';
 
@@ -13,6 +17,8 @@ class HouseholdScreen extends StatefulWidget {
 }
 
 class _HouseholdScreenState extends State<HouseholdScreen> {
+  List<Household>? _userHouseholds;
+
   @override
   void initState() {
     super.initState();
@@ -20,18 +26,34 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadUserHouseholds();
+  }
+
+  Future<void> _loadUserHouseholds() async {
+    final authUser = Supabase.instance.client.auth.currentUser;
+    if (authUser != null) {
+      final provider = context.read<HouseholdProvider>();
+      final filtered = await provider.getHouseholdsForUser(authUser.id);
+      if (mounted) setState(() => _userHouseholds = filtered);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final provider = context.watch<HouseholdProvider>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final households = _userHouseholds ?? provider.households;
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
       body: SafeArea(
-        child: provider.households.isEmpty
+        child: households.isEmpty
             ? _buildEmptyState(context, isDark)
-            : _buildHouseholdList(context, provider, isDark),
+            : _buildHouseholdList(context, provider, isDark, households),
       ),
-      floatingActionButton: provider.households.isNotEmpty
+      floatingActionButton: households.isNotEmpty
           ? FloatingActionButton.extended(
               onPressed: () => _showCreateSheet(context),
               backgroundColor: AppColors.primary,
@@ -138,7 +160,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
   }
 
   Widget _buildHouseholdList(
-      BuildContext context, HouseholdProvider provider, bool isDark) {
+      BuildContext context, HouseholdProvider provider, bool isDark, List<Household> households) {
     return CustomScrollView(
       slivers: [
         // Header
@@ -161,7 +183,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  '${provider.households.length} household${provider.households.length != 1 ? 's' : ''}',
+                  '${households.length} household${households.length != 1 ? 's' : ''}',
                   style: TextStyle(
                     fontSize: AppScale.fontSize(14),
                     fontWeight: FontWeight.w500,
@@ -181,14 +203,28 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate(
               (context, index) {
-                final household = provider.households[index];
+                final household = households[index];
                 return Padding(
                   padding: const EdgeInsets.only(bottom: AppSpacing.md),
                   child: ScaleTap(
                     onTap: () async {
                       await provider.setCurrentHousehold(household);
-                      if (context.mounted) {
-                        Navigator.pushNamed(context, '/select-member');
+                      final authUser = Supabase.instance.client.auth.currentUser;
+                      if (authUser != null && context.mounted) {
+                        final member = await provider.resolveCurrentMember(authUser.id);
+                        if (member != null && context.mounted) {
+                          context.read<BillProvider>().loadBills(provider.currentHousehold!.id!);
+                          // Save last used household
+                          final prefs = await SharedPreferences.getInstance();
+                          await prefs.setInt('last_household_id', household.id!);
+                          if (context.mounted) {
+                            Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+                          }
+                        } else if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('You are not a member of this household')),
+                          );
+                        }
                       }
                     },
                     // Delete moved to settings — admin only
@@ -259,7 +295,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                   ),
                 );
               },
-              childCount: provider.households.length,
+              childCount: households.length,
             ),
           ),
         ),
