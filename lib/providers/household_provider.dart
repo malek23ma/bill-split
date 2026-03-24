@@ -106,30 +106,70 @@ class HouseholdProvider extends ChangeNotifier {
     await loadHouseholds();
   }
 
-  /// Auto-set currentMember by matching auth user_id to a member in the household
+  /// Auto-set currentMember by matching auth user_id to a member in the household.
+  /// Tries cloud lookup first, then falls back to matching by display name.
   Future<Member?> resolveCurrentMember(String authUserId) async {
     if (_currentHousehold == null) return null;
+
+    // Strategy 1: Cloud lookup by user_id
     try {
       final supabase = Supabase.instance.client;
       final remoteHouseholdId = _currentHousehold!.remoteId;
-      if (remoteHouseholdId == null) return null;
-
-      final remoteMember = await supabase
-          .from('members')
-          .select('id')
-          .eq('household_id', remoteHouseholdId)
-          .eq('user_id', authUserId)
-          .maybeSingle();
-      if (remoteMember != null) {
-        final remoteId = remoteMember['id'] as String;
-        final match = _members.where((m) => m.remoteId == remoteId).firstOrNull;
-        if (match != null) {
-          _currentMember = match;
-          notifyListeners();
-          return match;
+      if (remoteHouseholdId != null && remoteHouseholdId.length > 8) {
+        final remoteMember = await supabase
+            .from('members')
+            .select('id')
+            .eq('household_id', remoteHouseholdId)
+            .eq('user_id', authUserId)
+            .maybeSingle();
+        if (remoteMember != null) {
+          final remoteId = remoteMember['id'] as String;
+          final match = _members.where((m) => m.remoteId == remoteId).firstOrNull;
+          if (match != null) {
+            _currentMember = match;
+            notifyListeners();
+            return match;
+          }
         }
       }
     } catch (_) {}
+
+    // Strategy 2: Match by display name from auth profile
+    try {
+      final supabase = Supabase.instance.client;
+      final profile = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('id', authUserId)
+          .maybeSingle();
+      if (profile != null) {
+        final displayName = profile['display_name'] as String?;
+        if (displayName != null) {
+          final match = _members.where(
+            (m) => m.name.toLowerCase() == displayName.toLowerCase()
+          ).firstOrNull;
+          if (match != null) {
+            _currentMember = match;
+            notifyListeners();
+            // Also link this member to the auth user in the cloud for future lookups
+            if (match.remoteId != null && match.remoteId!.length > 8) {
+              try {
+                await supabase.from('members').update({'user_id': authUserId}).eq('id', match.remoteId!);
+              } catch (_) {}
+            }
+            return match;
+          }
+        }
+      }
+    } catch (_) {}
+
+    // Strategy 3: If there's only one member and it's the admin, assume it's the current user
+    if (_members.length == 1) {
+      _currentMember = _members.first;
+      notifyListeners();
+      return _members.first;
+    }
+
     return null;
   }
 

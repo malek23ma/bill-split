@@ -19,8 +19,6 @@ class HouseholdScreen extends StatefulWidget {
 }
 
 class _HouseholdScreenState extends State<HouseholdScreen> {
-  List<Household>? _userHouseholds;
-
   @override
   void initState() {
     super.initState();
@@ -28,25 +26,10 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _loadUserHouseholds();
-  }
-
-  Future<void> _loadUserHouseholds() async {
-    final authUser = Supabase.instance.client.auth.currentUser;
-    if (authUser != null) {
-      final provider = context.read<HouseholdProvider>();
-      final filtered = await provider.getHouseholdsForUser(authUser.id);
-      if (mounted) setState(() => _userHouseholds = filtered);
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
     final provider = context.watch<HouseholdProvider>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final households = _userHouseholds ?? provider.households;
+    final households = provider.households;
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
