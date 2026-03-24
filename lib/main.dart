@@ -14,8 +14,8 @@ import 'providers/bill_provider.dart';
 import 'providers/settings_provider.dart';
 import 'providers/recurring_bill_provider.dart';
 import 'screens/household_screen.dart';
-import 'screens/member_select_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/launch_screen.dart';
 import 'screens/bill_type_screen.dart';
 import 'screens/camera_screen.dart';
 import 'screens/item_review_screen.dart';
@@ -441,12 +441,9 @@ class BillSplitApp extends StatelessWidget {
         ),
       ),
 
-      home: Supabase.instance.client.auth.currentUser != null
-          ? const HouseholdScreen()
-          : const OnboardingScreen(),
+      home: const LaunchScreen(),
       routes: {
         '/households': (context) => const HouseholdScreen(),
-        '/select-member': (context) => const MemberSelectScreen(),
         '/home': (context) => const HomeScreen(),
         '/bill-type': (context) => const BillTypeScreen(),
         '/camera': (context) => const CameraScreen(),
