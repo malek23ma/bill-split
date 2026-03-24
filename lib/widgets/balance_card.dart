@@ -250,7 +250,7 @@ class _BalanceRow extends StatelessWidget {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  isAuthenticated && theyOweYou ? 'Request Payment' : 'Settle Up',
+                  isAuthenticated && theyOweYou ? (compact ? 'Request' : 'Request Payment') : 'Settle Up',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     color: rowColor,
