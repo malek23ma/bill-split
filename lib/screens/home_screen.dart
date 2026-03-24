@@ -708,6 +708,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     final supabase = Supabase.instance.client;
                     final notificationService = NotificationService(supabase);
                     final db = await DatabaseHelper.instance.database;
+
+                    // Look up household remote_id
+                    final householdRows = await db.query('households',
+                        where: 'id = ?',
+                        whereArgs: [bill.householdId]);
+                    final householdRemoteId =
+                        householdRows.firstOrNull?['remote_id'] as String?;
+
                     final payerRows = await db.query('members',
                         where: 'id = ?',
                         whereArgs: [bill.paidByMemberId]);
@@ -724,7 +732,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         final cat =
                             BillCategories.getById(bill.category);
                         await notificationService.sendNotification(
-                          householdId: bill.householdId.toString(),
+                          householdId: householdRemoteId,
                           recipientUserId:
                               memberData['user_id'] as String,
                           type: 'admin_bill_delete',
