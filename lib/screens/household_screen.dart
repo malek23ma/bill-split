@@ -51,9 +51,61 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
       body: SafeArea(
-        child: households.isEmpty
-            ? _buildEmptyState(context, isDark)
-            : _buildHouseholdList(context, provider, isDark, households),
+        child: Column(
+          children: [
+            // Top bar with account info and sign out
+            Padding(
+              padding: EdgeInsets.fromLTRB(AppScale.padding(16), AppScale.padding(8), AppScale.padding(8), 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      Supabase.instance.client.auth.currentUser?.email ?? '',
+                      style: TextStyle(
+                        fontSize: AppScale.fontSize(13),
+                        color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () async {
+                      await context.read<AuthProvider>().signOut();
+                      if (context.mounted) {
+                        Navigator.pushNamedAndRemoveUntil(context, '/auth', (route) => false);
+                      }
+                    },
+                    icon: Icon(Icons.logout_rounded, size: AppScale.size(16), color: AppColors.negative),
+                    label: Text('Sign Out', style: TextStyle(color: AppColors.negative, fontSize: AppScale.fontSize(12))),
+                  ),
+                ],
+              ),
+            ),
+            // Join household button (always visible when authenticated)
+            if (context.watch<AuthProvider>().isAuthenticated)
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: AppScale.padding(16), vertical: AppScale.padding(4)),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.pushNamed(context, '/join-household'),
+                    icon: Icon(Icons.group_add_rounded, size: AppScale.size(16), color: AppColors.primary),
+                    label: Text('Join Household', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: AppScale.fontSize(13))),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: isDark ? AppColors.darkDivider : AppColors.divider),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+                      padding: EdgeInsets.symmetric(vertical: AppScale.padding(10)),
+                    ),
+                  ),
+                ),
+              ),
+            Expanded(
+              child: households.isEmpty
+                  ? _buildEmptyState(context, isDark)
+                  : _buildHouseholdList(context, provider, isDark, households),
+            ),
+          ],
+        ),
       ),
       floatingActionButton: households.isNotEmpty
           ? FloatingActionButton.extended(
