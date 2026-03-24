@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../database/database_helper.dart';
 import '../providers/household_provider.dart';
@@ -65,13 +66,24 @@ class _HomeScreenState extends State<HomeScreen> {
                   isDark ? AppColors.darkBackground : AppColors.background,
               surfaceTintColor: Colors.transparent,
               elevation: 0,
-              title: Text(
-                householdProvider.currentHousehold?.name ?? 'Home',
-                style: TextStyle(
-                  color:
-                      isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
-                  fontWeight: FontWeight.w800,
-                  fontSize: AppScale.fontSize(20),
+              title: GestureDetector(
+                onTap: () => _showHouseholdSwitcher(context),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      householdProvider.currentHousehold?.name ?? 'Home',
+                      style: TextStyle(
+                        fontSize: AppScale.fontSize(20),
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                      ),
+                    ),
+                    Icon(
+                      Icons.arrow_drop_down_rounded,
+                      color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                    ),
+                  ],
                 ),
               ),
               actions: [
@@ -811,6 +823,87 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         ],
+      ),
+    );
+  }
+
+  void _showHouseholdSwitcher(BuildContext context) async {
+    final householdProvider = context.read<HouseholdProvider>();
+    final billProvider = context.read<BillProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final authUser = Supabase.instance.client.auth.currentUser;
+    if (authUser == null) return;
+
+    final userHouseholds = await householdProvider.getHouseholdsForUser(authUser.id);
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      // ignore: use_build_context_synchronously
+      context: context,
+      backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: EdgeInsets.all(AppScale.padding(16)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkDivider : AppColors.divider,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              SizedBox(height: AppScale.size(16)),
+              Text('Switch Household',
+                style: TextStyle(
+                  fontSize: AppScale.fontSize(18),
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                ),
+              ),
+              SizedBox(height: AppScale.size(12)),
+              ...userHouseholds.map((h) => ListTile(
+                leading: Icon(
+                  h.id == householdProvider.currentHousehold?.id
+                      ? Icons.home_rounded
+                      : Icons.home_outlined,
+                  color: h.id == householdProvider.currentHousehold?.id
+                      ? AppColors.primary
+                      : (isDark ? AppColors.darkTextSecondary : AppColors.textTertiary),
+                ),
+                title: Text(h.name,
+                  style: TextStyle(
+                    fontWeight: h.id == householdProvider.currentHousehold?.id
+                        ? FontWeight.w700 : FontWeight.w500,
+                    color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                  ),
+                ),
+                trailing: h.id == householdProvider.currentHousehold?.id
+                    ? Icon(Icons.check_rounded, color: AppColors.primary)
+                    : null,
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  if (h.id == householdProvider.currentHousehold?.id) return;
+                  await householdProvider.setCurrentHousehold(h);
+                  final member = await householdProvider.resolveCurrentMember(authUser.id);
+                  if (member != null) {
+                    billProvider.loadBills(h.id!);
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.setInt('last_household_id', h.id!);
+                  }
+                },
+              )),
+              SizedBox(height: AppScale.size(8)),
+            ],
+          ),
+        ),
       ),
     );
   }
