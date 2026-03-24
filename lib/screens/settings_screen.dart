@@ -4,8 +4,8 @@ import '../providers/settings_provider.dart';
 import '../providers/household_provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/member.dart';
-import '../database/database_helper.dart';
-import '../services/pin_helper.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/passcode_service.dart';
 import '../services/push_notification_service.dart';
 import '../services/notification_service.dart';
 import '../constants.dart';
@@ -34,47 +34,105 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
-  Future<void> _setPinDialog(BuildContext context, int memberId, bool hasExisting) async {
+  void _showPasscodeSetup(BuildContext context) async {
+    final authUser = Supabase.instance.client.auth.currentUser;
+    if (authUser == null) return;
+
+    final passcodeService = PasscodeService();
+    final hasPasscode = await passcodeService.hasPasscode(authUser.id);
+
+    if (!mounted) return;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: EdgeInsets.all(AppScale.padding(24)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('App Lock',
+                style: TextStyle(
+                  fontSize: AppScale.fontSize(18),
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                ),
+              ),
+              SizedBox(height: AppScale.size(16)),
+              if (hasPasscode) ...[
+                ListTile(
+                  leading: Icon(Icons.edit_rounded, color: AppColors.primary),
+                  title: const Text('Change Passcode'),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _setNewPasscode(context, authUser.id);
+                  },
+                ),
+                ListTile(
+                  leading: Icon(Icons.lock_open_rounded, color: AppColors.negative),
+                  title: const Text('Remove Passcode'),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    await passcodeService.removePasscode(authUser.id);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Passcode removed')),
+                      );
+                      setState(() {});
+                    }
+                  },
+                ),
+              ] else ...[
+                ListTile(
+                  leading: Icon(Icons.lock_rounded, color: AppColors.primary),
+                  title: const Text('Set Passcode'),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _setNewPasscode(context, authUser.id);
+                  },
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _setNewPasscode(BuildContext context, String userId) {
     final controller = TextEditingController();
     final confirmController = TextEditingController();
     String? error;
 
-    await showDialog(
+    showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(hasExisting ? 'Change PIN' : 'Set PIN'),
+          title: const Text('Set Passcode'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: controller,
-                obscureText: true,
                 keyboardType: TextInputType.number,
                 maxLength: 4,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: AppScale.fontSize(24), letterSpacing: 12),
-                decoration: const InputDecoration(
-                  labelText: 'Enter 4-digit PIN',
-                  border: OutlineInputBorder(),
-                  counterText: '',
-                ),
-                autofocus: true,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: confirmController,
                 obscureText: true,
-                keyboardType: TextInputType.number,
-                maxLength: 4,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: AppScale.fontSize(24), letterSpacing: 12),
                 decoration: InputDecoration(
-                  labelText: 'Confirm PIN',
-                  border: const OutlineInputBorder(),
-                  counterText: '',
+                  labelText: 'Enter 4-digit passcode',
                   errorText: error,
                 ),
+              ),
+              TextField(
+                controller: confirmController,
+                keyboardType: TextInputType.number,
+                maxLength: 4,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Confirm passcode'),
               ),
             ],
           ),
@@ -85,111 +143,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             FilledButton(
               onPressed: () async {
-                final pin = controller.text.trim();
+                final code = controller.text.trim();
                 final confirm = confirmController.text.trim();
-                if (pin.length != 4) {
-                  setDialogState(() => error = 'PIN must be 4 digits');
+                if (code.length != 4) {
+                  setDialogState(() => error = 'Must be 4 digits');
                   return;
                 }
-                if (pin != confirm) {
-                  setDialogState(() => error = 'PINs do not match');
-                  confirmController.clear();
+                if (code != confirm) {
+                  setDialogState(() => error = 'Passcodes do not match');
                   return;
                 }
-                final household = context.read<HouseholdProvider>();
-                final messenger = ScaffoldMessenger.of(context);
-                await DatabaseHelper.instance.updateMemberPin(memberId, PinHelper.hashPin(pin));
-                // Reload members to reflect the change
-                await household.setCurrentHousehold(household.currentHousehold!);
-                household.setCurrentMember(
-                  household.members.firstWhere((m) => m.id == memberId),
-                );
+                await PasscodeService().setPasscode(userId, code);
                 if (ctx.mounted) Navigator.pop(ctx);
-                messenger.showSnackBar(
-                  const SnackBar(content: Text('PIN set'), duration: Duration(seconds: 1)),
-                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Passcode set')),
+                  );
+                  setState(() {});
+                }
               },
-              child: const Text('Save'),
+              child: const Text('Set'),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _removePin(BuildContext context, int memberId) async {
-    final household = context.read<HouseholdProvider>();
-    final messenger = ScaffoldMessenger.of(context);
-    await DatabaseHelper.instance.updateMemberPin(memberId, null);
-    await household.setCurrentHousehold(household.currentHousehold!);
-    household.setCurrentMember(
-      household.members.firstWhere((m) => m.id == memberId),
-    );
-    messenger.showSnackBar(
-      const SnackBar(content: Text('PIN removed'), duration: Duration(seconds: 1)),
-    );
-  }
-
-  void _showMemberOptions(BuildContext context, Member member, HouseholdProvider provider) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: AppScale.size(36),
-                height: 4,
-                margin: const EdgeInsets.only(bottom: AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkDivider : AppColors.divider,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              ListTile(
-                leading: Icon(
-                  Icons.edit_rounded,
-                  color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
-                ),
-                title: Text(
-                  'Rename',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
-                  ),
-                ),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _showRenameDialog(context, member, provider);
-                },
-              ),
-              ListTile(
-                leading: const Icon(
-                  Icons.person_remove_rounded,
-                  color: AppColors.negative,
-                ),
-                title: const Text(
-                  'Remove from household',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.negative,
-                  ),
-                ),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _showRemoveConfirmation(context, member, provider);
-                },
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -276,72 +251,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _showRemoveConfirmation(BuildContext context, Member member, HouseholdProvider provider) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-        ),
-        title: Text(
-          'Remove ${member.name}?',
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
-          ),
-        ),
-        content: Text(
-          'They will be hidden from new bills. Existing bills and balances are preserved.',
-          style: TextStyle(
-            color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
-            fontSize: AppScale.fontSize(14),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            style: TextButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-            ),
-            child: Text(
-              'Cancel',
-              style: TextStyle(
-                color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          FilledButton(
-            onPressed: () async {
-              final success = await provider.softDeleteMember(member.id!);
-              if (ctx.mounted) Navigator.pop(ctx);
-              if (!success && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Cannot remove the last member')),
-                );
-              }
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.negative,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-            ),
-            child: const Text(
-              'Remove',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
@@ -371,7 +280,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             final members = household.members;
             final isAdmin = currentMember?.isAdmin ?? false;
             final selfIndex = members.indexWhere((m) => m.id == currentMember?.id);
-            final hasPin = currentMember?.pin != null && currentMember!.pin!.isNotEmpty;
 
             return ListView(
               padding: EdgeInsets.symmetric(horizontal: AppScale.padding(16), vertical: AppScale.padding(16)),
@@ -464,54 +372,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                               ],
                             ),
-                            SizedBox(height: AppScale.size(16)),
-                            Divider(
-                              height: 1,
-                              color: isDark ? AppColors.darkDivider : AppColors.divider,
-                            ),
+                            // App Lock section (replaces old PIN section)
                             const SizedBox(height: 12),
                             Row(
                               children: [
                                 Icon(
-                                  hasPin ? Icons.lock : Icons.lock_open,
+                                  Icons.lock_rounded,
                                   size: AppScale.size(18),
-                                  color: hasPin ? AppColors.positive : AppColors.warning,
+                                  color: AppColors.primary,
                                 ),
-                                const SizedBox(width: 6),
+                                const SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
-                                    hasPin ? 'PIN protected' : 'No PIN set',
+                                    'App Lock',
                                     style: TextStyle(
-                                      fontSize: AppScale.fontSize(13),
+                                      fontSize: AppScale.fontSize(14),
                                       fontWeight: FontWeight.w600,
                                       color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                                     ),
-                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                                if (hasPin)
-                                  TextButton(
-                                    onPressed: () => _removePin(context, currentMember.id!),
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: AppColors.negative,
-                                      padding: EdgeInsets.symmetric(horizontal: AppScale.padding(10), vertical: AppScale.padding(8)),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(AppRadius.md),
-                                      ),
-                                    ),
-                                    child: const Text('Remove'),
-                                  ),
-                                const SizedBox(width: 4),
-                                FilledButton.tonal(
-                                  onPressed: () => _setPinDialog(
-                                      context, currentMember.id!, hasPin),
-                                  style: FilledButton.styleFrom(
-                                    padding: EdgeInsets.symmetric(horizontal: AppScale.padding(14), vertical: AppScale.padding(8)),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(AppRadius.md),
+                                TextButton(
+                                  onPressed: () => _showPasscodeSetup(context),
+                                  child: Text(
+                                    'Configure',
+                                    style: TextStyle(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                  child: Text(hasPin ? 'Change' : 'Set PIN'),
                                 ),
                               ],
                             ),
@@ -607,12 +496,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               height: 1,
                               color: isDark ? AppColors.darkDivider : AppColors.divider,
                             ),
-                          InkWell(
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                            onLongPress: isAdmin
-                                ? () => _showMemberOptions(context, members[i], household)
-                                : null,
-                            child: Padding(
+                          Padding(
                               padding: EdgeInsets.symmetric(vertical: AppScale.padding(10)),
                               child: Row(
                                 children: [
@@ -683,7 +567,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ],
                               ),
                             ),
-                          ),
                         ],
                         if (isAdmin) ...[
                           const SizedBox(height: 8),
