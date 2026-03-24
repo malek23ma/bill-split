@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 import '../providers/household_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/bill_provider.dart';
 import '../models/household.dart';
+import '../database/database_helper.dart';
 import '../constants.dart';
 import '../widgets/scale_tap.dart';
 
@@ -524,9 +526,51 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                                 }
 
                                 try {
-                                  await context
-                                      .read<HouseholdProvider>()
-                                      .createHousehold(name, memberNames);
+                                  final provider = context.read<HouseholdProvider>();
+                                  await provider.createHousehold(name, memberNames);
+
+                                  // Cloud-sync the new household and admin member
+                                  final authUser = Supabase.instance.client.auth.currentUser;
+                                  if (authUser != null) {
+                                    final db = await DatabaseHelper.instance.database;
+                                    final uuid = const Uuid();
+
+                                    // Get the household that was just created
+                                    final household = provider.currentHousehold ?? provider.households.last;
+
+                                    // Sync household to cloud
+                                    final hRemoteId = uuid.v4();
+                                    await Supabase.instance.client.from('households').upsert({
+                                      'id': hRemoteId,
+                                      'name': household.name,
+                                      'currency': household.currency,
+                                    });
+                                    await db.update('households', {'remote_id': hRemoteId},
+                                        where: 'id = ?', whereArgs: [household.id]);
+
+                                    // Sync the admin member to cloud with user_id linked
+                                    final members = await db.query('members',
+                                        where: 'household_id = ?', whereArgs: [household.id]);
+                                    if (members.isNotEmpty) {
+                                      final member = members.first;
+                                      final mRemoteId = uuid.v4();
+                                      await Supabase.instance.client.from('members').insert({
+                                        'id': mRemoteId,
+                                        'household_id': hRemoteId,
+                                        'name': member['name'],
+                                        'user_id': authUser.id,
+                                        'is_admin': true,
+                                        'is_active': true,
+                                      });
+                                      await db.update('members', {'remote_id': mRemoteId},
+                                          where: 'id = ?', whereArgs: [member['id']]);
+                                    }
+
+                                    // Save last household
+                                    final prefs = await SharedPreferences.getInstance();
+                                    await prefs.setInt('last_household_id', household.id!);
+                                  }
+
                                   if (sheetContext.mounted) {
                                     Navigator.pop(sheetContext);
                                   }
