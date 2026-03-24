@@ -25,15 +25,24 @@ import 'screens/settings_screen.dart';
 import 'screens/recurring_bills_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/auth_screen.dart';
+import 'screens/invite_screen.dart';
+import 'screens/join_household_screen.dart';
 import 'services/auth_service.dart';
 import 'services/connectivity_service.dart';
+import 'services/notification_service.dart';
+import 'services/settlement_service.dart';
+import 'services/invite_service.dart';
+import 'services/push_notification_service.dart';
 import 'services/sync_service.dart';
+import 'screens/notifications_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final view = WidgetsBinding.instance.platformDispatcher.views.first;
   final screenWidth = view.physicalSize.width / view.devicePixelRatio;
   AppScale.init(screenWidth);
+  await Firebase.initializeApp();
   await Supabase.initialize(
     url: SupabaseConfig.url,
     anonKey: SupabaseConfig.anonKey,
@@ -54,6 +63,21 @@ void main() async {
     connectivityService,
   );
 
+  final settlementService = SettlementService(Supabase.instance.client);
+  final notificationService = NotificationService(Supabase.instance.client);
+  final inviteService = InviteService(Supabase.instance.client);
+  final pushService = PushNotificationService(Supabase.instance.client);
+
+  if (Supabase.instance.client.auth.currentUser != null) {
+    try {
+      await pushService.init();
+    } catch (e) {
+      debugPrint('Push init error: $e');
+    }
+    notificationService.loadNotifications();
+    notificationService.subscribeToRealtime();
+  }
+
   final settingsProvider = SettingsProvider();
   await settingsProvider.loadSettings();
 
@@ -66,8 +90,12 @@ void main() async {
         ChangeNotifierProvider(create: (_) => RecurringBillProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider(authService)),
         Provider.value(value: connectivityService),
+        ChangeNotifierProvider.value(value: notificationService),
         ChangeNotifierProvider.value(value: syncService),
         Provider.value(value: supabaseRepo),
+        Provider.value(value: settlementService),
+        Provider.value(value: inviteService),
+        Provider.value(value: pushService),
       ],
       child: const BillSplitApp(),
     ),
@@ -429,6 +457,9 @@ class BillSplitApp extends StatelessWidget {
         '/recurring-bills': (context) => const RecurringBillsScreen(),
         '/onboarding': (context) => const OnboardingScreen(),
         '/auth': (context) => const AuthScreen(),
+        '/notifications': (context) => const NotificationsScreen(),
+        '/invite': (context) => const InviteScreen(),
+        '/join-household': (context) => const JoinHouseholdScreen(),
       },
     );
   }

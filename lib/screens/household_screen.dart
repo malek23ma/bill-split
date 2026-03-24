@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/household_provider.dart';
+import '../providers/auth_provider.dart';
 import '../constants.dart';
 import '../widgets/scale_tap.dart';
 
@@ -113,6 +114,23 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                 ),
               ),
             ),
+            if (context.watch<AuthProvider>().isAuthenticated)
+              Padding(
+                padding: EdgeInsets.only(top: AppScale.padding(12)),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.pushNamed(context, '/join-household'),
+                    icon: Icon(Icons.group_add_rounded, color: AppColors.primary),
+                    label: Text('Join Household', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: isDark ? AppColors.darkDivider : AppColors.divider),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+                      padding: EdgeInsets.symmetric(vertical: AppScale.padding(14)),
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),

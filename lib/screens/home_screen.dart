@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
+import '../database/database_helper.dart';
 import '../providers/household_provider.dart';
 import '../providers/bill_provider.dart';
+import '../providers/auth_provider.dart';
+import '../services/settlement_service.dart';
 import '../models/bill.dart';
 import '../models/bill_item.dart';
 import '../models/member.dart';
@@ -12,6 +17,7 @@ import '../widgets/filter_bottom_sheet.dart';
 import '../widgets/filtered_results_sheet.dart';
 import '../widgets/scale_tap.dart';
 import '../constants.dart';
+import '../services/notification_service.dart';
 import '../services/sync_service.dart';
 import '../widgets/settle_all_sheet.dart';
 import 'insights_screen.dart';
@@ -37,6 +43,10 @@ class _HomeScreenState extends State<HomeScreen> {
       if (householdId != null) {
         context.read<RecurringBillProvider>().loadDueBills(householdId);
       }
+      // Reload notifications and resubscribe for current user
+      final notifService = context.read<NotificationService>();
+      notifService.loadNotifications();
+      notifService.subscribeToRealtime();
     }
   }
 
@@ -65,6 +75,22 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               actions: [
+                Builder(
+                  builder: (context) {
+                    final notificationService = context.watch<NotificationService>();
+                    final unread = notificationService.unreadCount;
+                    return IconButton(
+                      icon: Badge(
+                        isLabelVisible: unread > 0,
+                        label: Text('$unread', style: const TextStyle(fontSize: 10)),
+                        backgroundColor: AppColors.negative,
+                        child: Icon(Icons.notifications_outlined,
+                            color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary),
+                      ),
+                      onPressed: () => Navigator.pushNamed(context, '/notifications'),
+                    );
+                  },
+                ),
                 Builder(
                   builder: (context) {
                     final syncService = context.watch<SyncService>();
@@ -309,6 +335,7 @@ class _HomeScreenState extends State<HomeScreen> {
           pairwiseBalances: billProvider.pairwiseBalances,
           memberNames: memberNames,
           currencySymbol: currencySymbol,
+          isAuthenticated: context.read<AuthProvider>().isAuthenticated,
           onSettleUp: (otherMemberId, amount) => _confirmSettleUp(
             context,
             householdProvider,
@@ -663,6 +690,7 @@ class _HomeScreenState extends State<HomeScreen> {
               confirmDismiss: (_) async => true,
               onDismissed: (_) async {
                 final messenger = ScaffoldMessenger.of(context);
+                final authProvider = context.read<AuthProvider>();
                 final deletedBill = bill;
                 final deletedItems = bill.billType == 'full'
                     ? await billProvider.getBillItems(bill.id!)
@@ -670,6 +698,63 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 await billProvider.deleteBill(
                     bill.id!, bill.householdId);
+
+                // Send notification if admin deleted another member's bill
+                if (authProvider.isAuthenticated &&
+                    currentMember != null &&
+                    currentMember.isAdmin &&
+                    bill.paidByMemberId != currentMember.id) {
+                  try {
+                    final supabase = Supabase.instance.client;
+                    final notificationService = NotificationService(supabase);
+                    final db = await DatabaseHelper.instance.database;
+
+                    // Look up household remote_id
+                    final householdRows = await db.query('households',
+                        where: 'id = ?',
+                        whereArgs: [bill.householdId]);
+                    final rawRemoteId =
+                        householdRows.firstOrNull?['remote_id'] as String?;
+                    final householdRemoteId =
+                        (rawRemoteId != null && rawRemoteId.length > 8) ? rawRemoteId : null;
+
+                    final payerRows = await db.query('members',
+                        where: 'id = ?',
+                        whereArgs: [bill.paidByMemberId]);
+                    final rawPayerRemoteId =
+                        payerRows.firstOrNull?['remote_id'] as String?;
+                    final payerRemoteId =
+                        (rawPayerRemoteId != null && rawPayerRemoteId.length > 8) ? rawPayerRemoteId : null;
+                    if (payerRemoteId != null) {
+                      final memberData = await supabase
+                          .from('members')
+                          .select('user_id')
+                          .eq('id', payerRemoteId)
+                          .maybeSingle();
+                      if (memberData != null &&
+                          memberData['user_id'] != null) {
+                        final cat =
+                            BillCategories.getById(bill.category);
+                        await notificationService.sendNotification(
+                          householdId: householdRemoteId,
+                          recipientUserId:
+                              memberData['user_id'] as String,
+                          type: 'admin_bill_delete',
+                          title: 'Bill Deleted',
+                          body:
+                              'Admin deleted your bill: ${cat.label} (${bill.totalAmount.toStringAsFixed(2)})',
+                          data: {
+                            'bill_category': bill.category,
+                            'bill_amount': bill.totalAmount,
+                          },
+                        );
+                      }
+                    }
+                  } catch (e) {
+                    debugPrint(
+                        'Failed to send admin delete notification: $e');
+                  }
+                }
 
                 messenger.clearSnackBars();
                 messenger.showSnackBar(
@@ -753,12 +838,29 @@ class _HomeScreenState extends State<HomeScreen> {
           currencySymbol: currencySymbol,
           onSettle: (fromId, toId, amount) async {
             Navigator.pop(context);
-            await billProvider.settleUp(
-              householdId: householdProvider.currentHousehold!.id!,
-              payerMemberId: fromId,
-              receiverMemberId: toId,
-              amount: amount,
-            );
+            final isAuthenticated =
+                context.read<AuthProvider>().isAuthenticated;
+            if (isAuthenticated) {
+              final members = householdProvider.members;
+              final payerMember =
+                  members.where((m) => m.id == fromId).firstOrNull;
+              final receiverMember =
+                  members.where((m) => m.id == toId).firstOrNull;
+              await _createPendingSettlement(
+                context,
+                householdProvider,
+                payerMember,
+                receiverMember,
+                amount,
+              );
+            } else {
+              await billProvider.settleUp(
+                householdId: householdProvider.currentHousehold!.id!,
+                payerMemberId: fromId,
+                receiverMemberId: toId,
+                amount: amount,
+              );
+            }
           },
         ),
       ),
@@ -844,6 +946,7 @@ class _HomeScreenState extends State<HomeScreen> {
     double amount,
     String otherName,
   ) {
+    final isAuthenticated = context.read<AuthProvider>().isAuthenticated;
     final currentMemberId = householdProvider.currentMember!.id!;
     final currSymbol =
         AppCurrency.getByCode(householdProvider.currency).symbol;
@@ -856,6 +959,16 @@ class _HomeScreenState extends State<HomeScreen> {
     final whoOwes = otherOwes ? otherName : 'You';
     final payerId = otherOwes ? otherMemberId : currentMemberId;
     final receiverId = otherOwes ? currentMemberId : otherMemberId;
+
+    // Resolve member objects for remote IDs (needed for authenticated flow)
+    final members = householdProvider.members;
+    final payerMember = members.where((m) => m.id == payerId).firstOrNull;
+    final receiverMember =
+        members.where((m) => m.id == receiverId).firstOrNull;
+    final payerName =
+        payerMember?.name ?? (otherOwes ? otherName : 'You');
+    final receiverName =
+        receiverMember?.name ?? (otherOwes ? 'You' : otherName);
 
     showModalBottomSheet(
       context: context,
@@ -896,7 +1009,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Settle Up?',
+                isAuthenticated
+                    ? (payerId == currentMemberId ? 'Send Settlement Request?' : 'Request Payment?')
+                    : 'Settle Up?',
                 style: TextStyle(
                   fontSize: AppScale.fontSize(20),
                   fontWeight: FontWeight.w800,
@@ -907,13 +1022,18 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                '$whoOwes owes ${amount.toStringAsFixed(2)} $currSymbol',
+                isAuthenticated
+                    ? (payerId == currentMemberId
+                        ? 'Send settlement of ${amount.toStringAsFixed(2)} $currSymbol to $receiverName?'
+                        : 'Request ${amount.toStringAsFixed(2)} $currSymbol from $payerName?')
+                    : '$whoOwes owes ${amount.toStringAsFixed(2)} $currSymbol',
                 style: TextStyle(
                   fontSize: AppScale.fontSize(15),
                   color: isDark
                       ? AppColors.darkTextSecondary
                       : AppColors.textSecondary,
                 ),
+                textAlign: TextAlign.center,
               ),
               SizedBox(height: AppScale.size(24)),
               // Actions
@@ -956,13 +1076,23 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: FilledButton(
                       onPressed: () async {
                         Navigator.pop(ctx);
-                        await billProvider.settleUp(
-                          householdId:
-                              householdProvider.currentHousehold!.id!,
-                          payerMemberId: payerId,
-                          receiverMemberId: receiverId,
-                          amount: amount,
-                        );
+                        if (isAuthenticated) {
+                          await _createPendingSettlement(
+                            context,
+                            householdProvider,
+                            payerMember,
+                            receiverMember,
+                            amount,
+                          );
+                        } else {
+                          await billProvider.settleUp(
+                            householdId:
+                                householdProvider.currentHousehold!.id!,
+                            payerMemberId: payerId,
+                            receiverMemberId: receiverId,
+                            amount: amount,
+                          );
+                        }
                       },
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
@@ -973,9 +1103,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         elevation: 0,
                       ),
-                      child: const Text(
-                        'Settle All',
-                        style: TextStyle(fontWeight: FontWeight.w600),
+                      child: Text(
+                        isAuthenticated ? 'Send Request' : 'Settle All',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),
                   ),
@@ -997,6 +1127,137 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _createPendingSettlement(
+    BuildContext context,
+    HouseholdProvider householdProvider,
+    Member? payerMember,
+    Member? receiverMember,
+    double amount,
+  ) async {
+    final supabaseClient = Supabase.instance.client;
+    final settlementService = SettlementService(supabaseClient);
+    final notificationService = NotificationService(supabaseClient);
+
+    var householdRemoteId = householdProvider.currentHousehold?.remoteId;
+    var payerRemoteId = payerMember?.remoteId;
+    var receiverRemoteId = receiverMember?.remoteId;
+
+    // Auto-sync household and members to cloud if not yet synced
+    if (householdRemoteId == null || payerRemoteId == null || receiverRemoteId == null) {
+      try {
+        final db = await DatabaseHelper.instance.database;
+        final uuid = const Uuid();
+
+        // Sync household
+        if (householdRemoteId == null && householdProvider.currentHousehold != null) {
+          final hId = uuid.v4();
+          await supabaseClient.from('households').upsert({
+            'id': hId,
+            'name': householdProvider.currentHousehold!.name,
+            'currency': householdProvider.currency,
+          });
+          await db.update('households', {'remote_id': hId},
+              where: 'id = ?', whereArgs: [householdProvider.currentHousehold!.id]);
+          householdRemoteId = hId;
+        }
+
+        // Sync all members in this household
+        for (final m in householdProvider.members) {
+          if (m.remoteId == null && householdRemoteId != null) {
+            final mId = uuid.v4();
+            await supabaseClient.from('members').upsert({
+              'id': mId,
+              'household_id': householdRemoteId,
+              'name': m.name,
+              'is_active': m.isActive,
+              'is_admin': m.isAdmin,
+            });
+            await db.update('members', {'remote_id': mId},
+                where: 'id = ?', whereArgs: [m.id]);
+            if (m.id == payerMember?.id) payerRemoteId = mId;
+            if (m.id == receiverMember?.id) receiverRemoteId = mId;
+          }
+        }
+
+        // Reload members to pick up remote_ids
+        await householdProvider.setCurrentHousehold(householdProvider.currentHousehold!);
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to sync data to cloud: $e')),
+          );
+        }
+        return;
+      }
+    }
+
+    if (householdRemoteId == null || payerRemoteId == null || receiverRemoteId == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to sync members to cloud')),
+        );
+      }
+      return;
+    }
+
+    try {
+      final settlement = await settlementService.createSettlement(
+        householdId: householdRemoteId,
+        fromMemberId: payerRemoteId,
+        toMemberId: receiverRemoteId,
+        amount: amount,
+      );
+
+      // Determine who to notify — the OTHER person (not the current user)
+      final currentMemberId = householdProvider.currentMember?.id;
+      final isCurrentUserPayer = currentMemberId == payerMember?.id;
+
+      // Notify the other party
+      final otherMemberRemoteId = isCurrentUserPayer ? receiverRemoteId : payerRemoteId;
+      final otherData = await supabaseClient
+          .from('members')
+          .select('user_id')
+          .eq('id', otherMemberRemoteId)
+          .maybeSingle();
+      final otherUserId = otherData?['user_id'] as String?;
+
+      if (otherUserId != null) {
+        final String notifTitle;
+        final String notifBody;
+        if (isCurrentUserPayer) {
+          notifTitle = 'Settlement Request';
+          notifBody = '${payerMember?.name ?? 'Someone'} wants to settle ${amount.toStringAsFixed(2)} with you';
+        } else {
+          notifTitle = 'Payment Request';
+          notifBody = '${receiverMember?.name ?? 'Someone'} is requesting ${amount.toStringAsFixed(2)} from you';
+        }
+        await notificationService.sendNotification(
+          householdId: householdRemoteId,
+          recipientUserId: otherUserId,
+          type: 'settlement_request',
+          title: notifTitle,
+          body: notifBody,
+          data: {
+            'settlement_id': settlement['id'],
+            'amount': amount,
+          },
+        );
+      }
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Settlement request sent')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to send settlement request: $e')),
+        );
+      }
+    }
   }
 
   void _showPartialSettleDialog(
@@ -1096,12 +1357,29 @@ class _HomeScreenState extends State<HomeScreen> {
                 return;
               }
               Navigator.pop(ctx);
-              await billProvider.settleUp(
-                householdId: householdProvider.currentHousehold!.id!,
-                payerMemberId: payerId,
-                receiverMemberId: receiverId,
-                amount: partial,
-              );
+              final isAuthenticated =
+                  context.read<AuthProvider>().isAuthenticated;
+              if (isAuthenticated) {
+                final members = householdProvider.members;
+                final payerMember =
+                    members.where((m) => m.id == payerId).firstOrNull;
+                final receiverMember =
+                    members.where((m) => m.id == receiverId).firstOrNull;
+                await _createPendingSettlement(
+                  context,
+                  householdProvider,
+                  payerMember,
+                  receiverMember,
+                  partial,
+                );
+              } else {
+                await billProvider.settleUp(
+                  householdId: householdProvider.currentHousehold!.id!,
+                  payerMemberId: payerId,
+                  receiverMemberId: receiverId,
+                  amount: partial,
+                );
+              }
             },
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.primary,

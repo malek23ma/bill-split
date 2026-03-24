@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/member.dart';
 import '../providers/household_provider.dart';
 import '../providers/bill_provider.dart';
+import '../providers/auth_provider.dart';
 import '../services/pin_helper.dart';
 import '../constants.dart';
 import '../widgets/scale_tap.dart';
@@ -14,7 +16,30 @@ class MemberSelectScreen extends StatelessWidget {
     final provider = context.read<HouseholdProvider>();
     provider.setCurrentMember(member);
     context.read<BillProvider>().loadBills(provider.currentHousehold!.id!);
+
+    // Link auth user to this member in the cloud
+    _linkAuthToMember(context, member);
+
     Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+  }
+
+  /// Link the current auth user's ID to this member in Supabase
+  Future<void> _linkAuthToMember(BuildContext context, Member member) async {
+    try {
+      final authProvider = context.read<AuthProvider>();
+      if (!authProvider.isAuthenticated) return;
+      final userId = authProvider.user!.id;
+      final remoteId = member.remoteId;
+      if (remoteId == null) return;
+
+      // Update the cloud member record with this user's auth ID
+      await Supabase.instance.client
+          .from('members')
+          .update({'user_id': userId})
+          .eq('id', remoteId);
+    } catch (e) {
+      debugPrint('Failed to link auth to member: $e');
+    }
   }
 
   void _onMemberTap(BuildContext context, Member member) {

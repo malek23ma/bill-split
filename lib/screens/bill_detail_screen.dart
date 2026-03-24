@@ -2,11 +2,15 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../database/database_helper.dart';
 import '../models/bill.dart';
 import '../models/bill_item.dart';
+import '../providers/auth_provider.dart';
 import '../providers/household_provider.dart';
 import '../providers/bill_provider.dart';
 import '../providers/recurring_bill_provider.dart';
+import '../services/notification_service.dart';
 import '../constants.dart';
 
 class BillDetailScreen extends StatefulWidget {
@@ -741,6 +745,9 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
               Navigator.pop(dialogContext); // close dialog
 
               final billProvider = context.read<BillProvider>();
+              final authProvider = context.read<AuthProvider>();
+              final curMember =
+                  context.read<HouseholdProvider>().currentMember;
               // Capture bill and items before deletion
               final deletedBill = bill;
               final deletedItems = bill.billType == 'full'
@@ -748,6 +755,65 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                   : <BillItem>[];
 
               await billProvider.deleteBill(bill.id!, bill.householdId);
+
+              // Send notification if admin deleted another member's bill
+              if (authProvider.isAuthenticated &&
+                  curMember != null &&
+                  curMember.isAdmin &&
+                  bill.paidByMemberId != curMember.id) {
+                try {
+                  final supabase = Supabase.instance.client;
+                  final notificationService = NotificationService(supabase);
+                  final db = await DatabaseHelper.instance.database;
+
+                  // Look up household remote_id
+                  final householdRows = await db.query('households',
+                      where: 'id = ?',
+                      whereArgs: [bill.householdId]);
+                  final rawRemoteId =
+                      householdRows.firstOrNull?['remote_id'] as String?;
+                  // Only use if it's a valid UUID (not a local integer string)
+                  final householdRemoteId =
+                      (rawRemoteId != null && rawRemoteId.length > 8) ? rawRemoteId : null;
+
+                  // Look up payer's user_id via their remote_id
+                  final payerRows = await db.query('members',
+                      where: 'id = ?',
+                      whereArgs: [bill.paidByMemberId]);
+                  final rawPayerRemoteId =
+                      payerRows.firstOrNull?['remote_id'] as String?;
+                  final payerRemoteId =
+                      (rawPayerRemoteId != null && rawPayerRemoteId.length > 8) ? rawPayerRemoteId : null;
+                  if (payerRemoteId != null) {
+                    final memberData = await supabase
+                        .from('members')
+                        .select('user_id')
+                        .eq('id', payerRemoteId)
+                        .maybeSingle();
+                    if (memberData != null &&
+                        memberData['user_id'] != null) {
+                      final cat =
+                          BillCategories.getById(bill.category);
+                      await notificationService.sendNotification(
+                        householdId: householdRemoteId,
+                        recipientUserId:
+                            memberData['user_id'] as String,
+                        type: 'admin_bill_delete',
+                        title: 'Bill Deleted',
+                        body:
+                            'Admin deleted your bill: ${cat.label} (${bill.totalAmount.toStringAsFixed(2)})',
+                        data: {
+                          'bill_category': bill.category,
+                          'bill_amount': bill.totalAmount,
+                        },
+                      );
+                    }
+                  }
+                } catch (e, stack) {
+                  debugPrint(
+                      'Failed to send admin delete notification: $e\n$stack');
+                }
+              }
 
               if (context.mounted) {
                 Navigator.pop(context, {
