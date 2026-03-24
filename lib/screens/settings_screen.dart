@@ -34,7 +34,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
-  void _showPasscodeSetup(BuildContext context) async {
+  void _showPasscodeSetup(BuildContext parentContext) async {
     final authUser = Supabase.instance.client.auth.currentUser;
     if (authUser == null) return;
 
@@ -104,13 +104,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _setNewPasscode(BuildContext context, String userId) {
+  void _setNewPasscode(BuildContext parentContext, String userId) {
     final controller = TextEditingController();
     final confirmController = TextEditingController();
     String? error;
 
     showDialog(
-      context: context,
+      context: parentContext,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           title: const Text('Set Passcode'),

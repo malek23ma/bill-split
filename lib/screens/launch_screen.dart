@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/household_provider.dart';
 import '../providers/bill_provider.dart';
+import '../services/passcode_service.dart';
+import 'passcode_screen.dart';
 
 class LaunchScreen extends StatefulWidget {
   const LaunchScreen({super.key});
@@ -27,7 +29,29 @@ class _LaunchScreenState extends State<LaunchScreen> {
       return;
     }
 
-    // Try to restore last household
+    final passcodeService = PasscodeService();
+    final hasPasscode = await passcodeService.hasPasscode(authUser.id);
+
+    if (hasPasscode && mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PasscodeScreen(
+            userId: authUser.id,
+            onSuccess: () {
+              _navigateAfterAuth(authUser);
+            },
+          ),
+        ),
+      );
+      return;
+    }
+
+    // No passcode — proceed directly
+    await _navigateAfterAuth(authUser);
+  }
+
+  Future<void> _navigateAfterAuth(User authUser) async {
     final prefs = await SharedPreferences.getInstance();
     final lastId = prefs.getInt('last_household_id');
 
@@ -49,7 +73,6 @@ class _LaunchScreenState extends State<LaunchScreen> {
       }
     }
 
-    // Fallback to household picker
     if (mounted) Navigator.pushReplacementNamed(context, '/households');
   }
 
