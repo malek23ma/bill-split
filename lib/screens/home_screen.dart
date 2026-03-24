@@ -713,8 +713,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     final householdRows = await db.query('households',
                         where: 'id = ?',
                         whereArgs: [bill.householdId]);
-                    final householdRemoteId =
+                    final rawRemoteId =
                         householdRows.firstOrNull?['remote_id'] as String?;
+                    final householdRemoteId =
+                        (rawRemoteId != null && rawRemoteId.length > 8) ? rawRemoteId : null;
 
                     final payerRows = await db.query('members',
                         where: 'id = ?',

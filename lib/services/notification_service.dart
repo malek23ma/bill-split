@@ -15,7 +15,6 @@ class NotificationService extends ChangeNotifier {
 
   Future<void> loadNotifications() async {
     final userId = _client.auth.currentUser?.id;
-    debugPrint('NOTIF: loadNotifications called, userId=$userId');
     if (userId == null) return;
     try {
       _notifications = await _client
@@ -25,10 +24,9 @@ class NotificationService extends ChangeNotifier {
           .order('created_at', ascending: false)
           .limit(50);
       _unreadCount = _notifications.where((n) => n['read'] == false).length;
-      debugPrint('NOTIF: loaded ${_notifications.length} notifications, unread=$_unreadCount');
       notifyListeners();
     } catch (e) {
-      debugPrint('NOTIF: error loading notifications: $e');
+      debugPrint('Failed to load notifications: $e');
     }
   }
 

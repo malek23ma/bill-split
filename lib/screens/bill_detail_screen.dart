@@ -770,8 +770,11 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                   final householdRows = await db.query('households',
                       where: 'id = ?',
                       whereArgs: [bill.householdId]);
-                  final householdRemoteId =
+                  final rawRemoteId =
                       householdRows.firstOrNull?['remote_id'] as String?;
+                  // Only use if it's a valid UUID (not a local integer string)
+                  final householdRemoteId =
+                      (rawRemoteId != null && rawRemoteId.length > 8) ? rawRemoteId : null;
 
                   // Look up payer's user_id via their remote_id
                   final payerRows = await db.query('members',
@@ -804,9 +807,9 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                       );
                     }
                   }
-                } catch (e) {
+                } catch (e, stack) {
                   debugPrint(
-                      'Failed to send admin delete notification: $e');
+                      'Failed to send admin delete notification: $e\n$stack');
                 }
               }
 
