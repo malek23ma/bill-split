@@ -4,8 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/household_provider.dart';
 import '../providers/bill_provider.dart';
-import '../services/passcode_service.dart';
-import 'passcode_screen.dart';
+// TODO: re-enable when passcode flow is fixed
+// import '../services/passcode_service.dart';
+// import 'passcode_screen.dart';
 
 class LaunchScreen extends StatefulWidget {
   const LaunchScreen({super.key});
@@ -29,23 +30,9 @@ class _LaunchScreenState extends State<LaunchScreen> {
       return;
     }
 
-    final passcodeService = PasscodeService();
-    final hasPasscode = await passcodeService.hasPasscode(authUser.id);
-
-    if (hasPasscode && mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PasscodeScreen(
-            userId: authUser.id,
-            onSuccess: () {
-              _navigateAfterAuth(authUser);
-            },
-          ),
-        ),
-      );
-      return;
-    }
+    // TODO: Passcode check disabled — needs context fix before re-enabling
+    // final passcodeService = PasscodeService();
+    // final hasPasscode = await passcodeService.hasPasscode(authUser.id);
 
     // No passcode — proceed directly
     await _navigateAfterAuth(authUser);
