@@ -23,12 +23,6 @@ class HouseholdProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<Household> createHousehold(String name, List<String> memberNames) async {
-    final id = await _db.createHouseholdWithMembers(name, memberNames);
-    await loadHouseholds();
-    return _households.firstWhere((h) => h.id == id);
-  }
-
   /// Create a household with the current user as the sole admin member.
   Future<Household> createHouseholdForUser(String name, String userId, String displayName) async {
     final db = await _db.database;

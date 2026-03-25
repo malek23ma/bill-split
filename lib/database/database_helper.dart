@@ -45,7 +45,7 @@ class DatabaseHelper implements DataRepository {
     final path = join(dbPath, fileName);
     final db = await openDatabase(
       path,
-      version: 10,
+      version: 11,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -83,6 +83,7 @@ class DatabaseHelper implements DataRepository {
         created_at TEXT NOT NULL DEFAULT '',
         remote_id TEXT,
         updated_at TEXT,
+        user_id TEXT,
         FOREIGN KEY (household_id) REFERENCES households(id)
       )
     ''');
@@ -314,6 +315,7 @@ class DatabaseHelper implements DataRepository {
       await db.execute("ALTER TABLE recurring_bills ADD COLUMN updated_at TEXT");
 
       // Sync queue table
+      // Note: user_id column added in v11 migration below
       await db.execute('''
         CREATE TABLE sync_queue (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -325,18 +327,9 @@ class DatabaseHelper implements DataRepository {
         )
       ''');
     }
-  }
-
-  @override
-  Future<void> updateMemberPin(int memberId, String? pin) async {
-    final db = await database;
-    await db.update(
-      'members',
-      {'pin': pin},
-      where: 'id = ?',
-      whereArgs: [memberId],
-    );
-    await _enqueueSync('members', memberId, 'update', {'pin': pin});
+    if (oldVersion < 11) {
+      await db.execute("ALTER TABLE members ADD COLUMN user_id TEXT");
+    }
   }
 
   @override
@@ -361,35 +354,6 @@ class DatabaseHelper implements DataRepository {
     final id = await db.insert('households', household.toMap());
     await _enqueueSync('households', id, 'insert', household.toMap());
     return id;
-  }
-
-  @override
-  Future<int> createHouseholdWithMembers(String name, List<String> memberNames) async {
-    final db = await database;
-    late int householdId;
-    final memberIds = <int>[];
-    await db.transaction((txn) async {
-      householdId = await txn.insert('households', Household(name: name).toMap());
-      for (int i = 0; i < memberNames.length; i++) {
-        final member = Member(
-          householdId: householdId,
-          name: memberNames[i],
-          isAdmin: i == 0, // first member is admin
-        );
-        final memberId = await txn.insert('members', member.toMap());
-        memberIds.add(memberId);
-      }
-    });
-    await _enqueueSync('households', householdId, 'insert', Household(name: name).toMap());
-    for (int i = 0; i < memberNames.length; i++) {
-      final member = Member(
-        householdId: householdId,
-        name: memberNames[i],
-        isAdmin: i == 0,
-      );
-      await _enqueueSync('members', memberIds[i], 'insert', member.toMap());
-    }
-    return householdId;
   }
 
   @override

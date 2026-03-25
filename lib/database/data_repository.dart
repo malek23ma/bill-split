@@ -10,14 +10,12 @@ abstract class DataRepository {
   Future<List<Household>> getHouseholds();
   Future<void> deleteHousehold(int id);
   Future<void> updateHouseholdCurrency(int id, String currency);
-  Future<int> createHouseholdWithMembers(String name, List<String> memberNames);
 
   // Members
   Future<int> insertMember(Member member);
   Future<List<Member>> getMembersByHousehold(int householdId);
   Future<List<Member>> getAllMembersByHousehold(int householdId);
   Future<void> updateMemberName(int memberId, String name);
-  Future<void> updateMemberPin(int memberId, String? pin);
   Future<void> setMemberActive(int memberId, bool active);
 
   // Bills
