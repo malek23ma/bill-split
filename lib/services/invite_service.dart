@@ -1,5 +1,7 @@
 import 'dart:math';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../database/database_helper.dart';
+import '../models/member.dart';
 
 class InviteService {
   final SupabaseClient _client;
@@ -82,6 +84,46 @@ class InviteService {
       'claimed_by_user_id': userId,
       'claimed_at': now.toIso8601String(),
     }).eq('id', inviteId);
+
+    // Also create the member locally so the app can resolve them
+    final db = await DatabaseHelper.instance.database;
+    // Find the local household by remote_id
+    final localHouseholds = await db.query('households',
+        where: 'remote_id = ?', whereArgs: [householdId]);
+    if (localHouseholds.isNotEmpty) {
+      final localHouseholdId = localHouseholds.first['id'] as int;
+      final profile = await _client.from('profiles')
+          .select('display_name')
+          .eq('id', userId)
+          .maybeSingle();
+      final name = profile?['display_name'] ?? 'New Member';
+
+      // Get the remote member id that was just created/claimed
+      final remoteMember = await _client.from('members')
+          .select('id')
+          .eq('household_id', householdId)
+          .eq('user_id', userId)
+          .maybeSingle();
+      final remoteMemberId = remoteMember?['id'] as String?;
+
+      // Check if local member already exists
+      final existing = await db.query('members',
+          where: 'household_id = ? AND name = ?',
+          whereArgs: [localHouseholdId, name]);
+      if (existing.isEmpty) {
+        final member = Member(
+          householdId: localHouseholdId,
+          name: name,
+          remoteId: remoteMemberId,
+          createdAt: DateTime.now(),
+        );
+        await db.insert('members', member.toMap());
+      } else if (remoteMemberId != null) {
+        // Update existing local member with remote_id
+        await db.update('members', {'remote_id': remoteMemberId},
+            where: 'id = ?', whereArgs: [existing.first['id']]);
+      }
+    }
 
     return true;
   }
