@@ -29,6 +29,24 @@ class HouseholdProvider extends ChangeNotifier {
     return _households.firstWhere((h) => h.id == id);
   }
 
+  /// Create a household with the current user as the sole admin member.
+  Future<Household> createHouseholdForUser(String name, String userId, String displayName) async {
+    final db = await _db.database;
+    late int householdId;
+    await db.transaction((txn) async {
+      householdId = await txn.insert('households', Household(name: name).toMap());
+      final member = Member(
+        householdId: householdId,
+        name: displayName,
+        isAdmin: true,
+        userId: userId,
+      );
+      await txn.insert('members', member.toMap());
+    });
+    await loadHouseholds();
+    return _households.firstWhere((h) => h.id == householdId);
+  }
+
   Future<void> setCurrentHousehold(Household household) async {
     _currentHousehold = household;
     _members = await _db.getMembersByHousehold(household.id!);

@@ -31,83 +31,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
   Future<void> _loadHouseholds() async {
     final provider = context.read<HouseholdProvider>();
     await provider.loadHouseholds();
-
-    final authUser = Supabase.instance.client.auth.currentUser;
-    if (authUser != null) {
-      // Auto-sync any local households that don't have remote_id yet
-      await _syncUnsyncedHouseholds(provider, authUser.id);
-
-      try {
-        // Check cloud: which households does this user belong to?
-        final cloudFiltered = await provider.getHouseholdsForUser(authUser.id);
-        if (mounted) {
-          setState(() {
-            _userHouseholds = cloudFiltered;
-            _loading = false;
-          });
-          return;
-        }
-      } catch (_) {}
-    }
-
     if (mounted) setState(() { _userHouseholds = provider.households; _loading = false; });
-  }
-
-  /// Sync local households and their members to Supabase if they lack remote_id
-  Future<void> _syncUnsyncedHouseholds(HouseholdProvider provider, String authUserId) async {
-    final db = await DatabaseHelper.instance.database;
-    final supabase = Supabase.instance.client;
-    final uuid = const Uuid();
-
-    for (final household in provider.households) {
-      if (household.remoteId != null && household.remoteId!.length > 8) continue;
-
-      try {
-        // Sync household to cloud
-        final hId = uuid.v4();
-        await supabase.from('households').upsert({
-          'id': hId,
-          'name': household.name,
-          'currency': household.currency,
-        });
-        await db.update('households', {'remote_id': hId},
-            where: 'id = ?', whereArgs: [household.id]);
-
-        // Sync all members in this household
-        final members = await db.query('members',
-            where: 'household_id = ?', whereArgs: [household.id]);
-        for (final m in members) {
-          final mRemoteId = m['remote_id'] as String?;
-          if (mRemoteId != null && mRemoteId.length > 8) continue;
-
-          final mId = uuid.v4();
-          final memberName = m['name'] as String;
-          // Check if this member matches the current auth user by name
-          final profile = await supabase.from('profiles')
-              .select('display_name')
-              .eq('id', authUserId)
-              .maybeSingle();
-          final displayName = profile?['display_name'] as String? ?? '';
-          final isCurrentUser = memberName.toLowerCase() == displayName.toLowerCase();
-
-          await supabase.from('members').upsert({
-            'id': mId,
-            'household_id': hId,
-            'name': memberName,
-            'is_active': (m['is_active'] as int?) == 1,
-            'is_admin': (m['is_admin'] as int?) == 1,
-            if (isCurrentUser) 'user_id': authUserId,
-          });
-          await db.update('members', {'remote_id': mId},
-              where: 'id = ?', whereArgs: [m['id']]);
-        }
-
-        // Reload to pick up new remote_ids
-        await provider.loadHouseholds();
-      } catch (e) {
-        debugPrint('Failed to sync household ${household.name}: $e');
-      }
-    }
   }
 
   @override
@@ -427,304 +351,224 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
 
   void _showCreateSheet(BuildContext context) {
     final nameController = TextEditingController();
-    final memberControllers = [
-      TextEditingController(),
-      TextEditingController(),
-    ];
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (sheetContext) => StatefulBuilder(
-        builder: (sheetContext, setSheetState) => Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
-          ),
-          child: Container(
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.darkSurface : AppColors.surface,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(AppRadius.xl),
-              ),
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkSurface : AppColors.surface,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(AppRadius.xl),
             ),
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.xxl, AppSpacing.md, AppSpacing.xxl, AppSpacing.xxxl),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Drag handle
-                    Center(
-                      child: Container(
-                        width: AppScale.size(40),
-                        height: 4,
-                        margin: const EdgeInsets.only(bottom: AppSpacing.xxl),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? AppColors.darkDivider
-                              : AppColors.surfaceMuted,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    Text(
-                      'Create Household',
-                      style: TextStyle(
-                        fontSize: AppScale.fontSize(22),
-                        fontWeight: FontWeight.w700,
+          ),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xxl, AppSpacing.md, AppSpacing.xxl, AppSpacing.xxxl),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Drag handle
+                  Center(
+                    child: Container(
+                      width: AppScale.size(40),
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: AppSpacing.xxl),
+                      decoration: BoxDecoration(
                         color: isDark
-                            ? AppColors.darkTextPrimary
-                            : AppColors.textPrimary,
+                            ? AppColors.darkDivider
+                            : AppColors.surfaceMuted,
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      'Set up a new household and add members.',
-                      style: TextStyle(
-                        fontSize: AppScale.fontSize(14),
-                        fontWeight: FontWeight.w400,
-                        color: isDark
-                            ? AppColors.darkTextSecondary
-                            : AppColors.textSecondary,
-                      ),
+                  ),
+                  Text(
+                    'Create Household',
+                    style: TextStyle(
+                      fontSize: AppScale.fontSize(22),
+                      fontWeight: FontWeight.w700,
+                      color: isDark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.textPrimary,
                     ),
-                    const SizedBox(height: AppSpacing.xxl),
-                    TextField(
-                      controller: nameController,
-                      autofocus: true,
-                      decoration: InputDecoration(
-                        labelText: 'Household Name',
-                        hintText: 'e.g., Our House',
-                        prefixIcon: const Icon(Icons.home_rounded),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                          borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                          borderSide: BorderSide.none,
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                          borderSide: const BorderSide(
-                              color: AppColors.primary, width: 2),
-                        ),
-                        filled: true,
-                        fillColor: isDark
-                            ? AppColors.darkSurfaceVariant
-                            : AppColors.surfaceVariant,
-                      ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'Give your household a name to get started.',
+                    style: TextStyle(
+                      fontSize: AppScale.fontSize(14),
+                      fontWeight: FontWeight.w400,
+                      color: isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary,
                     ),
-                    const SizedBox(height: AppSpacing.lg),
-                    // Dynamic member fields
-                    for (int i = 0; i < memberControllers.length; i++) ...[
-                      TextField(
-                        controller: memberControllers[i],
-                        decoration: InputDecoration(
-                          labelText: 'Member ${i + 1}',
-                          hintText: i == 0
-                              ? 'e.g., Malek'
-                              : i == 1
-                                  ? 'e.g., Zain'
-                                  : 'Name',
-                          prefixIcon: const Icon(Icons.person_rounded),
-                          suffixIcon: i >= 2
-                              ? IconButton(
-                                  icon: Icon(Icons.close_rounded,
-                                      size: AppScale.size(20)),
-                                  onPressed: () {
-                                    setSheetState(() {
-                                      memberControllers[i].dispose();
-                                      memberControllers.removeAt(i);
-                                    });
-                                  },
-                                )
-                              : null,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                            borderSide: BorderSide.none,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                            borderSide: BorderSide.none,
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                            borderSide: const BorderSide(
-                                color: AppColors.primary, width: 2),
-                          ),
-                          filled: true,
-                          fillColor: isDark
-                              ? AppColors.darkSurfaceVariant
-                              : AppColors.surfaceVariant,
-                        ),
+                  ),
+                  const SizedBox(height: AppSpacing.xxl),
+                  TextField(
+                    controller: nameController,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      labelText: 'Household Name',
+                      hintText: 'e.g., Our House',
+                      prefixIcon: const Icon(Icons.home_rounded),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        borderSide: BorderSide.none,
                       ),
-                      const SizedBox(height: AppSpacing.lg),
-                    ],
-                    // Add member button
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          setSheetState(() {
-                            memberControllers.add(TextEditingController());
-                          });
-                        },
-                        icon: Icon(Icons.person_add_rounded, size: AppScale.size(18)),
-                        label: const Text('Add Member'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.primary,
-                          side: BorderSide(
-                            color: isDark
-                                ? AppColors.darkDivider
-                                : AppColors.divider,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                              vertical: AppSpacing.md),
-                        ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        borderSide: BorderSide.none,
                       ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        borderSide: const BorderSide(
+                            color: AppColors.primary, width: 2),
+                      ),
+                      filled: true,
+                      fillColor: isDark
+                          ? AppColors.darkSurfaceVariant
+                          : AppColors.surfaceVariant,
                     ),
-                    const SizedBox(height: AppSpacing.xxl + 4),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SizedBox(
-                            height: AppScale.size(52),
-                            child: OutlinedButton(
-                              onPressed: () => Navigator.pop(sheetContext),
-                              style: OutlinedButton.styleFrom(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(AppRadius.md),
-                                ),
-                                side: BorderSide(
-                                  color: isDark
-                                      ? AppColors.darkDivider
-                                      : AppColors.divider,
-                                ),
+                  ),
+                  const SizedBox(height: AppSpacing.xxl + 4),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: AppScale.size(52),
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(sheetContext),
+                            style: OutlinedButton.styleFrom(
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.md),
                               ),
-                              child: Text(
-                                'Cancel',
-                                style: TextStyle(
-                                  color: isDark
-                                      ? AppColors.darkTextSecondary
-                                      : AppColors.textSecondary,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                              side: BorderSide(
+                                color: isDark
+                                    ? AppColors.darkDivider
+                                    : AppColors.divider,
+                              ),
+                            ),
+                            child: Text(
+                              'Cancel',
+                              style: TextStyle(
+                                color: isDark
+                                    ? AppColors.darkTextSecondary
+                                    : AppColors.textSecondary,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
                         ),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          flex: 2,
-                          child: SizedBox(
-                            height: AppScale.size(52),
-                            child: FilledButton(
-                              onPressed: () async {
-                                final name = nameController.text.trim();
-                                final memberNames = memberControllers
-                                    .map((c) => c.text.trim())
-                                    .where((n) => n.isNotEmpty)
-                                    .toList();
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        flex: 2,
+                        child: SizedBox(
+                          height: AppScale.size(52),
+                          child: FilledButton(
+                            onPressed: () async {
+                              final name = nameController.text.trim();
 
-                                if (name.isEmpty || memberNames.length < 2) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                          'Enter a household name and at least 2 members'),
-                                    ),
-                                  );
-                                  return;
-                                }
+                              if (name.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Enter a household name'),
+                                  ),
+                                );
+                                return;
+                              }
 
+                              try {
+                                final authUser = Supabase.instance.client.auth.currentUser;
+                                if (authUser == null) return;
+                                final displayName = authUser.userMetadata?['display_name'] as String? ?? name;
+                                final provider = context.read<HouseholdProvider>();
+                                final household = await provider.createHouseholdForUser(name, authUser.id, displayName);
+
+                                // Cloud sync (best-effort)
                                 try {
-                                  final provider = context.read<HouseholdProvider>();
-                                  await provider.createHousehold(name, memberNames);
+                                  final db = await DatabaseHelper.instance.database;
+                                  final uuid = const Uuid();
+                                  final hRemoteId = uuid.v4();
+                                  await Supabase.instance.client.from('households').upsert({
+                                    'id': hRemoteId,
+                                    'name': household.name,
+                                    'currency': household.currency,
+                                  });
+                                  await db.update('households', {'remote_id': hRemoteId},
+                                      where: 'id = ?', whereArgs: [household.id]);
 
-                                  // Cloud-sync the new household and admin member
-                                  final authUser = Supabase.instance.client.auth.currentUser;
-                                  if (authUser != null) {
-                                    final db = await DatabaseHelper.instance.database;
-                                    final uuid = const Uuid();
-
-                                    // Get the household that was just created
-                                    final household = provider.currentHousehold ?? provider.households.last;
-
-                                    // Sync household to cloud
-                                    final hRemoteId = uuid.v4();
-                                    await Supabase.instance.client.from('households').upsert({
-                                      'id': hRemoteId,
-                                      'name': household.name,
-                                      'currency': household.currency,
+                                  final members = await db.query('members',
+                                      where: 'household_id = ?', whereArgs: [household.id]);
+                                  for (final m in members) {
+                                    final mRemoteId = uuid.v4();
+                                    await Supabase.instance.client.from('members').insert({
+                                      'id': mRemoteId,
+                                      'household_id': hRemoteId,
+                                      'name': m['name'],
+                                      'is_admin': (m['is_admin'] as int?) == 1,
+                                      'is_active': true,
+                                      'user_id': authUser.id,
                                     });
-                                    await db.update('households', {'remote_id': hRemoteId},
-                                        where: 'id = ?', whereArgs: [household.id]);
-
-                                    // Sync the admin member to cloud with user_id linked
-                                    final members = await db.query('members',
-                                        where: 'household_id = ?', whereArgs: [household.id]);
-                                    if (members.isNotEmpty) {
-                                      final member = members.first;
-                                      final mRemoteId = uuid.v4();
-                                      await Supabase.instance.client.from('members').insert({
-                                        'id': mRemoteId,
-                                        'household_id': hRemoteId,
-                                        'name': member['name'],
-                                        'user_id': authUser.id,
-                                        'is_admin': true,
-                                        'is_active': true,
-                                      });
-                                      await db.update('members', {'remote_id': mRemoteId},
-                                          where: 'id = ?', whereArgs: [member['id']]);
-                                    }
-
-                                    // Save last household
-                                    final prefs = await SharedPreferences.getInstance();
-                                    await prefs.setInt('last_household_id', household.id!);
+                                    await db.update('members', {'remote_id': mRemoteId},
+                                        where: 'id = ?', whereArgs: [m['id']]);
                                   }
-
-                                  if (sheetContext.mounted) {
-                                    Navigator.pop(sheetContext);
-                                  }
+                                  await provider.loadHouseholds();
                                 } catch (e) {
-                                  if (sheetContext.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                          content: Text('Error: $e'),
-                                          backgroundColor: AppColors.negative),
-                                    );
-                                  }
+                                  debugPrint('Cloud sync failed: $e');
                                 }
-                              },
-                              style: FilledButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(AppRadius.md),
-                                ),
-                                elevation: 0,
+
+                                // Enter household
+                                final updated = provider.households.where((h) => h.id == household.id).first;
+                                await provider.setCurrentHousehold(updated);
+                                await provider.resolveCurrentMember(authUser.id);
+                                final prefs = await SharedPreferences.getInstance();
+                                await prefs.setInt('last_household_id', household.id!);
+
+                                if (sheetContext.mounted) Navigator.pop(sheetContext);
+                                if (context.mounted) {
+                                  context.read<BillProvider>().loadBills(household.id!);
+                                  Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+                                }
+                              } catch (e) {
+                                if (sheetContext.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content: Text('Error: $e'),
+                                        backgroundColor: AppColors.negative),
+                                  );
+                                }
+                              }
+                            },
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.md),
                               ),
-                              child: Text(
-                                'Create',
-                                style: TextStyle(
-                                    fontSize: AppScale.fontSize(16), fontWeight: FontWeight.w600),
-                              ),
+                              elevation: 0,
+                            ),
+                            child: Text(
+                              'Create',
+                              style: TextStyle(
+                                  fontSize: AppScale.fontSize(16), fontWeight: FontWeight.w600),
                             ),
                           ),
                         ),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
