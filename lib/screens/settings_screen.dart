@@ -4,8 +4,6 @@ import '../providers/settings_provider.dart';
 import '../providers/household_provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/member.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../services/passcode_service.dart';
 import '../services/push_notification_service.dart';
 import '../services/notification_service.dart';
 import '../constants.dart';
@@ -32,142 +30,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void dispose() {
     _apiKeyController.dispose();
     super.dispose();
-  }
-
-  void _showPasscodeSetup(BuildContext parentContext) async {
-    final authUser = Supabase.instance.client.auth.currentUser;
-    if (authUser == null) return;
-
-    final passcodeService = PasscodeService();
-    final hasPasscode = await passcodeService.hasPasscode(authUser.id);
-
-    if (!mounted) return;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: EdgeInsets.all(AppScale.padding(24)),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('App Lock',
-                style: TextStyle(
-                  fontSize: AppScale.fontSize(18),
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
-                ),
-              ),
-              SizedBox(height: AppScale.size(16)),
-              if (hasPasscode) ...[
-                ListTile(
-                  leading: Icon(Icons.edit_rounded, color: AppColors.primary),
-                  title: const Text('Change Passcode'),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _setNewPasscode(context, authUser.id);
-                  },
-                ),
-                ListTile(
-                  leading: Icon(Icons.lock_open_rounded, color: AppColors.negative),
-                  title: const Text('Remove Passcode'),
-                  onTap: () async {
-                    Navigator.pop(ctx);
-                    await passcodeService.removePasscode(authUser.id);
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Passcode removed')),
-                      );
-                      setState(() {});
-                    }
-                  },
-                ),
-              ] else ...[
-                ListTile(
-                  leading: Icon(Icons.lock_rounded, color: AppColors.primary),
-                  title: const Text('Set Passcode'),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _setNewPasscode(context, authUser.id);
-                  },
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _setNewPasscode(BuildContext parentContext, String userId) {
-    final controller = TextEditingController();
-    final confirmController = TextEditingController();
-    String? error;
-
-    showDialog(
-      context: parentContext,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Set Passcode'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: controller,
-                keyboardType: TextInputType.number,
-                maxLength: 4,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'Enter 4-digit passcode',
-                  errorText: error,
-                ),
-              ),
-              TextField(
-                controller: confirmController,
-                keyboardType: TextInputType.number,
-                maxLength: 4,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Confirm passcode'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                final code = controller.text.trim();
-                final confirm = confirmController.text.trim();
-                if (code.length != 4) {
-                  setDialogState(() => error = 'Must be 4 digits');
-                  return;
-                }
-                if (code != confirm) {
-                  setDialogState(() => error = 'Passcodes do not match');
-                  return;
-                }
-                await PasscodeService().setPasscode(userId, code);
-                if (ctx.mounted) Navigator.pop(ctx);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Passcode set')),
-                  );
-                  setState(() {});
-                }
-              },
-              child: const Text('Set'),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   void _showRenameDialog(BuildContext context, Member member, HouseholdProvider provider) {
@@ -368,38 +230,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         ),
                                       ),
                                     ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            // App Lock section (replaces old PIN section)
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.lock_rounded,
-                                  size: AppScale.size(18),
-                                  color: AppColors.primary,
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    'App Lock',
-                                    style: TextStyle(
-                                      fontSize: AppScale.fontSize(14),
-                                      fontWeight: FontWeight.w600,
-                                      color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
-                                    ),
-                                  ),
-                                ),
-                                TextButton(
-                                  onPressed: () => _showPasscodeSetup(context),
-                                  child: Text(
-                                    'Configure',
-                                    style: TextStyle(
-                                      color: AppColors.primary,
-                                      fontWeight: FontWeight.w600,
-                                    ),
                                   ),
                                 ),
                               ],
@@ -1032,7 +862,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           notifSvc.unsubscribe();
                           await authProv.signOut();
                           if (context.mounted) {
-                            Navigator.of(context).pushNamedAndRemoveUntil('/onboarding', (route) => false);
+                            Navigator.of(context).pushNamedAndRemoveUntil('/auth', (route) => false);
                           }
                         },
                         icon: Icon(Icons.logout_rounded, color: AppColors.negative, size: AppScale.size(18)),

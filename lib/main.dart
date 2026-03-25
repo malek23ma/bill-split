@@ -23,7 +23,6 @@ import 'screens/quick_review_screen.dart';
 import 'screens/bill_detail_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/recurring_bills_screen.dart';
-import 'screens/onboarding_screen.dart';
 import 'screens/auth_screen.dart';
 import 'screens/invite_screen.dart';
 import 'screens/join_household_screen.dart';
@@ -452,7 +451,6 @@ class BillSplitApp extends StatelessWidget {
         '/bill-detail': (context) => const BillDetailScreen(),
         '/settings': (context) => const SettingsScreen(),
         '/recurring-bills': (context) => const RecurringBillsScreen(),
-        '/onboarding': (context) => const OnboardingScreen(),
         '/auth': (context) => const AuthScreen(),
         '/notifications': (context) => const NotificationsScreen(),
         '/invite': (context) => const InviteScreen(),
