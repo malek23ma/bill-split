@@ -34,22 +34,80 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
 
     final authUser = Supabase.instance.client.auth.currentUser;
     if (authUser != null) {
+      // Auto-sync any local households that don't have remote_id yet
+      await _syncUnsyncedHouseholds(provider, authUser.id);
+
       try {
         // Check cloud: which households does this user belong to?
         final cloudFiltered = await provider.getHouseholdsForUser(authUser.id);
         if (mounted) {
           setState(() {
-            _userHouseholds = cloudFiltered; // May be empty = user has no households
+            _userHouseholds = cloudFiltered;
             _loading = false;
           });
           return;
         }
-      } catch (_) {
-        // Cloud failed — fall back to all local
-      }
+      } catch (_) {}
     }
 
     if (mounted) setState(() { _userHouseholds = provider.households; _loading = false; });
+  }
+
+  /// Sync local households and their members to Supabase if they lack remote_id
+  Future<void> _syncUnsyncedHouseholds(HouseholdProvider provider, String authUserId) async {
+    final db = await DatabaseHelper.instance.database;
+    final supabase = Supabase.instance.client;
+    final uuid = const Uuid();
+
+    for (final household in provider.households) {
+      if (household.remoteId != null && household.remoteId!.length > 8) continue;
+
+      try {
+        // Sync household to cloud
+        final hId = uuid.v4();
+        await supabase.from('households').upsert({
+          'id': hId,
+          'name': household.name,
+          'currency': household.currency,
+        });
+        await db.update('households', {'remote_id': hId},
+            where: 'id = ?', whereArgs: [household.id]);
+
+        // Sync all members in this household
+        final members = await db.query('members',
+            where: 'household_id = ?', whereArgs: [household.id]);
+        for (final m in members) {
+          final mRemoteId = m['remote_id'] as String?;
+          if (mRemoteId != null && mRemoteId.length > 8) continue;
+
+          final mId = uuid.v4();
+          final memberName = m['name'] as String;
+          // Check if this member matches the current auth user by name
+          final profile = await supabase.from('profiles')
+              .select('display_name')
+              .eq('id', authUserId)
+              .maybeSingle();
+          final displayName = profile?['display_name'] as String? ?? '';
+          final isCurrentUser = memberName.toLowerCase() == displayName.toLowerCase();
+
+          await supabase.from('members').upsert({
+            'id': mId,
+            'household_id': hId,
+            'name': memberName,
+            'is_active': (m['is_active'] as int?) == 1,
+            'is_admin': (m['is_admin'] as int?) == 1,
+            if (isCurrentUser) 'user_id': authUserId,
+          });
+          await db.update('members', {'remote_id': mId},
+              where: 'id = ?', whereArgs: [m['id']]);
+        }
+
+        // Reload to pick up new remote_ids
+        await provider.loadHouseholds();
+      } catch (e) {
+        debugPrint('Failed to sync household ${household.name}: $e');
+      }
+    }
   }
 
   @override
