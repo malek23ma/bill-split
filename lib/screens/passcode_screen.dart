@@ -6,7 +6,7 @@ import '../services/passcode_service.dart';
 
 class PasscodeScreen extends StatefulWidget {
   final String userId;
-  final void Function() onSuccess;
+  final VoidCallback onSuccess;
 
   const PasscodeScreen({
     super.key,
@@ -47,10 +47,8 @@ class _PasscodeScreenState extends State<PasscodeScreen>
       _error = false;
     });
     if (_entered.length == 4) {
-      debugPrint('PASSCODE: verifying "$_entered" for userId=${widget.userId}');
       final correct =
           await _passcodeService.verifyPasscode(widget.userId, _entered);
-      debugPrint('PASSCODE: result=$correct');
       if (correct) {
         widget.onSuccess();
       } else {
