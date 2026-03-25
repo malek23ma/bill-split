@@ -690,4 +690,18 @@ class DatabaseHelper implements DataRepository {
     );
     await _enqueueSync('households', id, 'update', {'currency': currency});
   }
+
+  /// Wipe all local data — used on sign-out to prevent cross-user leaks.
+  Future<void> clearAllLocalData() async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('sync_queue');
+      await txn.delete('bill_item_members');
+      await txn.delete('bill_items');
+      await txn.delete('bills');
+      await txn.delete('recurring_bills');
+      await txn.delete('members');
+      await txn.delete('households');
+    });
+  }
 }

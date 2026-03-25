@@ -32,19 +32,119 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
     final provider = context.read<HouseholdProvider>();
     await provider.loadHouseholds();
 
-    // Filter to only households where the current user is a member
     final authUser = Supabase.instance.client.auth.currentUser;
     if (authUser != null) {
       final db = await DatabaseHelper.instance.database;
+
+      // Check if this user has any local households
       final myMemberRows = await db.query('members',
           columns: ['household_id'],
           where: 'user_id = ?',
           whereArgs: [authUser.id]);
-      final myHouseholdIds = myMemberRows.map((r) => r['household_id'] as int).toSet();
-      final filtered = provider.households.where((h) => myHouseholdIds.contains(h.id)).toList();
-      if (mounted) setState(() { _userHouseholds = filtered; _loading = false; });
+
+      // If local is empty, pull from Supabase
+      if (myMemberRows.isEmpty) {
+        await _pullHouseholdsFromCloud(authUser.id);
+        await provider.loadHouseholds();
+        // Re-query after pull
+        final refreshed = await db.query('members',
+            columns: ['household_id'],
+            where: 'user_id = ?',
+            whereArgs: [authUser.id]);
+        final myIds = refreshed.map((r) => r['household_id'] as int).toSet();
+        final filtered = provider.households.where((h) => myIds.contains(h.id)).toList();
+        if (mounted) setState(() { _userHouseholds = filtered; _loading = false; });
+      } else {
+        final myIds = myMemberRows.map((r) => r['household_id'] as int).toSet();
+        final filtered = provider.households.where((h) => myIds.contains(h.id)).toList();
+        if (mounted) setState(() { _userHouseholds = filtered; _loading = false; });
+      }
     } else {
       if (mounted) setState(() { _userHouseholds = provider.households; _loading = false; });
+    }
+  }
+
+  /// Pull user's households and members from Supabase into local SQLite.
+  Future<void> _pullHouseholdsFromCloud(String authUserId) async {
+    try {
+      final supabase = Supabase.instance.client;
+      final db = await DatabaseHelper.instance.database;
+
+      // Find all members rows for this user on Supabase
+      final myMembers = await supabase
+          .from('members')
+          .select('id, household_id, name, is_admin, is_active')
+          .eq('user_id', authUserId);
+
+      for (final memberRow in myMembers) {
+        final remoteHouseholdId = memberRow['household_id'] as String;
+
+        // Check if household already exists locally
+        final existingH = await db.query('households',
+            where: 'remote_id = ?', whereArgs: [remoteHouseholdId]);
+        int localHouseholdId;
+
+        if (existingH.isEmpty) {
+          // Fetch household details from Supabase
+          final hData = await supabase
+              .from('households')
+              .select('id, name, currency')
+              .eq('id', remoteHouseholdId)
+              .maybeSingle();
+          if (hData == null) continue;
+
+          localHouseholdId = await db.insert('households', {
+            'name': hData['name'],
+            'currency': hData['currency'] ?? 'TRY',
+            'created_at': DateTime.now().toIso8601String(),
+            'remote_id': remoteHouseholdId,
+          });
+        } else {
+          localHouseholdId = existingH.first['id'] as int;
+        }
+
+        // Insert this user's member record locally
+        final remoteMemberId = memberRow['id'] as String;
+        final existingM = await db.query('members',
+            where: 'remote_id = ?', whereArgs: [remoteMemberId]);
+        if (existingM.isEmpty) {
+          await db.insert('members', {
+            'household_id': localHouseholdId,
+            'name': memberRow['name'],
+            'is_admin': (memberRow['is_admin'] == true) ? 1 : 0,
+            'is_active': (memberRow['is_active'] == true) ? 1 : 0,
+            'user_id': authUserId,
+            'remote_id': remoteMemberId,
+            'created_at': DateTime.now().toIso8601String(),
+          });
+        }
+
+        // Also pull other members of this household
+        final otherMembers = await supabase
+            .from('members')
+            .select('id, name, is_admin, is_active, user_id')
+            .eq('household_id', remoteHouseholdId)
+            .neq('user_id', authUserId);
+
+        for (final other in otherMembers) {
+          final otherRemoteId = other['id'] as String;
+          final existingOther = await db.query('members',
+              where: 'remote_id = ?', whereArgs: [otherRemoteId]);
+          if (existingOther.isEmpty) {
+            await db.insert('members', {
+              'household_id': localHouseholdId,
+              'name': other['name'],
+              'is_admin': (other['is_admin'] == true) ? 1 : 0,
+              'is_active': (other['is_active'] == true) ? 1 : 0,
+              'user_id': other['user_id'],
+              'remote_id': otherRemoteId,
+              'created_at': DateTime.now().toIso8601String(),
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to pull households from cloud: $e');
     }
   }
 

@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../database/database_helper.dart';
 import '../services/auth_service.dart';
 
 class AuthProvider extends ChangeNotifier {
@@ -126,6 +128,10 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    // Wipe local data so next user doesn't see this user's households
+    await DatabaseHelper.instance.clearAllLocalData();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('last_household_id');
     await _authService.signOut();
     _user = null;
     notifyListeners();
