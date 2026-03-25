@@ -118,16 +118,29 @@ class HouseholdProvider extends ChangeNotifier {
       if (remoteHouseholdId != null && remoteHouseholdId.length > 8) {
         final remoteMember = await supabase
             .from('members')
-            .select('id')
+            .select('id, name')
             .eq('household_id', remoteHouseholdId)
             .eq('user_id', authUserId)
             .maybeSingle();
         if (remoteMember != null) {
           final remoteId = remoteMember['id'] as String;
-          final match = _members.where((m) => m.remoteId == remoteId).firstOrNull;
+          final remoteName = remoteMember['name'] as String?;
+          // Try matching by remote_id first, then by name
+          var match = _members.where((m) => m.remoteId == remoteId).firstOrNull;
+          match ??= _members.where((m) =>
+              remoteName != null && m.name.toLowerCase() == remoteName.toLowerCase()
+          ).firstOrNull;
           if (match != null) {
             _currentMember = match;
             notifyListeners();
+            // Fix: update local remote_id if it was missing
+            if (match.remoteId != remoteId) {
+              try {
+                final db = await _db.database;
+                await db.update('members', {'remote_id': remoteId},
+                    where: 'id = ?', whereArgs: [match.id]);
+              } catch (_) {}
+            }
             return match;
           }
         }
