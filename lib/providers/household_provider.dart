@@ -110,6 +110,8 @@ class HouseholdProvider extends ChangeNotifier {
   /// Tries cloud lookup first, then falls back to matching by display name.
   Future<Member?> resolveCurrentMember(String authUserId) async {
     if (_currentHousehold == null) return null;
+    debugPrint('RESOLVE: authUserId=$authUserId, household=${_currentHousehold!.name}, remoteId=${_currentHousehold!.remoteId}');
+    debugPrint('RESOLVE: local members: ${_members.map((m) => '${m.name}(id=${m.id},remote=${m.remoteId},active=${m.isActive})').join(', ')}');
 
     // Strategy 1: Cloud lookup by user_id
     try {
@@ -130,6 +132,37 @@ class HouseholdProvider extends ChangeNotifier {
           match ??= _members.where((m) =>
               remoteName != null && m.name.toLowerCase() == remoteName.toLowerCase()
           ).firstOrNull;
+
+          // Check if member exists locally but is inactive (soft-deleted)
+          if (match == null && remoteName != null) {
+            final db = await _db.database;
+            final inactiveRows = await db.query('members',
+                where: 'household_id = ? AND name = ? AND is_active = 0',
+                whereArgs: [_currentHousehold!.id, remoteName]);
+            if (inactiveRows.isNotEmpty) {
+              // Reactivate the soft-deleted member
+              await db.update('members', {'is_active': 1, 'remote_id': remoteId},
+                  where: 'id = ?', whereArgs: [inactiveRows.first['id']]);
+              _members = await _db.getMembersByHousehold(_currentHousehold!.id!);
+              match = _members.where((m) => m.name.toLowerCase() == remoteName.toLowerCase()).firstOrNull;
+            }
+          }
+
+          // If still no match, create a new local member
+          if (match == null && remoteName != null) {
+            final db = await _db.database;
+            final newId = await db.insert('members', {
+              'household_id': _currentHousehold!.id,
+              'name': remoteName,
+              'is_active': 1,
+              'is_admin': 0,
+              'remote_id': remoteId,
+              'created_at': DateTime.now().toIso8601String(),
+            });
+            _members = await _db.getMembersByHousehold(_currentHousehold!.id!);
+            match = _members.where((m) => m.id == newId).firstOrNull;
+          }
+
           if (match != null) {
             _currentMember = match;
             notifyListeners();
