@@ -31,7 +31,21 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
   Future<void> _loadHouseholds() async {
     final provider = context.read<HouseholdProvider>();
     await provider.loadHouseholds();
-    if (mounted) setState(() { _userHouseholds = provider.households; _loading = false; });
+
+    // Filter to only households where the current user is a member
+    final authUser = Supabase.instance.client.auth.currentUser;
+    if (authUser != null) {
+      final db = await DatabaseHelper.instance.database;
+      final myMemberRows = await db.query('members',
+          columns: ['household_id'],
+          where: 'user_id = ?',
+          whereArgs: [authUser.id]);
+      final myHouseholdIds = myMemberRows.map((r) => r['household_id'] as int).toSet();
+      final filtered = provider.households.where((h) => myHouseholdIds.contains(h.id)).toList();
+      if (mounted) setState(() { _userHouseholds = filtered; _loading = false; });
+    } else {
+      if (mounted) setState(() { _userHouseholds = provider.households; _loading = false; });
+    }
   }
 
   @override
@@ -82,20 +96,45 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
         ),
       ),
       floatingActionButton: households.isNotEmpty
-          ? FloatingActionButton.extended(
-              onPressed: () => _showCreateSheet(context),
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              highlightElevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.full),
-              ),
-              icon: const Icon(Icons.add_rounded),
-              label: const Text(
-                'New',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                FloatingActionButton.extended(
+                  heroTag: 'join',
+                  onPressed: () => Navigator.pushNamed(context, '/join-household'),
+                  backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
+                  foregroundColor: AppColors.primary,
+                  elevation: 0,
+                  highlightElevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.full),
+                    side: BorderSide(color: isDark ? AppColors.darkDivider : AppColors.divider),
+                  ),
+                  icon: const Icon(Icons.group_add_rounded),
+                  label: const Text(
+                    'Join',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                FloatingActionButton.extended(
+                  heroTag: 'create',
+                  onPressed: () => _showCreateSheet(context),
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  highlightElevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.full),
+                  ),
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text(
+                    'New',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
             )
           : null,
     );
