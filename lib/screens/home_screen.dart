@@ -45,8 +45,9 @@ class _HomeScreenState extends State<HomeScreen> {
         context.read<RecurringBillProvider>().loadDueBills(householdId);
       }
       // Reload notifications and resubscribe for current user
+      final householdRemoteId = context.read<HouseholdProvider>().currentHousehold?.remoteId;
       final notifService = context.read<NotificationService>();
-      notifService.loadNotifications();
+      notifService.loadNotifications(householdId: householdRemoteId);
       notifService.subscribeToRealtime();
     }
   }

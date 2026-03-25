@@ -13,14 +13,18 @@ class NotificationService extends ChangeNotifier {
   List<Map<String, dynamic>> get notifications => _notifications;
   int get unreadCount => _unreadCount;
 
-  Future<void> loadNotifications() async {
+  Future<void> loadNotifications({String? householdId}) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return;
     try {
-      _notifications = await _client
+      var query = _client
           .from('notifications')
           .select()
-          .eq('recipient_user_id', userId)
+          .eq('recipient_user_id', userId);
+      if (householdId != null) {
+        query = query.eq('household_id', householdId);
+      }
+      _notifications = await query
           .order('created_at', ascending: false)
           .limit(50);
       _unreadCount = _notifications.where((n) => n['read'] == false).length;
@@ -92,14 +96,18 @@ class NotificationService extends ChangeNotifier {
     }
   }
 
-  Future<void> markAllAsRead() async {
+  Future<void> markAllAsRead({String? householdId}) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return;
-    await _client
+    var query = _client
         .from('notifications')
         .update({'read': true})
         .eq('recipient_user_id', userId)
         .eq('read', false);
+    if (householdId != null) {
+      query = query.eq('household_id', householdId);
+    }
+    await query;
     for (int i = 0; i < _notifications.length; i++) {
       _notifications[i] = {..._notifications[i], 'read': true};
     }

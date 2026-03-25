@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../constants.dart';
 import '../database/database_helper.dart';
 import '../providers/bill_provider.dart';
+import '../providers/household_provider.dart';
 import '../services/notification_service.dart';
 import '../services/settlement_service.dart';
 
@@ -32,8 +33,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     super.initState();
     // Reload notifications fresh each time this screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final householdRemoteId = context.read<HouseholdProvider>().currentHousehold?.remoteId;
       final svc = context.read<NotificationService>();
-      svc.loadNotifications();
+      svc.loadNotifications(householdId: householdRemoteId);
       svc.subscribeToRealtime();
     });
   }
@@ -216,7 +218,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               size: AppScale.size(22),
             ),
             tooltip: 'Mark all read',
-            onPressed: () => notificationService.markAllAsRead(),
+            onPressed: () {
+              final householdRemoteId = context.read<HouseholdProvider>().currentHousehold?.remoteId;
+              notificationService.markAllAsRead(householdId: householdRemoteId);
+            },
           ),
         ],
       ),
