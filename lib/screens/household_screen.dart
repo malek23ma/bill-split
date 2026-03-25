@@ -19,17 +19,44 @@ class HouseholdScreen extends StatefulWidget {
 }
 
 class _HouseholdScreenState extends State<HouseholdScreen> {
+  List<Household>? _userHouseholds;
+  bool _loading = true;
+
   @override
   void initState() {
     super.initState();
-    context.read<HouseholdProvider>().loadHouseholds();
+    _loadHouseholds();
+  }
+
+  Future<void> _loadHouseholds() async {
+    final provider = context.read<HouseholdProvider>();
+    await provider.loadHouseholds();
+
+    final authUser = Supabase.instance.client.auth.currentUser;
+    if (authUser != null) {
+      try {
+        // Check cloud: which households does this user belong to?
+        final cloudFiltered = await provider.getHouseholdsForUser(authUser.id);
+        if (mounted) {
+          setState(() {
+            _userHouseholds = cloudFiltered; // May be empty = user has no households
+            _loading = false;
+          });
+          return;
+        }
+      } catch (_) {
+        // Cloud failed — fall back to all local
+      }
+    }
+
+    if (mounted) setState(() { _userHouseholds = provider.households; _loading = false; });
   }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<HouseholdProvider>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final households = provider.households;
+    final households = _loading ? <Household>[] : (_userHouseholds ?? provider.households);
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
