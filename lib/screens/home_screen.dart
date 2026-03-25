@@ -834,7 +834,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final authUser = Supabase.instance.client.auth.currentUser;
     if (authUser == null) return;
 
-    final userHouseholds = await householdProvider.getHouseholdsForUser(authUser.id);
+    await householdProvider.loadHouseholds();
+    final userHouseholds = householdProvider.households;
     if (!mounted) return;
 
     showModalBottomSheet(

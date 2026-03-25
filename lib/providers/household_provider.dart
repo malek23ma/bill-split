@@ -106,14 +106,20 @@ class HouseholdProvider extends ChangeNotifier {
     await loadHouseholds();
   }
 
-  /// Auto-set currentMember by matching auth user_id to a member in the household.
-  /// Tries cloud lookup first, then falls back to matching by display name.
+  /// Resolve which member the current auth user is in the active household.
+  /// Local user_id lookup first, cloud fallback for first-time sync.
   Future<Member?> resolveCurrentMember(String authUserId) async {
     if (_currentHousehold == null) return null;
-    debugPrint('RESOLVE: authUserId=$authUserId, household=${_currentHousehold!.name}, remoteId=${_currentHousehold!.remoteId}');
-    debugPrint('RESOLVE: local members: ${_members.map((m) => '${m.name}(id=${m.id},remote=${m.remoteId},active=${m.isActive})').join(', ')}');
 
-    // Strategy 1: Cloud lookup by user_id
+    // Strategy 1: Local lookup by user_id (instant, works offline)
+    var match = _members.where((m) => m.userId == authUserId).firstOrNull;
+    if (match != null) {
+      _currentMember = match;
+      notifyListeners();
+      return match;
+    }
+
+    // Strategy 2: Cloud lookup (first-time on new device)
     try {
       final supabase = Supabase.instance.client;
       final remoteHouseholdId = _currentHousehold!.remoteId;
@@ -127,28 +133,12 @@ class HouseholdProvider extends ChangeNotifier {
         if (remoteMember != null) {
           final remoteId = remoteMember['id'] as String;
           final remoteName = remoteMember['name'] as String?;
-          // Try matching by remote_id first, then by name
-          var match = _members.where((m) => m.remoteId == remoteId).firstOrNull;
+          match = _members.where((m) => m.remoteId == remoteId).firstOrNull;
           match ??= _members.where((m) =>
               remoteName != null && m.name.toLowerCase() == remoteName.toLowerCase()
           ).firstOrNull;
 
-          // Check if member exists locally but is inactive (soft-deleted)
-          if (match == null && remoteName != null) {
-            final db = await _db.database;
-            final inactiveRows = await db.query('members',
-                where: 'household_id = ? AND name = ? AND is_active = 0',
-                whereArgs: [_currentHousehold!.id, remoteName]);
-            if (inactiveRows.isNotEmpty) {
-              // Reactivate the soft-deleted member
-              await db.update('members', {'is_active': 1, 'remote_id': remoteId},
-                  where: 'id = ?', whereArgs: [inactiveRows.first['id']]);
-              _members = await _db.getMembersByHousehold(_currentHousehold!.id!);
-              match = _members.where((m) => m.name.toLowerCase() == remoteName.toLowerCase()).firstOrNull;
-            }
-          }
-
-          // If still no match, create a new local member
+          // Create local member if exists on cloud but not locally
           if (match == null && remoteName != null) {
             final db = await _db.database;
             final newId = await db.insert('members', {
@@ -157,6 +147,7 @@ class HouseholdProvider extends ChangeNotifier {
               'is_active': 1,
               'is_admin': 0,
               'remote_id': remoteId,
+              'user_id': authUserId,
               'created_at': DateTime.now().toIso8601String(),
             });
             _members = await _db.getMembersByHousehold(_currentHousehold!.id!);
@@ -166,12 +157,14 @@ class HouseholdProvider extends ChangeNotifier {
           if (match != null) {
             _currentMember = match;
             notifyListeners();
-            // Fix: update local remote_id if it was missing
-            if (match.remoteId != remoteId) {
+            // Persist user_id locally if missing
+            if (match.userId != authUserId) {
               try {
                 final db = await _db.database;
-                await db.update('members', {'remote_id': remoteId},
-                    where: 'id = ?', whereArgs: [match.id]);
+                final updates = <String, dynamic>{'user_id': authUserId};
+                if (match.remoteId != remoteId) updates['remote_id'] = remoteId;
+                await db.update('members', updates, where: 'id = ?', whereArgs: [match.id]);
+                _members = await _db.getMembersByHousehold(_currentHousehold!.id!);
               } catch (_) {}
             }
             return match;
@@ -179,100 +172,7 @@ class HouseholdProvider extends ChangeNotifier {
         }
       }
     } catch (_) {}
-
-    // Strategy 2: Match by display name from auth profile (cloud)
-    try {
-      final supabase = Supabase.instance.client;
-      final profile = await supabase
-          .from('profiles')
-          .select('display_name')
-          .eq('id', authUserId)
-          .maybeSingle();
-      if (profile != null) {
-        final displayName = profile['display_name'] as String?;
-        if (displayName != null) {
-          final match = _members.where(
-            (m) => m.name.toLowerCase() == displayName.toLowerCase()
-          ).firstOrNull;
-          if (match != null) {
-            _currentMember = match;
-            notifyListeners();
-            // Also link this member to the auth user in the cloud for future lookups
-            if (match.remoteId != null && match.remoteId!.length > 8) {
-              try {
-                await supabase.from('members').update({'user_id': authUserId}).eq('id', match.remoteId!);
-              } catch (_) {}
-            }
-            return match;
-          }
-        }
-      }
-    } catch (_) {}
-
-    // Strategy 3: Match by display name from auth metadata (local, no network needed)
-    try {
-      final user = Supabase.instance.client.auth.currentUser;
-      final metaName = user?.userMetadata?['display_name'] as String?;
-      final email = user?.email;
-      // Try metadata display_name first
-      if (metaName != null) {
-        final match = _members.where(
-          (m) => m.name.toLowerCase() == metaName.toLowerCase()
-        ).firstOrNull;
-        if (match != null) {
-          _currentMember = match;
-          notifyListeners();
-          return match;
-        }
-      }
-      // Try email username as fallback (e.g., "malek23almously" from email)
-      if (email != null) {
-        final emailName = email.split('@').first.toLowerCase();
-        final match = _members.where(
-          (m) => m.name.toLowerCase().contains(emailName) || emailName.contains(m.name.toLowerCase())
-        ).firstOrNull;
-        if (match != null) {
-          _currentMember = match;
-          notifyListeners();
-          return match;
-        }
-      }
-    } catch (_) {}
-
-    // Strategy 4: If there's only one member, assume it's the current user
-    if (_members.length == 1) {
-      _currentMember = _members.first;
-      notifyListeners();
-      return _members.first;
-    }
-
-    // Strategy 5: If there's an admin member, assume it's the current user
-    final admin = _members.where((m) => m.isAdmin).firstOrNull;
-    if (admin != null && _members.length <= 2) {
-      _currentMember = admin;
-      notifyListeners();
-      return admin;
-    }
 
     return null;
-  }
-
-  /// Get only households where the current auth user is a member
-  Future<List<Household>> getHouseholdsForUser(String authUserId) async {
-    try {
-      final supabase = Supabase.instance.client;
-      final memberRows = await supabase
-          .from('members')
-          .select('household_id')
-          .eq('user_id', authUserId);
-      final remoteHouseholdIds = memberRows
-          .map((r) => r['household_id'] as String)
-          .toSet();
-      return _households
-          .where((h) => h.remoteId != null && remoteHouseholdIds.contains(h.remoteId))
-          .toList();
-    } catch (_) {
-      return _households;
-    }
   }
 }
