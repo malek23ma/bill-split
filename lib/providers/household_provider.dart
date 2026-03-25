@@ -134,7 +134,7 @@ class HouseholdProvider extends ChangeNotifier {
       }
     } catch (_) {}
 
-    // Strategy 2: Match by display name from auth profile
+    // Strategy 2: Match by display name from auth profile (cloud)
     try {
       final supabase = Supabase.instance.client;
       final profile = await supabase
@@ -163,11 +163,49 @@ class HouseholdProvider extends ChangeNotifier {
       }
     } catch (_) {}
 
-    // Strategy 3: If there's only one member and it's the admin, assume it's the current user
+    // Strategy 3: Match by display name from auth metadata (local, no network needed)
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      final metaName = user?.userMetadata?['display_name'] as String?;
+      final email = user?.email;
+      // Try metadata display_name first
+      if (metaName != null) {
+        final match = _members.where(
+          (m) => m.name.toLowerCase() == metaName.toLowerCase()
+        ).firstOrNull;
+        if (match != null) {
+          _currentMember = match;
+          notifyListeners();
+          return match;
+        }
+      }
+      // Try email username as fallback (e.g., "malek23almously" from email)
+      if (email != null) {
+        final emailName = email.split('@').first.toLowerCase();
+        final match = _members.where(
+          (m) => m.name.toLowerCase().contains(emailName) || emailName.contains(m.name.toLowerCase())
+        ).firstOrNull;
+        if (match != null) {
+          _currentMember = match;
+          notifyListeners();
+          return match;
+        }
+      }
+    } catch (_) {}
+
+    // Strategy 4: If there's only one member, assume it's the current user
     if (_members.length == 1) {
       _currentMember = _members.first;
       notifyListeners();
       return _members.first;
+    }
+
+    // Strategy 5: If there's an admin member, assume it's the current user
+    final admin = _members.where((m) => m.isAdmin).firstOrNull;
+    if (admin != null && _members.length <= 2) {
+      _currentMember = admin;
+      notifyListeners();
+      return admin;
     }
 
     return null;
