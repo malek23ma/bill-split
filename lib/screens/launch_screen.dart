@@ -36,10 +36,33 @@ class _LaunchScreenState extends State<LaunchScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => PasscodeScreen(
+          builder: (passcodeContext) => PasscodeScreen(
             userId: authUser.id,
-            onSuccess: () {
-              _navigateAfterAuth(authUser);
+            onSuccess: () async {
+              // Navigate from passcode screen's context
+              final prefs = await SharedPreferences.getInstance();
+              final lastId = prefs.getInt('last_household_id');
+
+              if (lastId != null && passcodeContext.mounted) {
+                final provider = passcodeContext.read<HouseholdProvider>();
+                await provider.loadHouseholds();
+                final household = provider.households.where((h) => h.id == lastId).firstOrNull;
+
+                if (household != null) {
+                  await provider.setCurrentHousehold(household);
+                  final member = await provider.resolveCurrentMember(authUser.id);
+
+                  if (member != null && passcodeContext.mounted) {
+                    passcodeContext.read<BillProvider>().loadBills(lastId);
+                    Navigator.pushReplacementNamed(passcodeContext, '/home');
+                    return;
+                  }
+                }
+              }
+
+              if (passcodeContext.mounted) {
+                Navigator.pushReplacementNamed(passcodeContext, '/households');
+              }
             },
           ),
         ),
