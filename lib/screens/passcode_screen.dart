@@ -29,7 +29,7 @@ class _PasscodeScreenState extends State<PasscodeScreen>
   void initState() {
     super.initState();
     _shakeController = AnimationController(
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 400),
       vsync: this,
     );
   }
@@ -53,10 +53,13 @@ class _PasscodeScreenState extends State<PasscodeScreen>
         widget.onSuccess();
       } else {
         _shakeController.forward(from: 0);
-        setState(() {
-          _error = true;
-          _entered = '';
-        });
+        await Future.delayed(const Duration(milliseconds: 400));
+        if (mounted) {
+          setState(() {
+            _error = true;
+            _entered = '';
+          });
+        }
       }
     }
   }
@@ -72,12 +75,15 @@ class _PasscodeScreenState extends State<PasscodeScreen>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final keySize = AppScale.size(64);
+
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
-            const Spacer(),
+            const Spacer(flex: 2),
+            // Lock icon
             Icon(Icons.lock_rounded,
                 size: AppScale.size(48), color: AppColors.primary),
             SizedBox(height: AppScale.size(16)),
@@ -86,8 +92,7 @@ class _PasscodeScreenState extends State<PasscodeScreen>
               style: TextStyle(
                 fontSize: AppScale.fontSize(20),
                 fontWeight: FontWeight.w700,
-                color:
-                    isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
               ),
             ),
             SizedBox(height: AppScale.size(32)),
@@ -95,10 +100,10 @@ class _PasscodeScreenState extends State<PasscodeScreen>
             AnimatedBuilder(
               animation: _shakeController,
               builder: (context, child) {
-                final sineValue =
-                    sin(_shakeController.value * pi * 4);
                 final offset = _shakeController.isAnimating
-                    ? sineValue * 8.0 * (1 - _shakeController.value)
+                    ? sin(_shakeController.value * pi * 4) *
+                        8.0 *
+                        (1 - _shakeController.value)
                     : 0.0;
                 return Transform.translate(
                   offset: Offset(offset, 0),
@@ -109,11 +114,11 @@ class _PasscodeScreenState extends State<PasscodeScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(4, (i) {
                   final filled = i < _entered.length;
-                  return Container(
-                    margin: EdgeInsets.symmetric(
-                        horizontal: AppScale.padding(8)),
-                    width: AppScale.size(16),
-                    height: AppScale.size(16),
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    margin: EdgeInsets.symmetric(horizontal: AppScale.padding(10)),
+                    width: AppScale.size(18),
+                    height: AppScale.size(18),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: filled
@@ -122,9 +127,11 @@ class _PasscodeScreenState extends State<PasscodeScreen>
                       border: Border.all(
                         color: _error
                             ? AppColors.negative
-                            : (isDark
-                                ? AppColors.darkTextSecondary
-                                : AppColors.textTertiary),
+                            : (filled
+                                ? AppColors.primary
+                                : (isDark
+                                    ? AppColors.darkTextSecondary
+                                    : AppColors.textTertiary)),
                         width: 2,
                       ),
                     ),
@@ -138,61 +145,39 @@ class _PasscodeScreenState extends State<PasscodeScreen>
                 child: Text(
                   'Wrong passcode',
                   style: TextStyle(
-                      color: AppColors.negative,
-                      fontSize: AppScale.fontSize(13)),
+                    color: AppColors.negative,
+                    fontSize: AppScale.fontSize(13),
+                  ),
                 ),
               ),
-            const Spacer(),
+            const Spacer(flex: 1),
             // Number pad
             Padding(
-              padding:
-                  EdgeInsets.symmetric(horizontal: AppScale.padding(40)),
+              padding: EdgeInsets.symmetric(horizontal: AppScale.padding(32)),
               child: Column(
                 children: [
-                  for (int row = 0; row < 4; row++)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        if (row < 3)
-                          for (int col = 0; col < 3; col++)
-                            _buildKey(row * 3 + col + 1, isDark),
-                        if (row == 3) ...[
-                          const SizedBox(width: 64, height: 64),
-                          _buildKey(0, isDark),
-                          _buildBackspaceKey(isDark),
-                        ],
-                      ],
-                    ),
+                  // Row 1: 1, 2, 3
+                  _buildKeyRow([1, 2, 3], isDark, keySize),
+                  // Row 2: 4, 5, 6
+                  _buildKeyRow([4, 5, 6], isDark, keySize),
+                  // Row 3: 7, 8, 9
+                  _buildKeyRow([7, 8, 9], isDark, keySize),
+                  // Row 4: empty, 0, backspace
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      SizedBox(width: keySize, height: keySize),
+                      _buildKey(0, isDark, keySize),
+                      _buildBackspaceKey(isDark, keySize),
+                    ],
+                  ),
                 ],
               ),
             ),
             SizedBox(height: AppScale.size(16)),
+            // Forgot passcode
             TextButton(
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('Forgot Passcode?'),
-                    content: const Text(
-                        'You need to sign out and sign back in to reset your passcode.'),
-                    actions: [
-                      TextButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          child: const Text('Cancel')),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          Supabase.instance.client.auth.signOut();
-                          Navigator.pushNamedAndRemoveUntil(
-                              context, '/auth', (route) => false);
-                        },
-                        child: Text('Sign Out',
-                            style: TextStyle(color: AppColors.negative)),
-                      ),
-                    ],
-                  ),
-                );
-              },
+              onPressed: _showForgotDialog,
               child: Text(
                 'Forgot passcode? Sign out',
                 style: TextStyle(
@@ -203,48 +188,89 @@ class _PasscodeScreenState extends State<PasscodeScreen>
                 ),
               ),
             ),
-            SizedBox(height: AppScale.size(24)),
+            SizedBox(height: AppScale.size(16)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildKey(int digit, bool isDark) {
-    return GestureDetector(
-      onTap: () => _onDigit(digit),
-      child: Container(
-        width: 64,
-        height: 64,
-        margin: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: isDark ? AppColors.darkSurface : AppColors.surface,
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          '$digit',
-          style: TextStyle(
-            fontSize: AppScale.fontSize(24),
-            fontWeight: FontWeight.w600,
-            color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+  Widget _buildKeyRow(List<int> digits, bool isDark, double keySize) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: digits.map((d) => _buildKey(d, isDark, keySize)).toList(),
+    );
+  }
+
+  Widget _buildKey(int digit, bool isDark, double keySize) {
+    return Padding(
+      padding: const EdgeInsets.all(6),
+      child: Material(
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
+        shape: const CircleBorder(),
+        child: InkWell(
+          onTap: () => _onDigit(digit),
+          customBorder: const CircleBorder(),
+          child: SizedBox(
+            width: keySize,
+            height: keySize,
+            child: Center(
+              child: Text(
+                '$digit',
+                style: TextStyle(
+                  fontSize: AppScale.fontSize(24),
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                ),
+              ),
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildBackspaceKey(bool isDark) {
-    return GestureDetector(
-      onTap: _onBackspace,
-      child: Container(
-        width: 64,
-        height: 64,
-        margin: const EdgeInsets.all(8),
-        alignment: Alignment.center,
-        child: Icon(Icons.backspace_outlined,
-            color:
-                isDark ? AppColors.darkTextSecondary : AppColors.textTertiary),
+  Widget _buildBackspaceKey(bool isDark, double keySize) {
+    return Padding(
+      padding: const EdgeInsets.all(6),
+      child: InkWell(
+        onTap: _onBackspace,
+        customBorder: const CircleBorder(),
+        child: SizedBox(
+          width: keySize,
+          height: keySize,
+          child: Center(
+            child: Icon(Icons.backspace_outlined,
+                size: AppScale.size(24),
+                color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showForgotDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Forgot Passcode?'),
+        content: const Text(
+            'You need to sign out and sign back in to reset your passcode.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Supabase.instance.client.auth.signOut();
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/auth', (route) => false);
+            },
+            child: Text('Sign Out',
+                style: TextStyle(color: AppColors.negative)),
+          ),
+        ],
       ),
     );
   }
