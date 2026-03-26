@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:uuid/uuid.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../database/database_helper.dart';
 import '../models/bill.dart';
 import '../models/bill_filter.dart';
@@ -231,7 +233,98 @@ class BillProvider extends ChangeNotifier {
       await _db.insertBillItems(itemsWithBillId);
     }
 
+    // Push bill directly to Supabase (don't rely on sync queue)
+    await _pushBillToCloud(billId, bill.householdId);
+
     await loadBills(bill.householdId);
+  }
+
+  /// Push a bill + its items directly to Supabase.
+  Future<void> _pushBillToCloud(int localBillId, int householdId) async {
+    try {
+      final db = await _db.database;
+      final supabase = Supabase.instance.client;
+      const uuid = Uuid();
+
+      // Resolve household remote_id
+      final hRows = await db.query('households',
+          columns: ['remote_id'], where: 'id = ?', whereArgs: [householdId]);
+      if (hRows.isEmpty || hRows.first['remote_id'] == null) return;
+      final householdRemoteId = hRows.first['remote_id'] as String;
+
+      // Resolve member remote_ids
+      Future<String?> memberRemoteId(int localId) async {
+        final rows = await db.query('members',
+            columns: ['remote_id'], where: 'id = ?', whereArgs: [localId]);
+        return rows.isNotEmpty ? rows.first['remote_id'] as String? : null;
+      }
+
+      // Read bill
+      final billRows = await db.query('bills', where: 'id = ?', whereArgs: [localBillId]);
+      if (billRows.isEmpty) return;
+      final bill = billRows.first;
+
+      final billRemoteId = uuid.v4();
+      final enteredBy = await memberRemoteId(bill['entered_by_member_id'] as int);
+      final paidBy = await memberRemoteId(bill['paid_by_member_id'] as int);
+      if (enteredBy == null || paidBy == null) return;
+
+      String? receiverBy;
+      if (bill['receiver_member_id'] != null) {
+        receiverBy = await memberRemoteId(bill['receiver_member_id'] as int);
+      }
+
+      await supabase.from('bills').insert({
+        'id': billRemoteId,
+        'household_id': householdRemoteId,
+        'entered_by_member_id': enteredBy,
+        'paid_by_member_id': paidBy,
+        'bill_type': bill['bill_type'],
+        'total_amount': bill['total_amount'],
+        'bill_date': bill['bill_date'],
+        'category': bill['category'],
+        if (receiverBy != null) 'receiver_member_id': receiverBy,
+        if (bill['photo_url'] != null) 'photo_url': bill['photo_url']!,
+      });
+
+      // Save remote_id locally
+      await db.update('bills', {'remote_id': billRemoteId},
+          where: 'id = ?', whereArgs: [localBillId]);
+
+      // Push bill items
+      final items = await db.query('bill_items',
+          where: 'bill_id = ?', whereArgs: [localBillId]);
+      for (final item in items) {
+        final itemRemoteId = uuid.v4();
+        await supabase.from('bill_items').insert({
+          'id': itemRemoteId,
+          'bill_id': billRemoteId,
+          'name': item['name'],
+          'price': item['price'],
+          'is_included': (item['is_included'] as int?) == 1,
+        });
+        await db.update('bill_items', {'remote_id': itemRemoteId},
+            where: 'id = ?', whereArgs: [item['id']]);
+
+        // Push bill_item_members
+        final bimRows = await db.query('bill_item_members',
+            where: 'bill_item_id = ?', whereArgs: [item['id']]);
+        for (final bim in bimRows) {
+          final memberRid = await memberRemoteId(bim['member_id'] as int);
+          if (memberRid == null) continue;
+          final bimRemoteId = uuid.v4();
+          await supabase.from('bill_item_members').insert({
+            'id': bimRemoteId,
+            'bill_item_id': itemRemoteId,
+            'member_id': memberRid,
+          });
+          await db.update('bill_item_members', {'remote_id': bimRemoteId},
+              where: 'id = ?', whereArgs: [bim['id']]);
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to push bill to cloud: $e');
+    }
   }
 
   Future<void> settleUp({
