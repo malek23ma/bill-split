@@ -42,6 +42,12 @@ class _HomeScreenState extends State<HomeScreen> {
       final householdId =
           context.read<HouseholdProvider>().currentHousehold?.id;
       if (householdId != null) {
+        // Sync from cloud, then reload bills
+        context.read<SyncService>().sync(householdId).then((_) {
+          if (mounted) {
+            context.read<BillProvider>().loadBills(householdId);
+          }
+        });
         context.read<RecurringBillProvider>().loadDueBills(householdId);
       }
       // Reload notifications and resubscribe for current user

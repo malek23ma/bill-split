@@ -8,6 +8,7 @@ import '../providers/auth_provider.dart';
 import '../providers/bill_provider.dart';
 import '../models/household.dart';
 import '../database/database_helper.dart';
+import '../services/sync_service.dart';
 import '../constants.dart';
 import '../widgets/scale_tap.dart';
 
@@ -380,8 +381,11 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                       if (authUser != null && context.mounted) {
                         final member = await provider.resolveCurrentMember(authUser.id);
                         if (member != null && context.mounted) {
-                          context.read<BillProvider>().loadBills(provider.currentHousehold!.id!);
-                          // Save last used household
+                          // Sync from cloud first, then load bills
+                          await context.read<SyncService>().sync(household.id!);
+                          if (context.mounted) {
+                            context.read<BillProvider>().loadBills(provider.currentHousehold!.id!);
+                          }
                           final prefs = await SharedPreferences.getInstance();
                           await prefs.setInt('last_household_id', household.id!);
                           if (context.mounted) {
