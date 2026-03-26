@@ -64,7 +64,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final householdProvider = context.watch<HouseholdProvider>();
     final billProvider = context.watch<BillProvider>();
-    final currentMember = householdProvider.currentMember;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -115,17 +114,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 Builder(
                   builder: (context) {
                     final syncService = context.watch<SyncService>();
-                    if (syncService.syncing) {
-                      return Padding(
+                    return AnimatedOpacity(
+                      opacity: syncService.syncing ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 200),
+                      child: Padding(
                         padding: EdgeInsets.symmetric(horizontal: AppScale.padding(8)),
                         child: SizedBox(
                           width: AppScale.size(18),
                           height: AppScale.size(18),
                           child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
                         ),
-                      );
-                    }
-                    return const SizedBox.shrink();
+                      ),
+                    );
                   },
                 ),
                 IconButton(
@@ -143,17 +143,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           : AppColors.textSecondary),
                   onPressed: () => Navigator.pushNamed(context, '/settings'),
                   tooltip: 'Settings',
-                ),
-                IconButton(
-                  icon: Icon(Icons.person_outline_rounded,
-                      color: isDark
-                          ? AppColors.darkTextSecondary
-                          : AppColors.textSecondary),
-                  onPressed: () {
-                    Navigator.pushNamedAndRemoveUntil(
-                        context, '/', (route) => false);
-                  },
-                  tooltip: currentMember?.name ?? 'Logout',
                 ),
                 const SizedBox(width: 4),
               ],

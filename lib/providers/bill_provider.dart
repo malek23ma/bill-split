@@ -261,8 +261,8 @@ class BillProvider extends ChangeNotifier {
       await _db.insertBillItems(itemsWithBillId);
     }
 
-    // Push bill directly to Supabase (don't rely on sync queue)
-    await _pushBillToCloud(billId, bill.householdId);
+    // Push bill to Supabase in background (don't block UI)
+    _pushBillToCloud(billId, bill.householdId);
 
     await loadBills(bill.householdId);
   }
