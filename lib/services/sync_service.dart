@@ -68,7 +68,8 @@ class SyncService extends ChangeNotifier {
         await _queue.remove(entry.id!);
       } catch (e) {
         debugPrint('Push error for ${entry.tableName}/${entry.rowId}: $e');
-        break; // Stop on first failure, retry next sync
+        // Skip failed entry (remove it) so it doesn't block the queue
+        await _queue.remove(entry.id!);
       }
     }
   }
