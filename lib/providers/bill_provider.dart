@@ -264,6 +264,9 @@ class BillProvider extends ChangeNotifier {
       if (billRows.isEmpty) return;
       final bill = billRows.first;
 
+      // Skip if already pushed (has remote_id)
+      if (bill['remote_id'] != null && (bill['remote_id'] as String).length > 8) return;
+
       final billRemoteId = uuid.v4();
       final enteredBy = await memberRemoteId(bill['entered_by_member_id'] as int);
       final paidBy = await memberRemoteId(bill['paid_by_member_id'] as int);
@@ -274,7 +277,7 @@ class BillProvider extends ChangeNotifier {
         receiverBy = await memberRemoteId(bill['receiver_member_id'] as int);
       }
 
-      await supabase.from('bills').insert({
+      await supabase.from('bills').upsert({
         'id': billRemoteId,
         'household_id': householdRemoteId,
         'entered_by_member_id': enteredBy,
@@ -295,8 +298,11 @@ class BillProvider extends ChangeNotifier {
       final items = await db.query('bill_items',
           where: 'bill_id = ?', whereArgs: [localBillId]);
       for (final item in items) {
+        // Skip if already pushed
+        if (item['remote_id'] != null && (item['remote_id'] as String).length > 8) continue;
+
         final itemRemoteId = uuid.v4();
-        await supabase.from('bill_items').insert({
+        await supabase.from('bill_items').upsert({
           'id': itemRemoteId,
           'bill_id': billRemoteId,
           'name': item['name'],
@@ -310,10 +316,13 @@ class BillProvider extends ChangeNotifier {
         final bimRows = await db.query('bill_item_members',
             where: 'bill_item_id = ?', whereArgs: [item['id']]);
         for (final bim in bimRows) {
+          // Skip if already pushed
+          if (bim['remote_id'] != null && (bim['remote_id'] as String).length > 8) continue;
+
           final memberRid = await memberRemoteId(bim['member_id'] as int);
           if (memberRid == null) continue;
           final bimRemoteId = uuid.v4();
-          await supabase.from('bill_item_members').insert({
+          await supabase.from('bill_item_members').upsert({
             'id': bimRemoteId,
             'bill_item_id': itemRemoteId,
             'member_id': memberRid,
