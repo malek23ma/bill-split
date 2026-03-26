@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/auth_provider.dart';
+import '../providers/household_provider.dart';
+import '../providers/bill_provider.dart';
 import '../constants.dart';
 
 class AuthScreen extends StatelessWidget {
@@ -80,6 +84,35 @@ class _AuthTabState extends State<_AuthTab>
 
   // ── Actions ──
 
+  /// After successful auth, try to restore the user's last household.
+  /// If found, go straight to /home. Otherwise, go to /households.
+  Future<void> _navigateAfterAuth() async {
+    if (!mounted) return;
+    final authUser = Supabase.instance.client.auth.currentUser;
+    if (authUser == null) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final lastId = prefs.getInt('last_household_id');
+
+    if (lastId != null && mounted) {
+      final provider = context.read<HouseholdProvider>();
+      await provider.loadHouseholds();
+      final household = provider.households.where((h) => h.id == lastId).firstOrNull;
+
+      if (household != null) {
+        await provider.setCurrentHousehold(household);
+        final member = await provider.resolveCurrentMember(authUser.id);
+        if (member != null && mounted) {
+          context.read<BillProvider>().loadBills(lastId);
+          Navigator.pushReplacementNamed(context, '/home');
+          return;
+        }
+      }
+    }
+
+    if (mounted) Navigator.pushReplacementNamed(context, '/households');
+  }
+
   Future<void> _submitEmail() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     final auth = context.read<AuthProvider>();
@@ -96,9 +129,7 @@ class _AuthTabState extends State<_AuthTab>
         _passwordController.text,
       );
     }
-    if (success && mounted) {
-      Navigator.pushReplacementNamed(context, '/households');
-    }
+    if (success) await _navigateAfterAuth();
   }
 
   Future<void> _sendCode() async {
@@ -117,16 +148,12 @@ class _AuthTabState extends State<_AuthTab>
       _phoneController.text.trim(),
       _otpController.text.trim(),
     );
-    if (success && mounted) {
-      Navigator.pushReplacementNamed(context, '/households');
-    }
+    if (success) await _navigateAfterAuth();
   }
 
   Future<void> _socialSignIn(Future<bool> Function() method) async {
     final success = await method();
-    if (success && mounted) {
-      Navigator.pushReplacementNamed(context, '/households');
-    }
+    if (success) await _navigateAfterAuth();
   }
 
   // ── Build ──
