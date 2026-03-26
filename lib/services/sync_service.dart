@@ -251,8 +251,8 @@ class SyncService extends ChangeNotifier {
         continue;
       }
 
-      // Convert remote data to local format
-      final localData = _remoteToLocal(tableName, remoteRow, localHouseholdId);
+      // Convert remote data to local format (resolves UUID FKs to local int IDs)
+      final localData = await _remoteToLocal(db, tableName, remoteRow, localHouseholdId);
 
       if (localRows.isEmpty) {
         // New row from remote — insert locally
@@ -272,9 +272,10 @@ class SyncService extends ChangeNotifier {
     }
   }
 
-  /// Convert remote cloud row to local SQLite format
-  Map<String, dynamic> _remoteToLocal(
-      String tableName, Map<String, dynamic> remote, int localHouseholdId) {
+  /// Convert remote cloud row to local SQLite format.
+  /// Resolves UUID foreign keys back to local integer IDs.
+  Future<Map<String, dynamic>> _remoteToLocal(
+      dynamic db, String tableName, Map<String, dynamic> remote, int localHouseholdId) async {
     final data = Map<String, dynamic>.from(remote);
 
     // Remove cloud-only fields
@@ -290,6 +291,40 @@ class SyncService extends ChangeNotifier {
     data['updated_at'] = remote['updated_at'];
     data['remote_id'] = remote['id'];
 
+    // Resolve UUID foreign keys to local integer IDs
+    final fkMappings = <String, String>{
+      'household_id': 'households',
+      'paid_by_member_id': 'members',
+      'entered_by_member_id': 'members',
+      'receiver_member_id': 'members',
+      'recurring_bill_id': 'recurring_bills',
+      'bill_id': 'bills',
+      'bill_item_id': 'bill_items',
+      'member_id': 'members',
+    };
+
+    for (final key in fkMappings.keys) {
+      if (data.containsKey(key) && data[key] != null && data[key] is String) {
+        final remoteUuid = data[key] as String;
+        final table = fkMappings[key]!;
+        // Special case: household_id can use the known local ID
+        if (key == 'household_id') {
+          data[key] = localHouseholdId;
+        } else {
+          final rows = await db.query(table,
+              columns: ['id'],
+              where: 'remote_id = ?',
+              whereArgs: [remoteUuid]);
+          if (rows.isNotEmpty) {
+            data[key] = rows.first['id'] as int;
+          } else {
+            // Can't resolve FK — remove to avoid corrupting data
+            data.remove(key);
+          }
+        }
+      }
+    }
+
     // Convert boolean fields (Postgres bool → SQLite int)
     for (final key in ['is_active', 'is_admin', 'is_included', 'active']) {
       if (data.containsKey(key) && data[key] is bool) {
@@ -302,6 +337,11 @@ class SyncService extends ChangeNotifier {
       if (data.containsKey(key) && data[key] != null) {
         data[key] = data[key].toString();
       }
+    }
+
+    // Remove user_id from bill data (not a column in local bills table)
+    if (tableName == 'bill_item_members') {
+      data.remove('created_at');
     }
 
     return data;
