@@ -63,16 +63,24 @@ class InviteService {
     final householdId = invite['household_id'] as String;
     final memberId = invite['member_id'] as String?;
 
-    if (memberId != null) {
-      await _client.from('members').update({
-        'user_id': userId,
-      }).eq('id', memberId);
-    } else {
+    // Get display name from auth metadata (always available) or profiles table
+    final authUser = _client.auth.currentUser!;
+    final displayName = authUser.userMetadata?['display_name'] as String?;
+    String name = displayName ?? 'New Member';
+    if (name == 'New Member') {
       final profile = await _client.from('profiles')
           .select('display_name')
           .eq('id', userId)
           .maybeSingle();
-      final name = profile?['display_name'] ?? 'New Member';
+      name = profile?['display_name'] as String? ?? name;
+    }
+
+    if (memberId != null) {
+      await _client.from('members').update({
+        'user_id': userId,
+        'name': name,
+      }).eq('id', memberId);
+    } else {
       await _client.from('members').insert({
         'household_id': householdId,
         'user_id': userId,
@@ -87,16 +95,10 @@ class InviteService {
 
     // Also create the member locally so the app can resolve them
     final db = await DatabaseHelper.instance.database;
-    // Find the local household by remote_id
     final localHouseholds = await db.query('households',
         where: 'remote_id = ?', whereArgs: [householdId]);
     if (localHouseholds.isNotEmpty) {
       final localHouseholdId = localHouseholds.first['id'] as int;
-      final profile = await _client.from('profiles')
-          .select('display_name')
-          .eq('id', userId)
-          .maybeSingle();
-      final name = profile?['display_name'] ?? 'New Member';
 
       // Get the remote member id that was just created/claimed
       final remoteMember = await _client.from('members')
@@ -114,13 +116,15 @@ class InviteService {
         final member = Member(
           householdId: localHouseholdId,
           name: name,
+          userId: userId,
           remoteId: remoteMemberId,
           createdAt: DateTime.now(),
         );
         await db.insert('members', member.toMap());
-      } else if (remoteMemberId != null) {
-        // Update existing local member with remote_id
-        await db.update('members', {'remote_id': remoteMemberId},
+      } else {
+        final updates = <String, dynamic>{'user_id': userId};
+        if (remoteMemberId != null) updates['remote_id'] = remoteMemberId;
+        await db.update('members', updates,
             where: 'id = ?', whereArgs: [existing.first['id']]);
       }
     }
