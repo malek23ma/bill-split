@@ -1347,6 +1347,18 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       }
 
+      // Create local settlement bill so balance updates immediately
+      if (payerMember?.id != null && receiverMember?.id != null) {
+        if (context.mounted) {
+          await context.read<BillProvider>().settleUp(
+            householdId: householdProvider.currentHousehold!.id!,
+            payerMemberId: payerMember!.id!,
+            receiverMemberId: receiverMember!.id!,
+            amount: amount,
+          );
+        }
+      }
+
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Settlement request sent')),
