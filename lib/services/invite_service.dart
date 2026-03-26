@@ -1,7 +1,6 @@
 import 'dart:math';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../database/database_helper.dart';
-import '../models/member.dart';
 
 class InviteService {
   final SupabaseClient _client;
@@ -93,39 +92,54 @@ class InviteService {
       'claimed_at': now.toIso8601String(),
     }).eq('id', inviteId);
 
-    // Also create the member locally so the app can resolve them
+    // Create household locally if it doesn't exist, then pull ALL members
     final db = await DatabaseHelper.instance.database;
-    final localHouseholds = await db.query('households',
+    var localHouseholds = await db.query('households',
         where: 'remote_id = ?', whereArgs: [householdId]);
-    if (localHouseholds.isNotEmpty) {
-      final localHouseholdId = localHouseholds.first['id'] as int;
 
-      // Get the remote member id that was just created/claimed
-      final remoteMember = await _client.from('members')
-          .select('id')
-          .eq('household_id', householdId)
-          .eq('user_id', userId)
+    int localHouseholdId;
+    if (localHouseholds.isEmpty) {
+      // Fetch household details from cloud and create locally
+      final hData = await _client.from('households')
+          .select('name, currency')
+          .eq('id', householdId)
           .maybeSingle();
-      final remoteMemberId = remoteMember?['id'] as String?;
+      localHouseholdId = await db.insert('households', {
+        'name': hData?['name'] ?? 'Household',
+        'currency': hData?['currency'] ?? 'TRY',
+        'created_at': DateTime.now().toIso8601String(),
+        'remote_id': householdId,
+      });
+    } else {
+      localHouseholdId = localHouseholds.first['id'] as int;
+    }
 
-      // Check if local member already exists
+    // Pull ALL members of this household from cloud
+    final allMembers = await _client.from('members')
+        .select('id, name, is_admin, is_active, user_id')
+        .eq('household_id', householdId);
+
+    for (final m in allMembers) {
+      final mRemoteId = m['id'] as String;
       final existing = await db.query('members',
-          where: 'household_id = ? AND name = ?',
-          whereArgs: [localHouseholdId, name]);
+          where: 'remote_id = ?', whereArgs: [mRemoteId]);
       if (existing.isEmpty) {
-        final member = Member(
-          householdId: localHouseholdId,
-          name: name,
-          userId: userId,
-          remoteId: remoteMemberId,
-          createdAt: DateTime.now(),
-        );
-        await db.insert('members', member.toMap());
+        await db.insert('members', {
+          'household_id': localHouseholdId,
+          'name': m['name'],
+          'is_admin': (m['is_admin'] == true) ? 1 : 0,
+          'is_active': (m['is_active'] == true) ? 1 : 0,
+          'user_id': m['user_id'],
+          'remote_id': mRemoteId,
+          'created_at': DateTime.now().toIso8601String(),
+        });
       } else {
-        final updates = <String, dynamic>{'user_id': userId};
-        if (remoteMemberId != null) updates['remote_id'] = remoteMemberId;
-        await db.update('members', updates,
-            where: 'id = ?', whereArgs: [existing.first['id']]);
+        // Update existing with latest data
+        await db.update('members', {
+          'name': m['name'],
+          'user_id': m['user_id'],
+          'remote_id': mRemoteId,
+        }, where: 'id = ?', whereArgs: [existing.first['id']]);
       }
     }
 
