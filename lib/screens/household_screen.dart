@@ -120,12 +120,20 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
           });
         }
 
-        // Pull ALL other members of this household
-        final allMembers = await supabase
-            .from('members')
-            .select('id, name, is_admin, is_active, user_id, created_at')
-            .eq('household_id', remoteHouseholdId);
+        // Pull ALL other members and bills in parallel
+        final fetchResults = await Future.wait([
+          supabase
+              .from('members')
+              .select('id, name, is_admin, is_active, user_id, created_at')
+              .eq('household_id', remoteHouseholdId),
+          supabase.from('bills').select()
+              .eq('household_id', remoteHouseholdId)
+              .isFilter('deleted_at', null),
+        ]);
+        final allMembers = fetchResults[0] as List<dynamic>;
+        final remoteBills = fetchResults[1] as List<dynamic>;
 
+        // Insert other members
         for (final other in allMembers) {
           if (other['id'] == remoteMemberId) continue;
           final otherRemoteId = other['id'] as String;
@@ -144,31 +152,31 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
           }
         }
 
-        // Helper: resolve remote UUID to local integer ID
-        Future<int?> resolveLocalId(String table, String remoteUuid) async {
-          final rows = await db.query(table, columns: ['id'],
-              where: 'remote_id = ?', whereArgs: [remoteUuid]);
-          return rows.isNotEmpty ? rows.first['id'] as int : null;
+        // Build member remote→local lookup for FK resolution
+        final localMembers = await db.query('members',
+            columns: ['id', 'remote_id'],
+            where: 'household_id = ?',
+            whereArgs: [localHouseholdId]);
+        final memberLookup = <String, int>{};
+        for (final m in localMembers) {
+          final rid = m['remote_id'] as String?;
+          if (rid != null) memberLookup[rid] = m['id'] as int;
         }
 
-        // Pull bills for this household
-        final remoteBills = await supabase.from('bills').select()
-            .eq('household_id', remoteHouseholdId)
-            .isFilter('deleted_at', null);
-
+        // Process bills
         for (final rb in remoteBills) {
           final billRemoteId = rb['id'] as String;
           final existingB = await db.query('bills',
               where: 'remote_id = ?', whereArgs: [billRemoteId]);
-          if (existingB.isNotEmpty) continue; // already have it
+          if (existingB.isNotEmpty) continue;
 
-          final enteredBy = await resolveLocalId('members', rb['entered_by_member_id'] as String);
-          final paidBy = await resolveLocalId('members', rb['paid_by_member_id'] as String);
+          final enteredBy = memberLookup[rb['entered_by_member_id'] as String];
+          final paidBy = memberLookup[rb['paid_by_member_id'] as String];
           if (enteredBy == null || paidBy == null) continue;
 
           int? receiverBy;
           if (rb['receiver_member_id'] != null) {
-            receiverBy = await resolveLocalId('members', rb['receiver_member_id'] as String);
+            receiverBy = memberLookup[rb['receiver_member_id'] as String];
           }
 
           final localBillId = await db.insert('bills', {
@@ -214,7 +222,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                   where: 'remote_id = ?', whereArgs: [bimRemoteId]);
               if (existingBim.isNotEmpty) continue;
 
-              final memberId = await resolveLocalId('members', bim['member_id'] as String);
+              final memberId = memberLookup[bim['member_id'] as String];
               if (memberId == null) continue;
 
               await db.insert('bill_item_members', {
@@ -463,11 +471,11 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                       if (authUser != null && context.mounted) {
                         final member = await provider.resolveCurrentMember(authUser.id);
                         if (member != null && context.mounted) {
-                          // Sync from cloud first, then load bills
-                          await context.read<SyncService>().sync(household.id!);
-                          if (context.mounted) {
-                            context.read<BillProvider>().loadBills(provider.currentHousehold!.id!);
-                          }
+                          // Load local bills immediately, sync in background
+                          final hid = provider.currentHousehold!.id!;
+                          context.read<BillProvider>().loadBills(hid);
+                          // Don't await sync — let it happen after navigation
+                          context.read<SyncService>().sync(hid);
                           final prefs = await SharedPreferences.getInstance();
                           await prefs.setInt('last_household_id', household.id!);
                           if (context.mounted) {

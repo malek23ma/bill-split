@@ -71,10 +71,19 @@ class BillProvider extends ChangeNotifier {
   BillFilter? get activeFilter => _activeFilter;
   Map<int, List<int>> _billSharedMemberIds = {};
 
+  // Cached quick stats for UI (computed once in loadBills, not per build)
+  double _thisMonthTotal = 0;
+  int _thisMonthCount = 0;
+  double _lastMonthTotal = 0;
+  List<OptimalSettlement>? _cachedSettlements;
+
   List<Bill> get bills => _bills;
   Map<int, double> get memberBalances => _memberBalances;
   Map<int, Map<int, double>> get pairwiseBalances => _pairwiseBalances;
   MonthlySummary? get monthlySummary => _monthlySummary;
+  double get thisMonthTotal => _thisMonthTotal;
+  int get thisMonthCount => _thisMonthCount;
+  double get lastMonthTotal => _lastMonthTotal;
 
   List<Bill> get filteredBills {
     if (_activeFilter == null || !_activeFilter!.hasActiveFilters) return _bills;
@@ -101,9 +110,6 @@ class BillProvider extends ChangeNotifier {
   }
 
   Future<void> _calculateBalances(int householdId) async {
-    // Fix created_at for members with zero bill participation
-    // so they aren't included in historical quick bill splits
-    await _db.fixNewMemberDates(householdId);
     final members = await _db.getMembersByHousehold(householdId);
     _memberBalances = {for (final m in members) m.id!: 0.0};
     _pairwiseBalances = {
@@ -125,6 +131,13 @@ class BillProvider extends ChangeNotifier {
             (_pairwiseBalances[debtorId]![creditorId] ?? 0) - amount;
       }
     }
+
+    // Batch-load all items for 'full' bills in 2 queries (not N)
+    final fullBillIds = _bills
+        .where((b) => b.billType != 'settlement' && b.billType != 'quick')
+        .map((b) => b.id!)
+        .toList();
+    final allItems = await _db.getBillItemsForBills(fullBillIds);
 
     for (final bill in _bills) {
       final payerId = bill.paidByMemberId;
@@ -155,7 +168,7 @@ class BillProvider extends ChangeNotifier {
           }
         }
       } else {
-        final items = await _db.getBillItems(bill.id!);
+        final items = allItems[bill.id!] ?? [];
 
         for (final item in items) {
           if (item.isIncluded && item.sharedByMemberIds.isNotEmpty) {
@@ -173,16 +186,31 @@ class BillProvider extends ChangeNotifier {
 
   void _calculateMonthlySummary() {
     final now = DateTime.now();
-    final thisMonthBills = _bills.where((b) =>
-        b.billDate.year == now.year &&
-        b.billDate.month == now.month &&
-        b.billType != 'settlement').toList();
+    final lastMonth = now.month == 1
+        ? DateTime(now.year - 1, 12)
+        : DateTime(now.year, now.month - 1);
 
+    double thisTotal = 0;
+    int thisCount = 0;
+    double lastTotal = 0;
     final memberSpend = <int, double>{};
-    for (final bill in thisMonthBills) {
-      memberSpend[bill.paidByMemberId] =
-          (memberSpend[bill.paidByMemberId] ?? 0) + bill.totalAmount;
+
+    for (final b in _bills) {
+      if (b.billType == 'settlement') continue;
+      if (b.billDate.year == now.year && b.billDate.month == now.month) {
+        thisTotal += b.totalAmount;
+        thisCount++;
+        memberSpend[b.paidByMemberId] =
+            (memberSpend[b.paidByMemberId] ?? 0) + b.totalAmount;
+      } else if (b.billDate.year == lastMonth.year && b.billDate.month == lastMonth.month) {
+        lastTotal += b.totalAmount;
+      }
     }
+
+    _thisMonthTotal = thisTotal;
+    _thisMonthCount = thisCount;
+    _lastMonthTotal = lastTotal;
+    _cachedSettlements = null; // Invalidate settlement cache
 
     final months = [
       'January', 'February', 'March', 'April', 'May', 'June',
@@ -190,7 +218,7 @@ class BillProvider extends ChangeNotifier {
     ];
 
     _monthlySummary = MonthlySummary(
-      billCount: thisMonthBills.length,
+      billCount: thisCount,
       memberSpend: memberSpend,
       monthLabel: '${months[now.month - 1]} ${now.year}',
     );
@@ -252,11 +280,14 @@ class BillProvider extends ChangeNotifier {
       if (hRows.isEmpty || hRows.first['remote_id'] == null) return;
       final householdRemoteId = hRows.first['remote_id'] as String;
 
-      // Resolve member remote_ids
-      Future<String?> memberRemoteId(int localId) async {
-        final rows = await db.query('members',
-            columns: ['remote_id'], where: 'id = ?', whereArgs: [localId]);
-        return rows.isNotEmpty ? rows.first['remote_id'] as String? : null;
+      // Pre-load all member remote_ids in one query
+      final allMembers = await db.query('members',
+          columns: ['id', 'remote_id'],
+          where: 'household_id = ?',
+          whereArgs: [householdId]);
+      final memberRemoteIds = <int, String?>{};
+      for (final m in allMembers) {
+        memberRemoteIds[m['id'] as int] = m['remote_id'] as String?;
       }
 
       // Read bill
@@ -268,13 +299,13 @@ class BillProvider extends ChangeNotifier {
       if (bill['remote_id'] != null && (bill['remote_id'] as String).length > 8) return;
 
       final billRemoteId = uuid.v4();
-      final enteredBy = await memberRemoteId(bill['entered_by_member_id'] as int);
-      final paidBy = await memberRemoteId(bill['paid_by_member_id'] as int);
+      final enteredBy = memberRemoteIds[bill['entered_by_member_id'] as int];
+      final paidBy = memberRemoteIds[bill['paid_by_member_id'] as int];
       if (enteredBy == null || paidBy == null) return;
 
       String? receiverBy;
       if (bill['receiver_member_id'] != null) {
-        receiverBy = await memberRemoteId(bill['receiver_member_id'] as int);
+        receiverBy = memberRemoteIds[bill['receiver_member_id'] as int];
       }
 
       await supabase.from('bills').upsert({
@@ -319,7 +350,7 @@ class BillProvider extends ChangeNotifier {
           // Skip if already pushed
           if (bim['remote_id'] != null && (bim['remote_id'] as String).length > 8) continue;
 
-          final memberRid = await memberRemoteId(bim['member_id'] as int);
+          final memberRid = memberRemoteIds[bim['member_id'] as int];
           if (memberRid == null) continue;
           final bimRemoteId = uuid.v4();
           await supabase.from('bill_item_members').upsert({
@@ -331,24 +362,26 @@ class BillProvider extends ChangeNotifier {
               where: 'id = ?', whereArgs: [bim['id']]);
         }
       }
-      // Clean up sync queue entries to prevent double-push
+      // Clean up sync queue entries to prevent double-push (batch)
       await db.delete('sync_queue',
           where: 'table_name = ? AND row_id = ?',
           whereArgs: ['bills', localBillId]);
       final itemIds = items.map((i) => i['id'] as int).toList();
-      for (final itemId in itemIds) {
+      if (itemIds.isNotEmpty) {
+        final ph = List.filled(itemIds.length, '?').join(',');
         await db.delete('sync_queue',
-            where: 'table_name = ? AND row_id = ?',
-            whereArgs: ['bill_items', itemId]);
-        // Get actual bill_item_member IDs for this item
-        final bimRows = await db.query('bill_item_members',
-            columns: ['id'],
-            where: 'bill_item_id = ?',
-            whereArgs: [itemId]);
-        for (final bimRow in bimRows) {
+            where: 'table_name = ? AND row_id IN ($ph)',
+            whereArgs: ['bill_items', ...itemIds]);
+        // Batch get all bill_item_member IDs
+        final allBimRows = await db.rawQuery(
+            'SELECT id FROM bill_item_members WHERE bill_item_id IN ($ph)',
+            itemIds);
+        final bimIds = allBimRows.map((r) => r['id'] as int).toList();
+        if (bimIds.isNotEmpty) {
+          final bimPh = List.filled(bimIds.length, '?').join(',');
           await db.delete('sync_queue',
-              where: 'table_name = ? AND row_id = ?',
-              whereArgs: ['bill_item_members', bimRow['id'] as int]);
+              where: 'table_name = ? AND row_id IN ($bimPh)',
+              whereArgs: ['bill_item_members', ...bimIds]);
         }
       }
     } catch (e) {
@@ -462,9 +495,15 @@ class BillProvider extends ChangeNotifier {
 
   Future<void> _loadSharedMemberIds() async {
     _billSharedMemberIds = {};
+    final fullBillIds = _bills
+        .where((b) => b.billType == 'full')
+        .map((b) => b.id!)
+        .toList();
+    final allItems = await _db.getBillItemsForBills(fullBillIds);
+
     for (final bill in _bills) {
       if (bill.billType == 'full') {
-        final items = await _db.getBillItems(bill.id!);
+        final items = allItems[bill.id!] ?? [];
         final memberIds = <int>{};
         for (final item in items) {
           memberIds.addAll(item.sharedByMemberIds);
@@ -515,6 +554,13 @@ class BillProvider extends ChangeNotifier {
     final buf = StringBuffer();
     buf.writeln('Date,Bill Type,Category,Paid By,Total,Items,Shared With');
 
+    // Batch-load all items for full bills
+    final fullBillIds = bills
+        .where((b) => b.billType == 'full')
+        .map((b) => b.id!)
+        .toList();
+    final allBillItems = await _db.getBillItemsForBills(fullBillIds);
+
     for (final bill in bills) {
       final payer = allMembers.where((m) => m.id == bill.paidByMemberId).firstOrNull;
       final payerName = payer?.name ?? 'Unknown';
@@ -523,7 +569,7 @@ class BillProvider extends ChangeNotifier {
       String items = '';
       String sharedWith = '';
       if (bill.billType == 'full') {
-        final billItems = await _db.getBillItems(bill.id!);
+        final billItems = allBillItems[bill.id!] ?? [];
         items = billItems.map((i) => i.name).join(';');
         final memberIds = <int>{};
         for (final item in billItems) {
@@ -558,9 +604,9 @@ class BillProvider extends ChangeNotifier {
   /// Greedy minimum-transfers settlement algorithm.
   /// Nets out all pairwise balances per member, then repeatedly matches
   /// the largest creditor with the largest debtor.
+  /// Results are cached and invalidated when bills change.
   List<OptimalSettlement> computeOptimalSettlements() {
-    // Use _memberBalances directly — they already contain correct net totals.
-    // (Previously iterated _pairwiseBalances which double-counts each pair.)
+    if (_cachedSettlements != null) return _cachedSettlements!;
     final Map<int, double> net = Map.of(_memberBalances);
 
     // Separate into creditors and debtors
@@ -598,6 +644,7 @@ class BillProvider extends ChangeNotifier {
       if (dAmounts[di] < 0.01) di++;
     }
 
+    _cachedSettlements = settlements;
     return settlements;
   }
 

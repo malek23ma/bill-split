@@ -42,13 +42,15 @@ class _HomeScreenState extends State<HomeScreen> {
       final householdId =
           context.read<HouseholdProvider>().currentHousehold?.id;
       if (householdId != null) {
-        // Sync from cloud, then reload bills
+        // Load local data immediately, then sync in background
+        context.read<BillProvider>().loadBills(householdId);
+        context.read<RecurringBillProvider>().loadDueBills(householdId);
+        // Sync from cloud, then refresh with any new data
         context.read<SyncService>().sync(householdId).then((_) {
           if (mounted) {
             context.read<BillProvider>().loadBills(householdId);
           }
         });
-        context.read<RecurringBillProvider>().loadDueBills(householdId);
       }
       // Reload notifications and resubscribe for current user
       final householdRemoteId = context.read<HouseholdProvider>().currentHousehold?.remoteId;
@@ -403,12 +405,8 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: EdgeInsets.symmetric(horizontal: AppScale.padding(16)),
             child: Builder(
               builder: (context) {
-                final now = DateTime.now();
-                final thisMonthBills = billProvider.bills.where((b) =>
-                    b.billDate.year == now.year &&
-                    b.billDate.month == now.month &&
-                    b.billType != 'settlement').toList();
-                final thisMonthTotal = thisMonthBills.fold(0.0, (sum, b) => sum + b.totalAmount);
+                final thisMonthTotal = billProvider.thisMonthTotal;
+                final thisMonthBills = billProvider.thisMonthCount;
                 final lastBill = billProvider.bills.first;
                 final daysSince = DateTime.now().difference(lastBill.billDate).inDays;
                 final lastBillText = daysSince == 0
@@ -475,7 +473,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '${thisMonthBills.length}',
+                              '$thisMonthBills',
                               style: TextStyle(
                                 fontSize: AppScale.fontSize(16),
                                 fontWeight: FontWeight.w800,
@@ -533,22 +531,14 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Builder(
               builder: (context) {
                 final now = DateTime.now();
-                final thisMonthBills = billProvider.bills.where((b) =>
-                    b.billDate.year == now.year &&
-                    b.billDate.month == now.month &&
-                    b.billType != 'settlement').toList();
-                final thisMonthTotal = thisMonthBills.fold(0.0, (sum, b) => sum + b.totalAmount);
+                final thisMonthTotal = billProvider.thisMonthTotal;
+                final lastMonthTotal = billProvider.lastMonthTotal;
+
+                if (lastMonthTotal < 0.01) return const SizedBox.shrink();
 
                 final lastMonth = now.month == 1
                     ? DateTime(now.year - 1, 12)
                     : DateTime(now.year, now.month - 1);
-                final lastMonthBills = billProvider.bills.where((b) =>
-                    b.billDate.year == lastMonth.year &&
-                    b.billDate.month == lastMonth.month &&
-                    b.billType != 'settlement').toList();
-                final lastMonthTotal = lastMonthBills.fold(0.0, (sum, b) => sum + b.totalAmount);
-
-                if (lastMonthTotal < 0.01) return const SizedBox.shrink();
 
                 final diff = thisMonthTotal - lastMonthTotal;
                 final pct = (diff / lastMonthTotal * 100).abs();
@@ -682,7 +672,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     )
                   else
-                    ...billProvider.bills.map((bill) {
+                    ...billProvider.bills.take(50).map((bill) {
             final paidBy = members
                 .where((m) => m.id == bill.paidByMemberId)
                 .firstOrNull;

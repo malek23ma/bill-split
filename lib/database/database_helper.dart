@@ -45,7 +45,7 @@ class DatabaseHelper implements DataRepository {
     final path = join(dbPath, fileName);
     final db = await openDatabase(
       path,
-      version: 11,
+      version: 12,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -167,6 +167,30 @@ class DatabaseHelper implements DataRepository {
         created_at TEXT NOT NULL
       )
     ''');
+
+    // Performance indexes on FK and frequently queried columns
+    await _createIndexes(db);
+  }
+
+  Future<void> _createIndexes(Database db) async {
+    final indexes = [
+      'CREATE INDEX IF NOT EXISTS idx_members_household ON members(household_id)',
+      'CREATE INDEX IF NOT EXISTS idx_members_user_id ON members(user_id)',
+      'CREATE INDEX IF NOT EXISTS idx_members_remote_id ON members(remote_id)',
+      'CREATE INDEX IF NOT EXISTS idx_bills_household ON bills(household_id)',
+      'CREATE INDEX IF NOT EXISTS idx_bills_remote_id ON bills(remote_id)',
+      'CREATE INDEX IF NOT EXISTS idx_bill_items_bill ON bill_items(bill_id)',
+      'CREATE INDEX IF NOT EXISTS idx_bill_items_remote_id ON bill_items(remote_id)',
+      'CREATE INDEX IF NOT EXISTS idx_bill_item_members_item ON bill_item_members(bill_item_id)',
+      'CREATE INDEX IF NOT EXISTS idx_bill_item_members_member ON bill_item_members(member_id)',
+      'CREATE INDEX IF NOT EXISTS idx_recurring_bills_household ON recurring_bills(household_id)',
+      'CREATE INDEX IF NOT EXISTS idx_recurring_bills_remote_id ON recurring_bills(remote_id)',
+      'CREATE INDEX IF NOT EXISTS idx_households_remote_id ON households(remote_id)',
+      'CREATE INDEX IF NOT EXISTS idx_sync_queue_created ON sync_queue(created_at)',
+    ];
+    for (final sql in indexes) {
+      await db.execute(sql);
+    }
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -329,6 +353,9 @@ class DatabaseHelper implements DataRepository {
     }
     if (oldVersion < 11) {
       await db.execute("ALTER TABLE members ADD COLUMN user_id TEXT");
+    }
+    if (oldVersion < 12) {
+      await _createIndexes(db);
     }
   }
 
@@ -523,6 +550,42 @@ class DatabaseHelper implements DataRepository {
       final itemId = map['id'] as int;
       return BillItem.fromMap(map, memberIds: membersByItem[itemId] ?? []);
     }).toList();
+  }
+
+  /// Batch load items for multiple bills in 2 queries (instead of N).
+  Future<Map<int, List<BillItem>>> getBillItemsForBills(List<int> billIds) async {
+    if (billIds.isEmpty) return {};
+    final db = await database;
+
+    final placeholders = List.filled(billIds.length, '?').join(',');
+    final itemMaps = await db.rawQuery(
+      'SELECT * FROM bill_items WHERE bill_id IN ($placeholders)',
+      billIds,
+    );
+    if (itemMaps.isEmpty) return {};
+
+    final itemIds = itemMaps.map((m) => m['id'] as int).toList();
+    final memberPlaceholders = List.filled(itemIds.length, '?').join(',');
+    final memberMaps = await db.rawQuery(
+      'SELECT bill_item_id, member_id FROM bill_item_members WHERE bill_item_id IN ($memberPlaceholders)',
+      itemIds,
+    );
+
+    final membersByItem = <int, List<int>>{};
+    for (final row in memberMaps) {
+      final itemId = row['bill_item_id'] as int;
+      final memberId = row['member_id'] as int;
+      (membersByItem[itemId] ??= []).add(memberId);
+    }
+
+    final result = <int, List<BillItem>>{};
+    for (final map in itemMaps) {
+      final billId = map['bill_id'] as int;
+      final itemId = map['id'] as int;
+      final item = BillItem.fromMap(map, memberIds: membersByItem[itemId] ?? []);
+      (result[billId] ??= []).add(item);
+    }
+    return result;
   }
 
   // --- BillItemMembers (junction table) ---

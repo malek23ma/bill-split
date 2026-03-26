@@ -69,6 +69,7 @@ class HouseholdProvider extends ChangeNotifier {
     await _db.insertMember(
       Member(householdId: _currentHousehold!.id!, name: trimmed),
     );
+    await _db.fixNewMemberDates(_currentHousehold!.id!);
     _members = await _db.getMembersByHousehold(_currentHousehold!.id!);
     notifyListeners();
   }

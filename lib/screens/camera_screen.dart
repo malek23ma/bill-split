@@ -44,9 +44,9 @@ class _CameraScreenState extends State<CameraScreen>
 
     final image = await _picker.pickImage(
       source: source,
-      maxWidth: 2560,
-      maxHeight: 2560,
-      imageQuality: 100,
+      maxWidth: 1600,
+      maxHeight: 1600,
+      imageQuality: 80,
     );
 
     if (image == null) return;

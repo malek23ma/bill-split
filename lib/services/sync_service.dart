@@ -196,36 +196,40 @@ class SyncService extends ChangeNotifier {
         await _remote.getSyncTimestamp(deviceId, remoteHouseholdId);
     final db = await _local.database;
 
-    // Pull in dependency order
-    await _pullTable(
-        db,
-        'members',
-        await _remote.getMembersSince(remoteHouseholdId, lastSync),
-        localHouseholdId);
-    await _pullTable(
-        db,
-        'recurring_bills',
-        await _remote.getRecurringBillsSince(remoteHouseholdId, lastSync),
-        localHouseholdId);
-    await _pullTable(
-        db,
-        'bills',
-        await _remote.getBillsSince(remoteHouseholdId, lastSync),
-        localHouseholdId);
+    // Fetch all tables in parallel
+    final results = await Future.wait([
+      _remote.getMembersSince(remoteHouseholdId, lastSync),
+      _remote.getRecurringBillsSince(remoteHouseholdId, lastSync),
+      _remote.getBillsSince(remoteHouseholdId, lastSync),
+    ]);
+    final remoteMembers = results[0];
+    final remoteRecurring = results[1];
+    final remoteBills = results[2];
 
-    // Bill items and bill item members need special handling (pull per bill)
-    // For simplicity, pull all updated bills' items
-    final updatedBills =
-        await _remote.getBillsSince(remoteHouseholdId, lastSync);
-    for (final bill in updatedBills) {
-      final billRemoteId = bill['id'] as String;
-      final items = await _remote.getBillItemsForBill(billRemoteId);
-      await _pullTable(db, 'bill_items', items, localHouseholdId);
-      for (final item in items) {
-        final itemMembers =
-            await _remote.getBillItemMembersForItem(item['id'] as String);
-        await _pullTable(
-            db, 'bill_item_members', itemMembers, localHouseholdId);
+    // Pull members first (bills depend on member FK resolution)
+    await _pullTable(db, 'members', remoteMembers, localHouseholdId);
+    // Recurring + bills can go in parallel (no cross-dependency)
+    await Future.wait([
+      _pullTable(db, 'recurring_bills', remoteRecurring, localHouseholdId),
+      _pullTable(db, 'bills', remoteBills, localHouseholdId),
+    ]);
+
+    // Pull bill items and members in parallel per bill
+    if (remoteBills.isNotEmpty) {
+      final itemFutures = remoteBills.map((bill) =>
+          _remote.getBillItemsForBill(bill['id'] as String));
+      final allBillItems = await Future.wait(itemFutures);
+
+      for (final items in allBillItems) {
+        await _pullTable(db, 'bill_items', items, localHouseholdId);
+        if (items.isNotEmpty) {
+          final memberFutures = items.map((item) =>
+              _remote.getBillItemMembersForItem(item['id'] as String));
+          final allItemMembers = await Future.wait(memberFutures);
+          for (final itemMembers in allItemMembers) {
+            await _pullTable(db, 'bill_item_members', itemMembers, localHouseholdId);
+          }
+        }
       }
     }
 
