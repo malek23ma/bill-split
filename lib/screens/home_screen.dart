@@ -340,6 +340,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         // Balance card with settle up
         BalanceCard(
+          key: const ValueKey('balance-card'),
           currentMemberId: currentMember?.id ?? 0,
           memberBalances: billProvider.memberBalances,
           pairwiseBalances: billProvider.pairwiseBalances,

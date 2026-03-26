@@ -84,6 +84,7 @@ class BalanceCard extends StatelessWidget {
       return Padding(
         padding: EdgeInsets.all(AppScale.padding(16)),
         child: _BalanceRow(
+          key: ValueKey('br-${entries.first.key}'),
           memberName: memberNames[entries.first.key] ?? 'Unknown',
           amount: entries.first.value,
           currencySymbol: currencySymbol,
@@ -110,6 +111,7 @@ class BalanceCard extends StatelessWidget {
         children: [
           for (int i = 0; i < entries.length; i++)
             SizedBox(
+              key: ValueKey('br-${entries[i].key}'),
               width: (isOdd && i == entries.length - 1)
                   ? double.infinity
                   : halfWidth,
@@ -141,6 +143,7 @@ class _BalanceRow extends StatelessWidget {
   final VoidCallback? onSettleUp;
 
   const _BalanceRow({
+    super.key,
     required this.memberName,
     required this.amount,
     required this.currencySymbol,
