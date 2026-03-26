@@ -6,6 +6,7 @@ import '../providers/auth_provider.dart';
 import '../models/member.dart';
 import '../services/push_notification_service.dart';
 import '../services/notification_service.dart';
+import '../services/sync_service.dart';
 import '../constants.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -858,9 +859,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           final pushSvc = context.read<PushNotificationService>();
                           final notifSvc = context.read<NotificationService>();
                           final authProv = context.read<AuthProvider>();
+                          final syncSvc = context.read<SyncService>();
+                          final householdId = context.read<HouseholdProvider>().currentHousehold?.id;
                           await pushSvc.removeToken();
                           notifSvc.unsubscribe();
-                          await authProv.signOut();
+                          await authProv.signOut(syncService: syncSvc, householdId: householdId);
                           if (context.mounted) {
                             Navigator.of(context).pushNamedAndRemoveUntil('/auth', (route) => false);
                           }

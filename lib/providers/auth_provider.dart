@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../database/database_helper.dart';
 import '../services/auth_service.dart';
+import '../services/sync_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService;
@@ -127,7 +128,14 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> signOut() async {
+  Future<void> signOut({SyncService? syncService, int? householdId}) async {
+    // Push pending changes to cloud BEFORE wiping local data
+    if (syncService != null && householdId != null) {
+      try {
+        await syncService.sync(householdId);
+      } catch (_) {}
+    }
+
     // Wipe local data so next user doesn't see this user's households
     await DatabaseHelper.instance.clearAllLocalData();
     final prefs = await SharedPreferences.getInstance();
