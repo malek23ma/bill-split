@@ -22,6 +22,7 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
   late String _photoPath;
   String _category = 'other';
   bool _initialized = false;
+  bool _saving = false;
 
   @override
   void didChangeDependencies() {
@@ -56,6 +57,7 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
   }
 
   Future<void> _saveBill() async {
+    if (_saving) return;
     final total = _total;
     if (total <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -63,6 +65,7 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
       );
       return;
     }
+    setState(() => _saving = true);
 
     final householdProvider = context.read<HouseholdProvider>();
     final billProvider = context.read<BillProvider>();
@@ -520,7 +523,7 @@ class _QuickReviewScreenState extends State<QuickReviewScreen> {
             SizedBox(
               height: AppScale.size(54),
               child: FilledButton(
-                onPressed: _saveBill,
+                onPressed: _saving ? null : _saveBill,
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,

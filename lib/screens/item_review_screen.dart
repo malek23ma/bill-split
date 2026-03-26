@@ -23,6 +23,7 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
   late String _photoPath;
   String _category = 'other';
   bool _initialized = false;
+  bool _saving = false;
 
   @override
   void didChangeDependencies() {
@@ -80,6 +81,8 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
   }
 
   Future<void> _saveBill() async {
+    if (_saving) return;
+    setState(() => _saving = true);
     final householdProvider = context.read<HouseholdProvider>();
     final billProvider = context.read<BillProvider>();
 
@@ -464,7 +467,7 @@ class _ItemReviewScreenState extends State<ItemReviewScreen> {
                     width: double.infinity,
                     height: AppScale.size(50),
                     child: FilledButton(
-                      onPressed: _saveBill,
+                      onPressed: _saving ? null : _saveBill,
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
