@@ -74,7 +74,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
       // Find all members rows for this user on Supabase
       final myMembers = await supabase
           .from('members')
-          .select('id, household_id, name, is_admin, is_active')
+          .select('id, household_id, name, is_admin, is_active, created_at')
           .eq('user_id', authUserId);
 
       for (final memberRow in myMembers) {
@@ -116,14 +116,14 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
             'is_active': (memberRow['is_active'] == true) ? 1 : 0,
             'user_id': authUserId,
             'remote_id': remoteMemberId,
-            'created_at': DateTime.now().toIso8601String(),
+            'created_at': memberRow['created_at']?.toString() ?? DateTime.now().toIso8601String(),
           });
         }
 
         // Pull ALL other members of this household
         final allMembers = await supabase
             .from('members')
-            .select('id, name, is_admin, is_active, user_id')
+            .select('id, name, is_admin, is_active, user_id, created_at')
             .eq('household_id', remoteHouseholdId);
 
         for (final other in allMembers) {
@@ -139,7 +139,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
               'is_active': (other['is_active'] == true) ? 1 : 0,
               'user_id': other['user_id'],
               'remote_id': otherRemoteId,
-              'created_at': DateTime.now().toIso8601String(),
+              'created_at': other['created_at']?.toString() ?? DateTime.now().toIso8601String(),
             });
           }
         }

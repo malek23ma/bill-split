@@ -331,9 +331,16 @@ class BillProvider extends ChangeNotifier {
         await db.delete('sync_queue',
             where: 'table_name = ? AND row_id = ?',
             whereArgs: ['bill_items', itemId]);
-        await db.delete('sync_queue',
-            where: 'table_name = ? AND row_id = ?',
-            whereArgs: ['bill_item_members', itemId]);
+        // Get actual bill_item_member IDs for this item
+        final bimRows = await db.query('bill_item_members',
+            columns: ['id'],
+            where: 'bill_item_id = ?',
+            whereArgs: [itemId]);
+        for (final bimRow in bimRows) {
+          await db.delete('sync_queue',
+              where: 'table_name = ? AND row_id = ?',
+              whereArgs: ['bill_item_members', bimRow['id'] as int]);
+        }
       }
     } catch (e) {
       debugPrint('Failed to push bill to cloud: $e');

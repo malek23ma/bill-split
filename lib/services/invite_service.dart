@@ -116,7 +116,7 @@ class InviteService {
 
     // Pull ALL members of this household from cloud
     final allMembers = await _client.from('members')
-        .select('id, name, is_admin, is_active, user_id')
+        .select('id, name, is_admin, is_active, user_id, created_at')
         .eq('household_id', householdId);
 
     for (final m in allMembers) {
@@ -131,7 +131,7 @@ class InviteService {
           'is_active': (m['is_active'] == true) ? 1 : 0,
           'user_id': m['user_id'],
           'remote_id': mRemoteId,
-          'created_at': DateTime.now().toIso8601String(),
+          'created_at': m['created_at']?.toString() ?? DateTime.now().toIso8601String(),
         });
       } else {
         // Update existing with latest data

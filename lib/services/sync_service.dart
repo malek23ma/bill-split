@@ -254,6 +254,7 @@ class SyncService extends ChangeNotifier {
 
       // Convert remote data to local format (resolves UUID FKs to local int IDs)
       final localData = await _remoteToLocal(db, tableName, remoteRow, localHouseholdId);
+      if (localData == null) continue; // FK could not be resolved — skip row
 
       if (localRows.isEmpty) {
         // New row from remote — insert locally
@@ -275,7 +276,7 @@ class SyncService extends ChangeNotifier {
 
   /// Convert remote cloud row to local SQLite format.
   /// Resolves UUID foreign keys back to local integer IDs.
-  Future<Map<String, dynamic>> _remoteToLocal(
+  Future<Map<String, dynamic>?> _remoteToLocal(
       dynamic db, String tableName, Map<String, dynamic> remote, int localHouseholdId) async {
     final data = Map<String, dynamic>.from(remote);
 
@@ -319,8 +320,8 @@ class SyncService extends ChangeNotifier {
           if (rows.isNotEmpty) {
             data[key] = rows.first['id'] as int;
           } else {
-            // Can't resolve FK — remove to avoid corrupting data
-            data.remove(key);
+            // Can't resolve FK — skip this row entirely
+            return null;
           }
         }
       }
