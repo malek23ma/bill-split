@@ -127,7 +127,6 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
             .eq('household_id', remoteHouseholdId);
 
         for (final other in allMembers) {
-          // Skip the member we already inserted above
           if (other['id'] == remoteMemberId) continue;
           final otherRemoteId = other['id'] as String;
           final existingOther = await db.query('members',
@@ -142,6 +141,88 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
               'remote_id': otherRemoteId,
               'created_at': DateTime.now().toIso8601String(),
             });
+          }
+        }
+
+        // Helper: resolve remote UUID to local integer ID
+        Future<int?> resolveLocalId(String table, String remoteUuid) async {
+          final rows = await db.query(table, columns: ['id'],
+              where: 'remote_id = ?', whereArgs: [remoteUuid]);
+          return rows.isNotEmpty ? rows.first['id'] as int : null;
+        }
+
+        // Pull bills for this household
+        final remoteBills = await supabase.from('bills').select()
+            .eq('household_id', remoteHouseholdId)
+            .isFilter('deleted_at', null);
+
+        for (final rb in remoteBills) {
+          final billRemoteId = rb['id'] as String;
+          final existingB = await db.query('bills',
+              where: 'remote_id = ?', whereArgs: [billRemoteId]);
+          if (existingB.isNotEmpty) continue; // already have it
+
+          final enteredBy = await resolveLocalId('members', rb['entered_by_member_id'] as String);
+          final paidBy = await resolveLocalId('members', rb['paid_by_member_id'] as String);
+          if (enteredBy == null || paidBy == null) continue;
+
+          int? receiverBy;
+          if (rb['receiver_member_id'] != null) {
+            receiverBy = await resolveLocalId('members', rb['receiver_member_id'] as String);
+          }
+
+          final localBillId = await db.insert('bills', {
+            'household_id': localHouseholdId,
+            'entered_by_member_id': enteredBy,
+            'paid_by_member_id': paidBy,
+            'bill_type': rb['bill_type'],
+            'total_amount': rb['total_amount'],
+            'bill_date': rb['bill_date']?.toString(),
+            'created_at': rb['created_at']?.toString(),
+            'category': rb['category'] ?? 'other',
+            'remote_id': billRemoteId,
+            if (receiverBy != null) 'receiver_member_id': receiverBy,
+          });
+
+          // Pull bill_items for this bill
+          final remoteItems = await supabase.from('bill_items').select()
+              .eq('bill_id', billRemoteId)
+              .isFilter('deleted_at', null);
+
+          for (final ri in remoteItems) {
+            final itemRemoteId = ri['id'] as String;
+            final existingI = await db.query('bill_items',
+                where: 'remote_id = ?', whereArgs: [itemRemoteId]);
+            if (existingI.isNotEmpty) continue;
+
+            final localItemId = await db.insert('bill_items', {
+              'bill_id': localBillId,
+              'name': ri['name'],
+              'price': ri['price'],
+              'is_included': (ri['is_included'] == true) ? 1 : 0,
+              'remote_id': itemRemoteId,
+            });
+
+            // Pull bill_item_members
+            final remoteBims = await supabase.from('bill_item_members').select()
+                .eq('bill_item_id', itemRemoteId)
+                .isFilter('deleted_at', null);
+
+            for (final bim in remoteBims) {
+              final bimRemoteId = bim['id'] as String;
+              final existingBim = await db.query('bill_item_members',
+                  where: 'remote_id = ?', whereArgs: [bimRemoteId]);
+              if (existingBim.isNotEmpty) continue;
+
+              final memberId = await resolveLocalId('members', bim['member_id'] as String);
+              if (memberId == null) continue;
+
+              await db.insert('bill_item_members', {
+                'bill_item_id': localItemId,
+                'member_id': memberId,
+                'remote_id': bimRemoteId,
+              });
+            }
           }
         }
       }
