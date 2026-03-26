@@ -120,14 +120,15 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
           });
         }
 
-        // Also pull other members of this household
-        final otherMembers = await supabase
+        // Pull ALL other members of this household
+        final allMembers = await supabase
             .from('members')
             .select('id, name, is_admin, is_active, user_id')
-            .eq('household_id', remoteHouseholdId)
-            .neq('user_id', authUserId);
+            .eq('household_id', remoteHouseholdId);
 
-        for (final other in otherMembers) {
+        for (final other in allMembers) {
+          // Skip the member we already inserted above
+          if (other['id'] == remoteMemberId) continue;
           final otherRemoteId = other['id'] as String;
           final existingOther = await db.query('members',
               where: 'remote_id = ?', whereArgs: [otherRemoteId]);

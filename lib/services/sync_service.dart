@@ -101,6 +101,10 @@ class SyncService extends ChangeNotifier {
 
         // Remove local-only fields
         cloudData.remove('remote_id');
+        // Column name mapping: local SQLite → Supabase
+        if (cloudData.containsKey('deleted_by_member_id')) {
+          cloudData['deleted_by_user_id'] = cloudData.remove('deleted_by_member_id');
+        }
 
         // Resolve foreign key remote_ids
         await _resolveForeignKeys(db, entry.tableName, cloudData);
@@ -276,6 +280,11 @@ class SyncService extends ChangeNotifier {
     // Remove cloud-only fields
     data.remove('id'); // local uses auto-increment
     data.remove('deleted_at');
+
+    // Column name mapping: Supabase → local SQLite
+    if (data.containsKey('deleted_by_user_id')) {
+      data['deleted_by_member_id'] = data.remove('deleted_by_user_id');
+    }
 
     // Store updated_at for conflict resolution
     data['updated_at'] = remote['updated_at'];
