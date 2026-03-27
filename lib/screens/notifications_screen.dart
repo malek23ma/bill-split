@@ -72,6 +72,57 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
+  /// Auto-create the local settlement bill when the sender receives
+  /// a "settlement_confirmed" notification from the other party.
+  Future<void> _applyConfirmedSettlement(
+    Map<String, dynamic> notification,
+    NotificationService notificationService,
+  ) async {
+    final data = notification['data'] as Map<String, dynamic>? ?? {};
+    final settlementId = data['settlement_id'] as String?;
+    if (settlementId == null) return;
+
+    // Prevent duplicate processing
+    if (!_processingIds.add(notification['id'])) return;
+
+    try {
+      final settlement = await Supabase.instance.client
+          .from('settlements')
+          .select()
+          .eq('id', settlementId)
+          .single();
+
+      final amount = (settlement['amount'] as num).toDouble();
+      final fromMemberRemoteId = settlement['from_member_id'] as String;
+      final toMemberRemoteId = settlement['to_member_id'] as String;
+
+      final db = await DatabaseHelper.instance.database;
+      final fromRows = await db.query('members',
+          where: 'remote_id = ?', whereArgs: [fromMemberRemoteId]);
+      final toRows = await db.query('members',
+          where: 'remote_id = ?', whereArgs: [toMemberRemoteId]);
+
+      if (fromRows.isNotEmpty && toRows.isNotEmpty && mounted) {
+        final fromLocalId = fromRows.first['id'] as int;
+        final toLocalId = toRows.first['id'] as int;
+        final householdId = fromRows.first['household_id'] as int;
+
+        await context.read<BillProvider>().settleUp(
+          householdId: householdId,
+          payerMemberId: fromLocalId,
+          receiverMemberId: toLocalId,
+          amount: amount,
+        );
+      }
+
+      await notificationService.markAsRead(notification['id']);
+    } catch (e) {
+      debugPrint('Failed to apply confirmed settlement: $e');
+    } finally {
+      if (mounted) setState(() => _processingIds.remove(notification['id']));
+    }
+  }
+
   Future<void> _confirmSettlement(
     Map<String, dynamic> notification,
     NotificationService notificationService,
@@ -274,7 +325,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final createdAt = notification['created_at'] as String? ?? '';
     final isRead = notification['read'] == true;
     final isSettlementRequest = type == 'settlement_request';
+    final isSettlementConfirmed = type == 'settlement_confirmed';
     final isProcessing = _processingIds.contains(id);
+
+    // Auto-apply confirmed settlements on the sender's device
+    if (isSettlementConfirmed && !isRead && !_processingIds.contains(id)) {
+      _applyConfirmedSettlement(notification, notificationService);
+    }
 
     return Dismissible(
       key: Key(id),
