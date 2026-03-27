@@ -8,6 +8,10 @@ class NotificationService extends ChangeNotifier {
   int _unreadCount = 0;
   RealtimeChannel? _channel;
 
+  /// Callback for when a settlement-related notification arrives in realtime.
+  /// Receives the notification map; the registrant handles bill creation + balance refresh.
+  void Function(Map<String, dynamic> notification)? onSettlementNotification;
+
   NotificationService(this._client);
 
   List<Map<String, dynamic>> get notifications => _notifications;
@@ -53,6 +57,12 @@ class NotificationService extends ChangeNotifier {
             _notifications.insert(0, newNotification);
             _unreadCount++;
             notifyListeners();
+
+            // Auto-process settlement confirmations in realtime
+            final type = newNotification['type'] as String?;
+            if (type == 'settlement_confirmed' && onSettlementNotification != null) {
+              onSettlementNotification!(newNotification);
+            }
           },
         )
         .subscribe();

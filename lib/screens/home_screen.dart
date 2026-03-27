@@ -56,7 +56,56 @@ class _HomeScreenState extends State<HomeScreen> {
       final householdRemoteId = context.read<HouseholdProvider>().currentHousehold?.remoteId;
       final notifService = context.read<NotificationService>();
       notifService.loadNotifications(householdId: householdRemoteId);
+
+      // Register handler: when a settlement confirmation arrives in realtime,
+      // auto-create the local bill so the balance updates immediately.
+      notifService.onSettlementNotification = (notification) {
+        _handleSettlementConfirmed(notification);
+      };
       notifService.subscribeToRealtime();
+    }
+  }
+
+  /// Process a realtime "settlement_confirmed" notification:
+  /// fetch settlement details, create local bill, refresh balances.
+  Future<void> _handleSettlementConfirmed(Map<String, dynamic> notification) async {
+    try {
+      final data = notification['data'] as Map<String, dynamic>? ?? {};
+      final settlementId = data['settlement_id'] as String?;
+      if (settlementId == null) return;
+
+      final supabase = Supabase.instance.client;
+      final settlement = await supabase
+          .from('settlements')
+          .select()
+          .eq('id', settlementId)
+          .single();
+
+      final amount = (settlement['amount'] as num).toDouble();
+      final fromRemoteId = settlement['from_member_id'] as String;
+      final toRemoteId = settlement['to_member_id'] as String;
+
+      final db = await DatabaseHelper.instance.database;
+      final fromRows = await db.query('members',
+          where: 'remote_id = ?', whereArgs: [fromRemoteId]);
+      final toRows = await db.query('members',
+          where: 'remote_id = ?', whereArgs: [toRemoteId]);
+
+      if (fromRows.isNotEmpty && toRows.isNotEmpty && mounted) {
+        await context.read<BillProvider>().settleUp(
+          householdId: fromRows.first['household_id'] as int,
+          payerMemberId: fromRows.first['id'] as int,
+          receiverMemberId: toRows.first['id'] as int,
+          amount: amount,
+        );
+      }
+
+      // Mark notification as read
+      if (mounted) {
+        context.read<NotificationService>().markAsRead(notification['id'] as String);
+      }
+    } catch (e) {
+      debugPrint('Failed to apply confirmed settlement: $e');
     }
   }
 

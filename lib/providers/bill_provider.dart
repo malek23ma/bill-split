@@ -405,7 +405,9 @@ class BillProvider extends ChangeNotifier {
       category: 'other',
       receiverMemberId: receiverMemberId,
     );
-    await _db.insertBill(bill);
+    final billId = await _db.insertBill(bill);
+    // Push settlement to Supabase (like saveBill does for regular bills)
+    _pushBillToCloud(billId, householdId);
     await loadBills(householdId);
   }
 
