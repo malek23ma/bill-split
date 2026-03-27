@@ -295,10 +295,6 @@ class BillProvider extends ChangeNotifier {
       if (billRows.isEmpty) return;
       final bill = billRows.first;
 
-      // Skip if already pushed (has remote_id)
-      if (bill['remote_id'] != null && (bill['remote_id'] as String).length > 8) return;
-
-      final billRemoteId = uuid.v4();
       final enteredBy = memberRemoteIds[bill['entered_by_member_id'] as int];
       final paidBy = memberRemoteIds[bill['paid_by_member_id'] as int];
       if (enteredBy == null || paidBy == null) return;
@@ -308,6 +304,43 @@ class BillProvider extends ChangeNotifier {
         receiverBy = memberRemoteIds[bill['receiver_member_id'] as int];
       }
 
+      // ── STEP 1: Assign remote_ids LOCALLY first (before any network call) ──
+      // This prevents the race condition where sync() and _pushBillToCloud()
+      // both generate different UUIDs for the same bill, creating duplicates.
+      var billRemoteId = bill['remote_id'] as String?;
+      if (billRemoteId == null || billRemoteId.length < 10) {
+        billRemoteId = uuid.v4();
+        await db.update('bills', {'remote_id': billRemoteId},
+            where: 'id = ?', whereArgs: [localBillId]);
+      }
+
+      final items = await db.query('bill_items',
+          where: 'bill_id = ?', whereArgs: [localBillId]);
+
+      // Pre-assign remote_ids to all items and item_members
+      for (final item in items) {
+        if (item['remote_id'] == null || (item['remote_id'] as String).length < 10) {
+          final itemRid = uuid.v4();
+          await db.update('bill_items', {'remote_id': itemRid},
+              where: 'id = ?', whereArgs: [item['id']]);
+        }
+        final bimRows = await db.query('bill_item_members',
+            where: 'bill_item_id = ?', whereArgs: [item['id']]);
+        for (final bim in bimRows) {
+          if (bim['remote_id'] == null || (bim['remote_id'] as String).length < 10) {
+            if (memberRemoteIds[bim['member_id'] as int] == null) {
+              debugPrint('Skipping bill push: not all members have remote_ids yet');
+              return;
+            }
+            final bimRid = uuid.v4();
+            await db.update('bill_item_members', {'remote_id': bimRid},
+                where: 'id = ?', whereArgs: [bim['id']]);
+          }
+        }
+      }
+
+      // ── STEP 2: Push to Supabase (upsert is idempotent by id) ──
+      // Even if sync also pushes this bill, both use the same UUID → no duplicate.
       await supabase.from('bills').upsert({
         'id': billRemoteId,
         'household_id': householdRemoteId,
@@ -321,18 +354,11 @@ class BillProvider extends ChangeNotifier {
         if (bill['photo_url'] != null) 'photo_url': bill['photo_url']!,
       });
 
-      // Save remote_id locally
-      await db.update('bills', {'remote_id': billRemoteId},
-          where: 'id = ?', whereArgs: [localBillId]);
-
-      // Push bill items
-      final items = await db.query('bill_items',
+      // Re-read items with their now-assigned remote_ids
+      final freshItems = await db.query('bill_items',
           where: 'bill_id = ?', whereArgs: [localBillId]);
-      for (final item in items) {
-        // Skip if already pushed
-        if (item['remote_id'] != null && (item['remote_id'] as String).length > 8) continue;
-
-        final itemRemoteId = uuid.v4();
+      for (final item in freshItems) {
+        final itemRemoteId = item['remote_id'] as String;
         await supabase.from('bill_items').upsert({
           'id': itemRemoteId,
           'bill_id': billRemoteId,
@@ -340,41 +366,16 @@ class BillProvider extends ChangeNotifier {
           'price': item['price'],
           'is_included': (item['is_included'] as int?) == 1,
         });
-        await db.update('bill_items', {'remote_id': itemRemoteId},
-            where: 'id = ?', whereArgs: [item['id']]);
 
-        // Push bill_item_members
         final bimRows = await db.query('bill_item_members',
             where: 'bill_item_id = ?', whereArgs: [item['id']]);
-
-        // Verify ALL members have remote_ids before pushing — don't push
-        // incomplete data or the split calculation will be wrong on other devices.
-        bool allMembersResolved = true;
         for (final bim in bimRows) {
-          if (bim['remote_id'] != null && (bim['remote_id'] as String).length > 8) continue;
-          if (memberRemoteIds[bim['member_id'] as int] == null) {
-            allMembersResolved = false;
-            break;
-          }
-        }
-        if (!allMembersResolved) {
-          debugPrint('Skipping bill push: not all members have remote_ids yet');
-          return; // Let sync queue retry later
-        }
-
-        for (final bim in bimRows) {
-          // Skip if already pushed
-          if (bim['remote_id'] != null && (bim['remote_id'] as String).length > 8) continue;
-
           final memberRid = memberRemoteIds[bim['member_id'] as int]!;
-          final bimRemoteId = uuid.v4();
           await supabase.from('bill_item_members').upsert({
-            'id': bimRemoteId,
+            'id': bim['remote_id'] as String,
             'bill_item_id': itemRemoteId,
             'member_id': memberRid,
           });
-          await db.update('bill_item_members', {'remote_id': bimRemoteId},
-              where: 'id = ?', whereArgs: [bim['id']]);
         }
       }
       // Clean up sync queue entries to prevent double-push (batch)
