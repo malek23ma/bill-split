@@ -346,12 +346,27 @@ class BillProvider extends ChangeNotifier {
         // Push bill_item_members
         final bimRows = await db.query('bill_item_members',
             where: 'bill_item_id = ?', whereArgs: [item['id']]);
+
+        // Verify ALL members have remote_ids before pushing — don't push
+        // incomplete data or the split calculation will be wrong on other devices.
+        bool allMembersResolved = true;
+        for (final bim in bimRows) {
+          if (bim['remote_id'] != null && (bim['remote_id'] as String).length > 8) continue;
+          if (memberRemoteIds[bim['member_id'] as int] == null) {
+            allMembersResolved = false;
+            break;
+          }
+        }
+        if (!allMembersResolved) {
+          debugPrint('Skipping bill push: not all members have remote_ids yet');
+          return; // Let sync queue retry later
+        }
+
         for (final bim in bimRows) {
           // Skip if already pushed
           if (bim['remote_id'] != null && (bim['remote_id'] as String).length > 8) continue;
 
-          final memberRid = memberRemoteIds[bim['member_id'] as int];
-          if (memberRid == null) continue;
+          final memberRid = memberRemoteIds[bim['member_id'] as int]!;
           final bimRemoteId = uuid.v4();
           await supabase.from('bill_item_members').upsert({
             'id': bimRemoteId,

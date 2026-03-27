@@ -1081,11 +1081,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final currSymbol =
         AppCurrency.getByCode(householdProvider.currency).symbol;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    // Other member's balance negated tells us who owes whom.
-    // Positive amount from BalanceCard means other owes current member.
-    final otherBalance = billProvider.memberBalances[otherMemberId] ?? 0.0;
-    final otherOwes =
-        otherBalance < -0.01; // other has negative balance = they owe
+    // Use pairwise balance (not global) to determine who owes whom.
+    // pairwiseBalances[me][other] > 0 means "other owes me"
+    final pairwiseValue =
+        billProvider.pairwiseBalances[currentMemberId]?[otherMemberId] ?? 0.0;
+    final otherOwes = pairwiseValue > 0.01;
     final whoOwes = otherOwes ? otherName : 'You';
     final payerId = otherOwes ? otherMemberId : currentMemberId;
     final receiverId = otherOwes ? currentMemberId : otherMemberId;
