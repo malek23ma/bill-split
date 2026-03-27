@@ -67,37 +67,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Process a realtime "settlement_confirmed" notification:
-  /// fetch settlement details, create local bill, refresh balances.
+  /// sync from cloud to pull the settlement bill (already pushed by the
+  /// confirmer), then reload balances. Do NOT create a new bill here —
+  /// that would duplicate the settlement.
   Future<void> _handleSettlementConfirmed(Map<String, dynamic> notification) async {
     try {
-      final data = notification['data'] as Map<String, dynamic>? ?? {};
-      final settlementId = data['settlement_id'] as String?;
-      if (settlementId == null) return;
+      final householdId =
+          context.read<HouseholdProvider>().currentHousehold?.id;
+      if (householdId == null || !mounted) return;
 
-      final supabase = Supabase.instance.client;
-      final settlement = await supabase
-          .from('settlements')
-          .select()
-          .eq('id', settlementId)
-          .single();
-
-      final amount = (settlement['amount'] as num).toDouble();
-      final fromRemoteId = settlement['from_member_id'] as String;
-      final toRemoteId = settlement['to_member_id'] as String;
-
-      final db = await DatabaseHelper.instance.database;
-      final fromRows = await db.query('members',
-          where: 'remote_id = ?', whereArgs: [fromRemoteId]);
-      final toRows = await db.query('members',
-          where: 'remote_id = ?', whereArgs: [toRemoteId]);
-
-      if (fromRows.isNotEmpty && toRows.isNotEmpty && mounted) {
-        await context.read<BillProvider>().settleUp(
-          householdId: fromRows.first['household_id'] as int,
-          payerMemberId: fromRows.first['id'] as int,
-          receiverMemberId: toRows.first['id'] as int,
-          amount: amount,
-        );
+      // Sync pulls the settlement bill that the confirmer already pushed
+      await context.read<SyncService>().sync(householdId);
+      if (mounted) {
+        await context.read<BillProvider>().loadBills(householdId);
       }
 
       // Mark notification as read
@@ -105,7 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
         context.read<NotificationService>().markAsRead(notification['id'] as String);
       }
     } catch (e) {
-      debugPrint('Failed to apply confirmed settlement: $e');
+      debugPrint('Failed to sync confirmed settlement: $e');
     }
   }
 
