@@ -1,4 +1,4 @@
-package com.malek.billsplit.bill_split
+package com.malek.fairshare
 
 import io.flutter.embedding.android.FlutterActivity
 

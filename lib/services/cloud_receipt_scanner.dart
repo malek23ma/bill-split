@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'receipt_parser.dart';
+import '../exceptions.dart';
 
 class CloudReceiptScanner {
   static const defaultApiUrl = 'https://api.groq.com/openai/v1/chat/completions';
@@ -72,17 +73,17 @@ class CloudReceiptScanner {
     );
 
     if (response.statusCode != 200) {
-      throw Exception('API error: ${response.statusCode}');
+      throw ScanException('API error: ${response.statusCode}');
     }
 
     final data = jsonDecode(response.body);
     final choices = data['choices'];
     if (choices == null || choices is! List || choices.isEmpty) {
-      throw Exception('Invalid API response: no choices returned');
+      throw ScanException('Invalid API response: no choices returned');
     }
     final text = choices[0]['message']?['content'] as String? ?? '';
     if (text.isEmpty) {
-      throw Exception('API returned empty content');
+      throw ScanException('API returned empty content');
     }
 
     final jsonStr = _extractJson(text);
@@ -90,7 +91,7 @@ class CloudReceiptScanner {
 
     final rawItems = parsed['items'];
     if (rawItems == null || rawItems is! List) {
-      throw Exception('No items found in receipt');
+      throw ScanException('No items found in receipt');
     }
 
     final items = <ParsedItem>[];

@@ -45,7 +45,7 @@ class DatabaseHelper implements DataRepository {
     final path = join(dbPath, fileName);
     final db = await openDatabase(
       path,
-      version: 12,
+      version: 13,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -356,6 +356,26 @@ class DatabaseHelper implements DataRepository {
     }
     if (oldVersion < 12) {
       await _createIndexes(db);
+    }
+    if (oldVersion < 13) {
+      await _deduplicateAndUniqueRemoteIds(db);
+    }
+  }
+
+  /// Migration v13: Remove duplicate rows (same remote_id) and upgrade
+  /// indexes to UNIQUE so duplicates can never be inserted again.
+  Future<void> _deduplicateAndUniqueRemoteIds(Database db) async {
+    final tables = ['bills', 'bill_items', 'bill_item_members', 'members', 'recurring_bills', 'households'];
+    for (final table in tables) {
+      // Delete duplicates: keep the row with the smallest id for each remote_id
+      await db.execute('''
+        DELETE FROM $table WHERE id NOT IN (
+          SELECT MIN(id) FROM $table GROUP BY remote_id
+        ) AND remote_id IS NOT NULL
+      ''');
+      // Drop the old non-unique index and create a unique one
+      await db.execute('DROP INDEX IF EXISTS idx_${table}_remote_id');
+      await db.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_${table}_remote_id ON $table(remote_id)');
     }
   }
 

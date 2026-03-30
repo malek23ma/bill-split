@@ -208,6 +208,7 @@ class _AuthTabState extends State<_AuthTab>
               child: Row(
                 children: [
                   Icon(Icons.error_outline_rounded,
+                      semanticLabel: 'Error',
                       color: AppColors.negative,
                       size: AppScale.size(20)),
                   SizedBox(width: AppScale.padding(AppSpacing.sm)),
@@ -361,6 +362,7 @@ class _AuthTabState extends State<_AuthTab>
                     ? Icons.visibility_off_outlined
                     : Icons.visibility_outlined,
               ),
+              tooltip: _obscurePassword ? 'Show password' : 'Hide password',
               onPressed: () =>
                   setState(() => _obscurePassword = !_obscurePassword),
             ),
@@ -453,7 +455,11 @@ class _ModeToggle extends StatelessWidget {
       Color activeFg, Color inactiveFg) {
     final selected = mode == value;
     return Expanded(
-      child: GestureDetector(
+      child: Semantics(
+        label: '$label sign-in mode',
+        button: true,
+        selected: selected,
+        child: GestureDetector(
         onTap: () => onChanged(value),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
@@ -472,6 +478,7 @@ class _ModeToggle extends StatelessWidget {
             ),
           ),
         ),
+      ),
       ),
     );
   }

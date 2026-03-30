@@ -15,6 +15,14 @@ android/.gradle/
 android/local.properties
 android/app/build/
 android/build/
+android/key.properties
+keystore/
+
+# Secrets
+.env
+*.jks
+*.keystore
+*-firebase-adminsdk-*.json
 
 # iOS
 ios/Pods/

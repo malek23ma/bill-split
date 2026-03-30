@@ -51,7 +51,10 @@ class BillTypeScreen extends StatelessWidget {
               ),
             ),
             SizedBox(height: AppScale.size(32)),
-            ScaleTap(
+            Semantics(
+              label: 'Full Bill — Review each item and choose what to split',
+              button: true,
+              child: ScaleTap(
               onTap: () {
                 Navigator.pushNamed(context, '/camera', arguments: 'full');
               },
@@ -75,6 +78,7 @@ class BillTypeScreen extends StatelessWidget {
                       ),
                       child: Icon(
                         Icons.receipt_long_rounded,
+                        semanticLabel: 'Full bill',
                         color: AppColors.primary,
                         size: AppScale.size(28),
                       ),
@@ -113,8 +117,12 @@ class BillTypeScreen extends StatelessWidget {
                 ),
               ),
             ),
+            ),
             SizedBox(height: AppScale.size(16)),
-            ScaleTap(
+            Semantics(
+              label: 'Quick Bill — Auto-split the total equally',
+              button: true,
+              child: ScaleTap(
               onTap: () {
                 Navigator.pushNamed(context, '/camera', arguments: 'quick');
               },
@@ -138,6 +146,7 @@ class BillTypeScreen extends StatelessWidget {
                       ),
                       child: Icon(
                         Icons.flash_on_rounded,
+                        semanticLabel: 'Quick bill',
                         color: AppColors.accent,
                         size: AppScale.size(28),
                       ),
@@ -175,6 +184,7 @@ class BillTypeScreen extends StatelessWidget {
                   ],
                 ),
               ),
+            ),
             ),
           ],
         ),

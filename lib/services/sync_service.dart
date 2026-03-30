@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import '../database/database_helper.dart';
 import '../database/supabase_repository.dart';
@@ -37,17 +38,16 @@ class SyncService extends ChangeNotifier {
   /// Main sync entry point — call on app open and when connectivity restores
   Future<void> sync(int householdId) async {
     if (_syncing || !_connectivity.isOnline) return;
+    _syncing = true; // Set immediately to prevent concurrent syncs
+    notifyListeners();
 
     // Get household remote_id
     final db = await _local.database;
     final rows = await db.query('households',
         where: 'id = ?', whereArgs: [householdId]);
-    if (rows.isEmpty) return;
+    if (rows.isEmpty) { _syncing = false; notifyListeners(); return; }
     final remoteId = rows.first['remote_id'] as String?;
-    if (remoteId == null) return; // Not synced yet
-
-    _syncing = true;
-    notifyListeners();
+    if (remoteId == null) { _syncing = false; notifyListeners(); return; }
     try {
       await _pushPendingChanges();
       await _pullRemoteChanges(householdId, remoteId);
@@ -263,7 +263,8 @@ class SyncService extends ChangeNotifier {
       if (localRows.isEmpty) {
         // New row from remote — insert locally
         localData['remote_id'] = remoteId;
-        await db.insert(tableName, localData);
+        await db.insert(tableName, localData,
+            conflictAlgorithm: ConflictAlgorithm.ignore);
       } else {
         // Existing row — check if remote is newer
         final localUpdatedAt = localRows.first['updated_at'] as String?;

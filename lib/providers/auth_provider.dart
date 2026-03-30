@@ -129,10 +129,13 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> signOut({SyncService? syncService, int? householdId}) async {
-    // Push pending changes to cloud BEFORE wiping local data
+    // Push pending changes to cloud BEFORE wiping local data (max 5s)
     if (syncService != null && householdId != null) {
       try {
-        await syncService.sync(householdId);
+        await syncService.sync(householdId).timeout(
+          const Duration(seconds: 5),
+          onTimeout: () {},
+        );
       } catch (_) {}
     }
 

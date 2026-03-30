@@ -546,15 +546,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             segments: [
                               ButtonSegment(
                                 value: ThemeMode.light,
-                                icon: Icon(Icons.light_mode, size: AppScale.size(18)),
+                                icon: Icon(Icons.light_mode, semanticLabel: 'Light mode', size: AppScale.size(18)),
                               ),
                               ButtonSegment(
                                 value: ThemeMode.system,
-                                icon: Icon(Icons.phone_android, size: AppScale.size(18)),
+                                icon: Icon(Icons.phone_android, semanticLabel: 'System default', size: AppScale.size(18)),
                               ),
                               ButtonSegment(
                                 value: ThemeMode.dark,
-                                icon: Icon(Icons.dark_mode, size: AppScale.size(18)),
+                                icon: Icon(Icons.dark_mode, semanticLabel: 'Dark mode', size: AppScale.size(18)),
                               ),
                             ],
                             selected: {settings.themeMode},
@@ -720,6 +720,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 settings.apiKey.isNotEmpty
                                     ? Icons.check_circle
                                     : Icons.info_outline,
+                                semanticLabel: settings.apiKey.isNotEmpty
+                                    ? 'Active'
+                                    : 'Not configured',
                                 size: AppScale.size(14),
                                 color: settings.apiKey.isNotEmpty
                                     ? AppColors.positive
@@ -826,6 +829,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           borderRadius: BorderRadius.circular(AppRadius.md),
                         ),
                         child: Icon(Icons.delete_forever_rounded,
+                            semanticLabel: 'Delete household',
                             size: AppScale.size(18), color: AppColors.negative),
                       ),
                       title: Text(

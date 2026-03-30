@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import '../providers/household_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/bill_provider.dart';
 import '../models/household.dart';
 import '../database/database_helper.dart';
-import '../services/sync_service.dart';
 import '../constants.dart';
 import '../widgets/scale_tap.dart';
 
@@ -163,7 +163,42 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
           if (rid != null) memberLookup[rid] = m['id'] as int;
         }
 
-        // Process bills
+        // Collect all bill remote IDs for batch fetching
+        final billRemoteIds = <String>[];
+        for (final rb in remoteBills) {
+          billRemoteIds.add(rb['id'] as String);
+        }
+
+        // Batch fetch ALL bill_items in 1 query (instead of per-bill)
+        List<dynamic> allRemoteItems = [];
+        List<dynamic> allRemoteBims = [];
+        if (billRemoteIds.isNotEmpty) {
+          allRemoteItems = await supabase.from('bill_items').select()
+              .inFilter('bill_id', billRemoteIds)
+              .isFilter('deleted_at', null);
+        }
+
+        // Batch fetch ALL bill_item_members in 1 query (instead of per-item)
+        if (allRemoteItems.isNotEmpty) {
+          final allItemIds = allRemoteItems.map((i) => i['id'] as String).toList();
+          allRemoteBims = await supabase.from('bill_item_members').select()
+              .inFilter('bill_item_id', allItemIds)
+              .isFilter('deleted_at', null);
+        }
+
+        // Index items by bill_id and BIMs by bill_item_id for fast lookup
+        final itemsByBill = <String, List<dynamic>>{};
+        for (final ri in allRemoteItems) {
+          final billId = ri['bill_id'] as String;
+          itemsByBill.putIfAbsent(billId, () => []).add(ri);
+        }
+        final bimsByItem = <String, List<dynamic>>{};
+        for (final bim in allRemoteBims) {
+          final itemId = bim['bill_item_id'] as String;
+          bimsByItem.putIfAbsent(itemId, () => []).add(bim);
+        }
+
+        // Process bills using pre-fetched data (no more network calls)
         for (final rb in remoteBills) {
           final billRemoteId = rb['id'] as String;
           final existingB = await db.query('bills',
@@ -190,14 +225,11 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
             'category': rb['category'] ?? 'other',
             'remote_id': billRemoteId,
             if (receiverBy != null) 'receiver_member_id': receiverBy,
-          });
+          }, conflictAlgorithm: ConflictAlgorithm.ignore);
 
-          // Pull bill_items for this bill
-          final remoteItems = await supabase.from('bill_items').select()
-              .eq('bill_id', billRemoteId)
-              .isFilter('deleted_at', null);
-
-          for (final ri in remoteItems) {
+          // Process pre-fetched items for this bill
+          final billItems = itemsByBill[billRemoteId] ?? [];
+          for (final ri in billItems) {
             final itemRemoteId = ri['id'] as String;
             final existingI = await db.query('bill_items',
                 where: 'remote_id = ?', whereArgs: [itemRemoteId]);
@@ -209,14 +241,11 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
               'price': ri['price'],
               'is_included': (ri['is_included'] == true) ? 1 : 0,
               'remote_id': itemRemoteId,
-            });
+            }, conflictAlgorithm: ConflictAlgorithm.ignore);
 
-            // Pull bill_item_members
-            final remoteBims = await supabase.from('bill_item_members').select()
-                .eq('bill_item_id', itemRemoteId)
-                .isFilter('deleted_at', null);
-
-            for (final bim in remoteBims) {
+            // Process pre-fetched BIMs for this item
+            final itemBims = bimsByItem[itemRemoteId] ?? [];
+            for (final bim in itemBims) {
               final bimRemoteId = bim['id'] as String;
               final existingBim = await db.query('bill_item_members',
                   where: 'remote_id = ?', whereArgs: [bimRemoteId]);
@@ -229,7 +258,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                 'bill_item_id': localItemId,
                 'member_id': memberId,
                 'remote_id': bimRemoteId,
-              });
+              }, conflictAlgorithm: ConflictAlgorithm.ignore);
             }
           }
         }
@@ -265,23 +294,43 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  TextButton.icon(
-                    onPressed: () async {
-                      await context.read<AuthProvider>().signOut();
-                      if (context.mounted) {
-                        Navigator.pushNamedAndRemoveUntil(context, '/auth', (route) => false);
-                      }
-                    },
-                    icon: Icon(Icons.logout_rounded, size: AppScale.size(16), color: AppColors.negative),
-                    label: Text('Sign Out', style: TextStyle(color: AppColors.negative, fontSize: AppScale.fontSize(12))),
+                  Tooltip(
+                    message: 'Sign out',
+                    child: TextButton.icon(
+                      onPressed: () async {
+                        await context.read<AuthProvider>().signOut();
+                        if (context.mounted) {
+                          Navigator.pushNamedAndRemoveUntil(context, '/auth', (route) => false);
+                        }
+                      },
+                      icon: Icon(Icons.logout_rounded, size: AppScale.size(16), color: AppColors.negative),
+                      label: Text('Sign Out', style: TextStyle(color: AppColors.negative, fontSize: AppScale.fontSize(12))),
+                    ),
                   ),
                 ],
               ),
             ),
             Expanded(
-              child: households.isEmpty
-                  ? _buildEmptyState(context, isDark)
-                  : _buildHouseholdList(context, provider, isDark, households),
+              child: _loading
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const CircularProgressIndicator(),
+                          SizedBox(height: AppScale.padding(16)),
+                          Text(
+                            'Loading your households...',
+                            style: TextStyle(
+                              fontSize: AppScale.fontSize(14),
+                              color: isDark ? AppColors.darkTextSecondary : AppColors.textTertiary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : households.isEmpty
+                      ? _buildEmptyState(context, isDark)
+                      : _buildHouseholdList(context, provider, isDark, households),
             ),
           ],
         ),
@@ -294,6 +343,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                 FloatingActionButton.extended(
                   heroTag: 'join',
                   onPressed: () => Navigator.pushNamed(context, '/join-household'),
+                  tooltip: 'Join a household',
                   backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
                   foregroundColor: AppColors.primary,
                   elevation: 0,
@@ -312,6 +362,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                 FloatingActionButton.extended(
                   heroTag: 'create',
                   onPressed: () => _showCreateSheet(context),
+                  tooltip: 'Create new household',
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   elevation: 0,
@@ -348,6 +399,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
               ),
               child: Icon(
                 Icons.home_rounded,
+                semanticLabel: 'Household',
                 size: AppScale.size(56),
                 color: Colors.white,
               ),
@@ -471,11 +523,9 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                       if (authUser != null && context.mounted) {
                         final member = await provider.resolveCurrentMember(authUser.id);
                         if (member != null && context.mounted) {
-                          // Load local bills immediately, sync in background
+                          // Load local bills immediately — home screen handles sync
                           final hid = provider.currentHousehold!.id!;
                           context.read<BillProvider>().loadBills(hid);
-                          // Don't await sync — let it happen after navigation
-                          context.read<SyncService>().sync(hid);
                           final prefs = await SharedPreferences.getInstance();
                           await prefs.setInt('last_household_id', household.id!);
                           if (context.mounted) {

@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import '../exceptions.dart' as app;
 
 class AuthService {
   final SupabaseClient _client;
@@ -41,13 +42,13 @@ class AuthService {
   Future<AuthResponse> signInWithGoogle() async {
     final googleSignIn = GoogleSignIn();
     final googleUser = await googleSignIn.signIn();
-    if (googleUser == null) throw Exception('Google sign-in cancelled');
+    if (googleUser == null) throw app.AuthException('Google sign-in cancelled');
 
     final googleAuth = await googleUser.authentication;
     final idToken = googleAuth.idToken;
     final accessToken = googleAuth.accessToken;
 
-    if (idToken == null) throw Exception('No ID token from Google');
+    if (idToken == null) throw app.AuthException('No ID token from Google');
 
     return await _client.auth.signInWithIdToken(
       provider: OAuthProvider.google,

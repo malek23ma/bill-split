@@ -1,8 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'config/supabase_config.dart';
 import 'constants.dart';
 import 'database/database_helper.dart';
@@ -34,7 +37,6 @@ import 'services/invite_service.dart';
 import 'services/push_notification_service.dart';
 import 'services/sync_service.dart';
 import 'screens/notifications_screen.dart';
-import 'package:firebase_core/firebase_core.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,6 +44,15 @@ void main() async {
   final screenWidth = view.physicalSize.width / view.devicePixelRatio;
   AppScale.init(screenWidth);
   await Firebase.initializeApp();
+
+  // Crashlytics: catch all Flutter framework errors
+  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+  // Crashlytics: catch async errors not handled by Flutter
+  PlatformDispatcher.instance.onError = (error, stack) {
+    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    return true;
+  };
+
   await Supabase.initialize(
     url: SupabaseConfig.url,
     anonKey: SupabaseConfig.anonKey,
@@ -101,8 +112,44 @@ void main() async {
   );
 }
 
-class BillSplitApp extends StatelessWidget {
+class BillSplitApp extends StatefulWidget {
   const BillSplitApp({super.key});
+
+  @override
+  State<BillSplitApp> createState() => _BillSplitAppState();
+}
+
+class _BillSplitAppState extends State<BillSplitApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final notificationService = context.read<NotificationService>();
+
+    switch (state) {
+      case AppLifecycleState.resumed:
+        // App came to foreground — refresh data and reconnect
+        notificationService.loadNotifications();
+        notificationService.subscribeToRealtime();
+        break;
+      case AppLifecycleState.paused:
+        // App went to background — unsubscribe realtime to save battery
+        notificationService.unsubscribe();
+        break;
+      default:
+        break;
+    }
+  }
 
   static TextTheme _buildTextTheme(TextTheme base) {
     return GoogleFonts.lexendTextTheme(base);
@@ -135,7 +182,7 @@ class BillSplitApp extends StatelessWidget {
     );
 
     return MaterialApp(
-      title: 'Bill Split',
+      title: 'FairShare',
       debugShowCheckedModeBanner: false,
       themeMode: themeMode,
 

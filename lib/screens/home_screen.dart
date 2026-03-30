@@ -120,6 +120,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     Icon(
                       Icons.arrow_drop_down_rounded,
+                      semanticLabel: 'Switch household',
                       color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                     ),
                   ],
@@ -138,6 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Icon(Icons.notifications_outlined,
                             color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary),
                       ),
+                      tooltip: 'Notifications',
                       onPressed: () => Navigator.pushNamed(context, '/notifications'),
                     );
                   },
@@ -191,6 +193,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () {
                 Navigator.pushNamed(context, '/bill-type');
               },
+              tooltip: 'Add bill',
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
               elevation: 0,
@@ -583,6 +586,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Icon(
                         isUp ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+                        semanticLabel: isUp ? 'Spending up' : 'Spending down',
                         size: AppScale.size(18),
                         color: isUp ? AppColors.negative : AppColors.positive,
                       ),
@@ -715,6 +719,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(AppRadius.lg),
                 ),
                 child: const Icon(Icons.delete_outline_rounded,
+                    semanticLabel: 'Delete bill',
                     color: Colors.white),
               ),
               confirmDismiss: (_) async => true,
